@@ -117,15 +117,17 @@ func TestInvalidLoad(t *testing.T) {
 	}
 }
 
-func TestExamples(t *testing.T) {
-	testcases := []string{"helloworld/duffle.json"}
+// the examples directory is no longer part of this repo.
 
-	for _, tc := range testcases {
-		t.Run(tc, func(t *testing.T) {
-			_, err := Load(tc, "../../../examples")
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-			}
-		})
-	}
-}
+// func TestExamples(t *testing.T) {
+// 	testcases := []string{"helloworld/duffle.json"}
+
+// 	for _, tc := range testcases {
+// 		t.Run(tc, func(t *testing.T) {
+// 			_, err := Load(tc, "../../../examples")
+// 			if err != nil {
+// 				t.Errorf("unexpected error: %v", err)
+// 			}
+// 		})
+// 	}
+// }

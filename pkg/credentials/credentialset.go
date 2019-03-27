@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/deislabs/duffle/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
 
 	yaml "gopkg.in/yaml.v2"
 )

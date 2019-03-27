@@ -13,9 +13,9 @@ import (
 	"github.com/Masterminds/semver"
 	"github.com/pkg/errors"
 
-	"github.com/deislabs/duffle/pkg/bundle"
-	"github.com/deislabs/duffle/pkg/duffle/manifest"
-	"github.com/deislabs/duffle/pkg/imagebuilder"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/duffle/manifest"
+	"github.com/radu-matei/cnab-go/pkg/imagebuilder"
 )
 
 // Builder defines how to interact with a bundle builder

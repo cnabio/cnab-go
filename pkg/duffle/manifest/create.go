@@ -7,7 +7,7 @@ import (
 
 	"github.com/docker/go/canonical/json"
 
-	"github.com/deislabs/duffle/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
 )
 
 const runContent = `#!/bin/bash

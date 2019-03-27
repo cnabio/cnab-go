@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/deislabs/duffle/pkg/duffle/manifest"
+	"github.com/radu-matei/cnab-go/pkg/duffle/manifest"
 )
 
 // Builder represents a mock builder

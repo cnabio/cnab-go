@@ -181,6 +181,25 @@
   version = "v1.1.1"
 
 [[projects]]
+  digest = "1:b5e02360688a8f15266da7ecb43afe7bd3138110993e2c105c43380fc05204a1"
+  name = "github.com/radu-matei/cnab-go"
+  packages = [
+    "pkg/bundle",
+    "pkg/claim",
+    "pkg/credentials",
+    "pkg/driver",
+    "pkg/duffle",
+    "pkg/duffle/manifest",
+    "pkg/imagebuilder",
+    "pkg/loader",
+    "pkg/signature",
+    "pkg/utils/crud",
+  ]
+  pruneopts = "NUT"
+  revision = "dcb2e48d8864338e544cc37fdb8b421c17d0d925"
+  version = "0.1.0-ralpha.5+englishrose"
+
+[[projects]]
   digest = "1:e71d64468873ca819b91b975e67e71f349a89f41ab38040bcbd8840f5e193654"
   name = "github.com/docker/cli"
   packages = [
@@ -457,18 +476,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2d30806677673203e02f0e36069be246e5fb819337f3e2200a322c1daa66fae3"
-  name = "github.com/gosuri/uitable"
-  packages = [
-    ".",
-    "util/strutil",
-    "util/wordwrap",
-  ]
-  pruneopts = "NUT"
-  revision = "36ee7e946282a3fb1cfecd476ddc9b35d8847e42"
-
-[[projects]]
-  branch = "master"
   digest = "1:7fdf3223c7372d1ced0b98bf53457c5e89d89aecbad9a77ba9fcc6e01f9e5621"
   name = "github.com/gregjones/httpcache"
   packages = [
@@ -531,14 +538,6 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cf68a79fd02ab0f6942b9567d03d054b6568212fcc22de2a4afdefd096923749"
-  name = "github.com/kballard/go-shellquote"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "95032a82bc518f77982ea72343cc1ade730072f0"
-
-[[projects]]
-  branch = "master"
   digest = "1:c8a452cc8dd4ef9f857570ce2be31ca257a0928bf3c2b08cd7e11972b985c6d7"
   name = "github.com/konsorten/go-windows-terminal-sequences"
   packages = ["."]
@@ -554,44 +553,12 @@
   version = "v1.8.0"
 
 [[projects]]
-  digest = "1:08c231ec84231a7e23d67e4b58f975e1423695a32467a362ee55a803f9de8061"
-  name = "github.com/mattn/go-colorable"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
-  version = "v0.0.9"
-
-[[projects]]
-  digest = "1:bffa444ca07c69c599ae5876bc18b25bfd5fa85b297ca10a25594d284a7e9c5d"
-  name = "github.com/mattn/go-isatty"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
-  version = "v0.0.4"
-
-[[projects]]
-  digest = "1:bff482b22ebed387378546ba6a7850fdef87fd47f8ee58a7c62124a8e889a56b"
-  name = "github.com/mattn/go-runewidth"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "ce7b0b5c7b45a81508558cd1dba6bb1e4ddb51bb"
-  version = "v0.0.3"
-
-[[projects]]
   digest = "1:5985ef4caf91ece5d54817c11ea25f182697534f8ae6521eadcd628c142ac4b6"
   name = "github.com/matttproud/golang_protobuf_extensions"
   packages = ["pbutil"]
   pruneopts = "NUT"
   revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
   version = "v1.0.1"
-
-[[projects]]
-  branch = "master"
-  digest = "1:063d55b87e200bced5e2be658cc70acafb4c5bbc4afa04d4b82f66298b73d089"
-  name = "github.com/mgutz/ansi"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "9520e82c474b0a04dd04f8a40959027271bab992"
 
 [[projects]]
   branch = "master"
@@ -752,14 +719,6 @@
   ]
   pruneopts = "NUT"
   revision = "418d78d0b9a7b7de3a6bbc8a23def624cc977bb2"
-
-[[projects]]
-  digest = "1:3fd3d634f6815f19ac4b2c5e16d28ec9aa4584d0bba25d1ee6c424d813cca22a"
-  name = "github.com/renstrom/fuzzysearch"
-  packages = ["fuzzy"]
-  pruneopts = "NUT"
-  revision = "b18e754edff4833912ef4dce9eaca885bd3f0de1"
-  version = "v1.0.1"
 
 [[projects]]
   digest = "1:01252cd79aac70f16cac02a72a1067dd136e0ad6d5b597d0129cf74c739fd8d1"
@@ -1005,18 +964,6 @@
   version = "v1.18.0"
 
 [[projects]]
-  digest = "1:3f36ff57a1033b3e4eb2c03c311b23c9da6890fd94ddd56dc05c57b4214eb782"
-  name = "gopkg.in/AlecAivazis/survey.v1"
-  packages = [
-    ".",
-    "core",
-    "terminal",
-  ]
-  pruneopts = "NUT"
-  revision = "0be4439d90f533f1ea2e0adddd5b1a405e6f5559"
-  version = "v1.6.3"
-
-[[projects]]
   digest = "1:2d1fbdc6777e5408cabeb02bf336305e724b925ff4546ded0fa8715a7267922a"
   name = "gopkg.in/inf.v0"
   packages = ["."]
@@ -1186,17 +1133,23 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Masterminds/semver",
+    "github.com/radu-matei/cnab-go/pkg/bundle",
+    "github.com/radu-matei/cnab-go/pkg/claim",
+    "github.com/radu-matei/cnab-go/pkg/credentials",
+    "github.com/radu-matei/cnab-go/pkg/driver",
+    "github.com/radu-matei/cnab-go/pkg/duffle",
+    "github.com/radu-matei/cnab-go/pkg/duffle/manifest",
+    "github.com/radu-matei/cnab-go/pkg/imagebuilder",
+    "github.com/radu-matei/cnab-go/pkg/loader",
+    "github.com/radu-matei/cnab-go/pkg/signature",
+    "github.com/radu-matei/cnab-go/pkg/utils/crud",
     "github.com/docker/cli/cli/command",
     "github.com/docker/cli/cli/command/image/build",
-    "github.com/docker/cli/cli/config",
-    "github.com/docker/cli/cli/debug",
     "github.com/docker/cli/cli/flags",
-    "github.com/docker/cli/opts",
     "github.com/docker/distribution/digestset",
     "github.com/docker/distribution/reference",
     "github.com/docker/docker/api/types",
     "github.com/docker/docker/api/types/container",
-    "github.com/docker/docker/api/types/mount",
     "github.com/docker/docker/api/types/strslice",
     "github.com/docker/docker/builder/dockerignore",
     "github.com/docker/docker/client",
@@ -1206,16 +1159,11 @@
     "github.com/docker/docker/pkg/stdcopy",
     "github.com/docker/docker/pkg/term",
     "github.com/docker/docker/registry",
-    "github.com/docker/go-connections/tlsconfig",
     "github.com/docker/go/canonical/json",
-    "github.com/ghodss/yaml",
-    "github.com/gosuri/uitable",
     "github.com/oklog/ulid",
     "github.com/opencontainers/go-digest",
-    "github.com/renstrom/fuzzysearch/fuzzy",
+    "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
-    "github.com/spf13/cobra",
-    "github.com/spf13/pflag",
     "github.com/spf13/viper",
     "github.com/stretchr/testify/assert",
     "github.com/technosophos/moniker",
@@ -1224,7 +1172,6 @@
     "golang.org/x/crypto/openpgp/clearsign",
     "golang.org/x/crypto/openpgp/packet",
     "golang.org/x/net/context",
-    "gopkg.in/AlecAivazis/survey.v1",
     "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"

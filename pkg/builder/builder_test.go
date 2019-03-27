@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/deislabs/duffle/pkg/bundle"
-	"github.com/deislabs/duffle/pkg/duffle/manifest"
-	"github.com/deislabs/duffle/pkg/imagebuilder"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/duffle/manifest"
+	"github.com/radu-matei/cnab-go/pkg/imagebuilder"
 )
 
 // testImage represents a mock invocation image

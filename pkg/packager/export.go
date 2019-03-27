@@ -13,8 +13,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/archive"
 
-	"github.com/deislabs/duffle/pkg/bundle"
-	"github.com/deislabs/duffle/pkg/loader"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/loader"
 )
 
 type Exporter struct {

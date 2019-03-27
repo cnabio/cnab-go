@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deislabs/duffle/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
 
 	"github.com/stretchr/testify/assert"
 )

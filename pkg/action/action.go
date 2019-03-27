@@ -7,10 +7,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/deislabs/duffle/pkg/bundle"
-	"github.com/deislabs/duffle/pkg/claim"
-	"github.com/deislabs/duffle/pkg/credentials"
-	"github.com/deislabs/duffle/pkg/driver"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/claim"
+	"github.com/radu-matei/cnab-go/pkg/credentials"
+	"github.com/radu-matei/cnab-go/pkg/driver"
 )
 
 // notStateless is there just to make callers of opFromClaims more readable

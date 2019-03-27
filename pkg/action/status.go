@@ -3,9 +3,9 @@ package action
 import (
 	"io"
 
-	"github.com/deislabs/duffle/pkg/claim"
-	"github.com/deislabs/duffle/pkg/credentials"
-	"github.com/deislabs/duffle/pkg/driver"
+	"github.com/radu-matei/cnab-go/pkg/claim"
+	"github.com/radu-matei/cnab-go/pkg/credentials"
+	"github.com/radu-matei/cnab-go/pkg/driver"
 )
 
 // Status runs a status action on a CNAB bundle.

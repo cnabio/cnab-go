@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deislabs/duffle/pkg/bundle"
-	"github.com/deislabs/duffle/pkg/claim"
-	"github.com/deislabs/duffle/pkg/driver"
+	"github.com/radu-matei/cnab-go/pkg/bundle"
+	"github.com/radu-matei/cnab-go/pkg/claim"
+	"github.com/radu-matei/cnab-go/pkg/driver"
 
 	"github.com/stretchr/testify/assert"
 )
