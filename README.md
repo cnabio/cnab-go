@@ -1,6 +1,8 @@
 # cnab-go
 
-Highly experimental CNAB packages for Go. Extracted from Duffle.
+CNAB packages for Go, extracted from Duffle.
+
+We highly recommend you _do not_ take a dependency on this package, as it's currently in a very early, experimental state.
 
 ```
 $ go build ./...
