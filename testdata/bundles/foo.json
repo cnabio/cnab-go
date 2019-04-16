@@ -11,6 +11,7 @@
         "image1":{
             "description": "image1",
             "image": "urn:image1uri",
+            "originalImage": "urn:image1originaluri",
             "refs": [
                 {
                     "path": "image1path",
