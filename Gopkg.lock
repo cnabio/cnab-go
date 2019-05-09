@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:a26f8da48b22e6176c1c6a2459904bb30bd0c49ada04b2963c2c3a203e81a620"
+  name = "github.com/Masterminds/semver"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
+  version = "v1.4.2"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -18,6 +26,22 @@
   version = "v1.5.1-1"
 
 [[projects]]
+  digest = "1:58999a98719fddbac6303cb17e8d85b945f60b72f48e3a2df6b950b97fa926f1"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f55edac94c9bbba5d6182a4be46d86a2c9b5b50e"
+  version = "v1.0.2"
+
+[[projects]]
+  digest = "1:f2052f4354e87a0ce0b16b55586b8d34d502d164d56d5d4397afae37f3330c42"
+  name = "github.com/oklog/ulid"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "be3bccf06dda9a40aa6800c4736ac77f2fef987f"
+  version = "v2.0.2"
+
+[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
@@ -26,26 +50,45 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:bacb8b590716ab7c33f2277240972c9582d389593ee8d66fc10074e0508b8126"
+  digest = "1:998e4640c25e00ccb7b2569bf94562283937b8afb3485c0e1a0a05a15330240d"
+  name = "github.com/sirupsen/logrus"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f"
+  version = "v1.4.1"
+
+[[projects]]
+  digest = "1:42e8c2456d7ec0f31e182c20022e74324c4da2cb3bd9069ff9b131fe33466308"
   name = "github.com/stretchr/testify"
   packages = ["assert"]
   pruneopts = "NUT"
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
+  revision = "ffdc059bfe9ce6a4e144ba849dbedead332c6053"
+  version = "v1.3.0"
 
 [[projects]]
-  digest = "1:7c95b35057a0ff2e19f707173cc1a947fa43a6eb5c4d300d196ece0334046082"
+  branch = "master"
+  digest = "1:3e12290ba2a11b1b76267ee1584b2415f5f1621f34426fd75675003f98fe0249"
+  name = "golang.org/x/sys"
+  packages = ["unix"]
+  pruneopts = "NUT"
+  revision = "a5b02f93d862f065920dd6a40dddc66b60d0dec4"
+
+[[projects]]
+  digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"
   name = "gopkg.in/yaml.v2"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
-  version = "v2.2.1"
+  revision = "51d6538a90f86fe93ac480b35f37b2be17fef232"
+  version = "v2.2.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/Masterminds/semver",
     "github.com/docker/go/canonical/json",
+    "github.com/oklog/ulid",
+    "github.com/sirupsen/logrus",
     "github.com/stretchr/testify/assert",
     "gopkg.in/yaml.v2",
   ]
