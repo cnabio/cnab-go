@@ -18,6 +18,20 @@
   version = "v1.5.1-1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:6be8997d410d48dd045a8c18ee25e59ebfaeb9aa502c240b0d8ad9bb3e3fdd4f"
+  name = "github.com/globalsign/mgo"
+  packages = [
+    ".",
+    "bson",
+    "internal/json",
+    "internal/sasl",
+    "internal/scram",
+  ]
+  pruneopts = "NUT"
+  revision = "eeefdecb41b842af6dc652aaea4026e8403e62df"
+
+[[projects]]
   digest = "1:f2052f4354e87a0ce0b16b55586b8d34d502d164d56d5d4397afae37f3330c42"
   name = "github.com/oklog/ulid"
   packages = ["."]
@@ -54,6 +68,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/docker/go/canonical/json",
+    "github.com/globalsign/mgo",
     "github.com/oklog/ulid",
     "github.com/stretchr/testify/assert",
     "gopkg.in/yaml.v2",
