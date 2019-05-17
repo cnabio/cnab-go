@@ -1,10 +1,11 @@
-package action
+package action_test
 
 import (
 	"io/ioutil"
 	"testing"
 	"time"
 
+	"github.com/deislabs/cnab-go/action"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
 
@@ -12,7 +13,7 @@ import (
 )
 
 // makes sure Upgrade implements Action interface
-var _ Action = &Upgrade{}
+var _ action.Action = &action.Upgrade{}
 
 func TestUpgrade_Run(t *testing.T) {
 	out := ioutil.Discard
@@ -26,7 +27,7 @@ func TestUpgrade_Run(t *testing.T) {
 		Parameters: map[string]interface{}{},
 	}
 
-	upgr := &Upgrade{Driver: &driver.DebugDriver{}}
+	upgr := &action.Upgrade{Driver: &driver.DebugDriver{}}
 	assert.NoError(t, upgr.Run(c, mockSet, out))
 	if c.Created == c.Modified {
 		t.Error("Claim was not updated with modified time stamp during upgrade action")
@@ -39,10 +40,10 @@ func TestUpgrade_Run(t *testing.T) {
 		t.Errorf("Claim result status not successfully updated. Expected %v, got %v", claim.StatusSuccess, c.Result.Status)
 	}
 
-	upgr = &Upgrade{Driver: &mockFailingDriver{}}
+	upgr = &action.Upgrade{Driver: &mockFailingDriver{}}
 	assert.Error(t, upgr.Run(c, mockSet, out))
 
-	upgr = &Upgrade{Driver: &mockFailingDriver{shouldHandle: true}}
+	upgr = &action.Upgrade{Driver: &mockFailingDriver{shouldHandle: true}}
 	assert.Error(t, upgr.Run(c, mockSet, out))
 	if c.Result.Message == "" {
 		t.Error("Expected error message in claim result message")
@@ -55,4 +56,9 @@ func TestUpgrade_Run(t *testing.T) {
 	if c.Result.Status != claim.StatusFailure {
 		t.Errorf("Expected claim result status to be %v, got %v", claim.StatusFailure, c.Result.Status)
 	}
+}
+
+func TestUpgrade_WithUndefinedParams(t *testing.T) {
+	inst := &action.Upgrade{Driver: &mockFailingDriver{}}
+	testActionWithUndefinedParams(t, inst)
 }

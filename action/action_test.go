@@ -1,18 +1,17 @@
-package action
+package action_test
 
 import (
-	"encoding/json"
 	"errors"
-	"os"
-	"strings"
+	"io/ioutil"
 	"testing"
 	"time"
 
+	"github.com/deislabs/cnab-go/action"
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/credentials"
 	"github.com/deislabs/cnab-go/driver"
 
-	"github.com/deislabs/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -83,47 +82,162 @@ func mockBundle() *bundle.Bundle {
 
 }
 
-func TestOpFromClaim(t *testing.T) {
-	now := time.Now()
-	c := &claim.Claim{
-		Created:  now,
-		Modified: now,
-		Name:     "name",
-		Revision: "revision",
-		Bundle:   mockBundle(),
-		Parameters: map[string]interface{}{
-			"param_one":   "oneval",
-			"param_two":   "twoval",
-			"param_three": "threeval",
-		},
-	}
-	invocImage := c.Bundle.InvocationImages[0]
+// func TestOpFromClaim(t *testing.T) {
+// 	now := time.Now()
+// 	c := &claim.Claim{
+// 		Created:  now,
+// 		Modified: now,
+// 		Name:     "name",
+// 		Revision: "revision",
+// 		Bundle:   mockBundle(),
+// 		Parameters: map[string]interface{}{
+// 			"param_one":   "oneval",
+// 			"param_two":   "twoval",
+// 			"param_three": "threeval",
+// 		},
+// 	}
+// 	invocImage := c.Bundle.InvocationImages[0]
+//
+// 	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+//
+// 	is := assert.New(t)
+//
+// 	is.Equal(c.Name, op.Installation)
+// 	is.Equal(c.Revision, op.Revision)
+// 	is.Equal(invocImage.Image, op.Image)
+// 	is.Equal(driver.ImageTypeDocker, op.ImageType)
+// 	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
+// 	is.Equal(op.Environment["PARAM_TWO"], "twoval")
+// 	is.Equal(op.Environment["CNAB_P_PARAM_ONE"], "oneval")
+// 	is.Equal(op.Files["/secret/two"], "I'm also a secret")
+// 	is.Equal(op.Files["/param/three"], "threeval")
+// 	is.Contains(op.Files, "/cnab/app/image-map.json")
+// 	var imgMap map[string]bundle.Image
+// 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
+// 	is.Equal(c.Bundle.Images, imgMap)
+// 	is.Len(op.Parameters, 3)
+// 	is.Equal(os.Stdout, op.Out)
+// }
+//
+// func TestOpFromClaim_UndefinedParams(t *testing.T) {
+// 	now := time.Now()
+// 	c := &claim.Claim{
+// 		Created:  now,
+// 		Modified: now,
+// 		Name:     "name",
+// 		Revision: "revision",
+// 		Bundle:   mockBundle(),
+// 		Parameters: map[string]interface{}{
+// 			"param_one":         "oneval",
+// 			"param_two":         "twoval",
+// 			"param_three":       "threeval",
+// 			"param_one_million": "this is not a valid parameter",
+// 		},
+// 	}
+// 	invocImage := c.Bundle.InvocationImages[0]
+//
+// 	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.Error(t, err)
+// }
+//
+// func TestOpFromClaim_MissingRequiredParameter(t *testing.T) {
+// 	now := time.Now()
+// 	b := mockBundle()
+// 	b.Parameters["param_one"] = bundle.ParameterDefinition{Required: true}
+//
+// 	c := &claim.Claim{
+// 		Created:  now,
+// 		Modified: now,
+// 		Name:     "name",
+// 		Revision: "revision",
+// 		Bundle:   b,
+// 		Parameters: map[string]interface{}{
+// 			"param_two":   "twoval",
+// 			"param_three": "threeval",
+// 		},
+// 	}
+// 	invocImage := c.Bundle.InvocationImages[0]
+//
+// 	// missing required parameter fails
+// 	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.EqualError(t, err, `missing required parameter "param_one" for action "install"`)
+//
+// 	// fill the missing parameter
+// 	c.Parameters["param_one"] = "oneval"
+// 	_, err = opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.Nil(t, err)
+// }
+//
+// func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
+// 	now := time.Now()
+// 	b := mockBundle()
+// 	// Add a required parameter only defined for the test action
+// 	b.Parameters["param_test"] = bundle.ParameterDefinition{
+// 		ApplyTo:  []string{"test"},
+// 		Required: true,
+// 	}
+// 	c := &claim.Claim{
+// 		Created:  now,
+// 		Modified: now,
+// 		Name:     "name",
+// 		Revision: "revision",
+// 		Bundle:   b,
+// 		Parameters: map[string]interface{}{
+// 			"param_one":   "oneval",
+// 			"param_two":   "twoval",
+// 			"param_three": "threeval",
+// 		},
+// 	}
+// 	invocImage := c.Bundle.InvocationImages[0]
+//
+// 	// calling install action without the test required parameter for test action is ok
+// 	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.Nil(t, err)
+//
+// 	// test action needs the required parameter
+// 	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.EqualError(t, err, `missing required parameter "param_test" for action "test"`)
+//
+// 	c.Parameters["param_test"] = "only for test action"
+// 	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+// 	assert.Nil(t, err)
+// }
+//
+// func TestSelectInvocationImage_EmptyInvocationImages(t *testing.T) {
+// 	c := &claim.Claim{
+// 		Bundle: &bundle.Bundle{},
+// 	}
+// 	_, err := selectInvocationImage(&driver.DebugDriver{}, c)
+// 	if err == nil {
+// 		t.Fatal("expected an error")
+// 	}
+// 	want := "no invocationImages are defined"
+// 	got := err.Error()
+// 	if !strings.Contains(got, want) {
+// 		t.Fatalf("expected an error containing %q but got %q", want, got)
+// 	}
+// }
+//
+// func TestSelectInvocationImage_DriverIncompatible(t *testing.T) {
+// 	c := &claim.Claim{
+// 		Bundle: mockBundle(),
+// 	}
+// 	_, err := selectInvocationImage(&mockFailingDriver{}, c)
+// 	if err == nil {
+// 		t.Fatal("expected an error")
+// 	}
+// 	want := "driver is not compatible"
+// 	got := err.Error()
+// 	if !strings.Contains(got, want) {
+// 		t.Fatalf("expected an error containing %q but got %q", want, got)
+// 	}
+// }
 
-	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	is := assert.New(t)
-
-	is.Equal(c.Name, op.Installation)
-	is.Equal(c.Revision, op.Revision)
-	is.Equal(invocImage.Image, op.Image)
-	is.Equal(driver.ImageTypeDocker, op.ImageType)
-	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
-	is.Equal(op.Environment["PARAM_TWO"], "twoval")
-	is.Equal(op.Environment["CNAB_P_PARAM_ONE"], "oneval")
-	is.Equal(op.Files["/secret/two"], "I'm also a secret")
-	is.Equal(op.Files["/param/three"], "threeval")
-	is.Contains(op.Files, "/cnab/app/image-map.json")
-	var imgMap map[string]bundle.Image
-	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
-	is.Equal(c.Bundle.Images, imgMap)
-	is.Len(op.Parameters, 3)
-	is.Equal(os.Stdout, op.Out)
-}
-
-func TestOpFromClaim_UndefinedParams(t *testing.T) {
+func testActionWithUndefinedParams(t *testing.T, inst action.Action) {
+	out := ioutil.Discard
 	now := time.Now()
 	c := &claim.Claim{
 		Created:  now,
@@ -138,101 +252,6 @@ func TestOpFromClaim_UndefinedParams(t *testing.T) {
 			"param_one_million": "this is not a valid parameter",
 		},
 	}
-	invocImage := c.Bundle.InvocationImages[0]
 
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Error(t, err)
-}
-
-func TestOpFromClaim_MissingRequiredParameter(t *testing.T) {
-	now := time.Now()
-	b := mockBundle()
-	b.Parameters["param_one"] = bundle.ParameterDefinition{Required: true}
-
-	c := &claim.Claim{
-		Created:  now,
-		Modified: now,
-		Name:     "name",
-		Revision: "revision",
-		Bundle:   b,
-		Parameters: map[string]interface{}{
-			"param_two":   "twoval",
-			"param_three": "threeval",
-		},
-	}
-	invocImage := c.Bundle.InvocationImages[0]
-
-	// missing required parameter fails
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.EqualError(t, err, `missing required parameter "param_one" for action "install"`)
-
-	// fill the missing parameter
-	c.Parameters["param_one"] = "oneval"
-	_, err = opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
-}
-
-func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
-	now := time.Now()
-	b := mockBundle()
-	// Add a required parameter only defined for the test action
-	b.Parameters["param_test"] = bundle.ParameterDefinition{
-		ApplyTo:  []string{"test"},
-		Required: true,
-	}
-	c := &claim.Claim{
-		Created:  now,
-		Modified: now,
-		Name:     "name",
-		Revision: "revision",
-		Bundle:   b,
-		Parameters: map[string]interface{}{
-			"param_one":   "oneval",
-			"param_two":   "twoval",
-			"param_three": "threeval",
-		},
-	}
-	invocImage := c.Bundle.InvocationImages[0]
-
-	// calling install action without the test required parameter for test action is ok
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
-
-	// test action needs the required parameter
-	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
-	assert.EqualError(t, err, `missing required parameter "param_test" for action "test"`)
-
-	c.Parameters["param_test"] = "only for test action"
-	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
-}
-
-func TestSelectInvocationImage_EmptyInvocationImages(t *testing.T) {
-	c := &claim.Claim{
-		Bundle: &bundle.Bundle{},
-	}
-	_, err := selectInvocationImage(&driver.DebugDriver{}, c)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	want := "no invocationImages are defined"
-	got := err.Error()
-	if !strings.Contains(got, want) {
-		t.Fatalf("expected an error containing %q but got %q", want, got)
-	}
-}
-
-func TestSelectInvocationImage_DriverIncompatible(t *testing.T) {
-	c := &claim.Claim{
-		Bundle: mockBundle(),
-	}
-	_, err := selectInvocationImage(&mockFailingDriver{}, c)
-	if err == nil {
-		t.Fatal("expected an error")
-	}
-	want := "driver is not compatible"
-	got := err.Error()
-	if !strings.Contains(got, want) {
-		t.Fatalf("expected an error containing %q but got %q", want, got)
-	}
+	assert.Error(t, inst.Run(c, mockSet, out))
 }

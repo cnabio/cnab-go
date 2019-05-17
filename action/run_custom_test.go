@@ -1,25 +1,26 @@
-package action
+package action_test
 
 import (
 	"io/ioutil"
 	"testing"
 	"time"
 
+	"github.com/deislabs/cnab-go/action"
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
 
-	"github.com/deislabs/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
 )
 
 // makes sure RunCustom implements Action interface
-var _ Action = &RunCustom{}
+var _ action.Action = &action.RunCustom{}
 
 func TestRunCustom(t *testing.T) {
 	out := ioutil.Discard
 	is := assert.New(t)
 
-	rc := &RunCustom{
+	rc := &action.RunCustom{
 		Driver: &driver.DebugDriver{},
 		Action: "test",
 	}
@@ -48,4 +49,12 @@ func TestRunCustom(t *testing.T) {
 	if err := rc.Run(c, mockSet, out); err == nil {
 		t.Fatal("Unknown action should fail")
 	}
+}
+
+func TestRunCustom_WithUndefinedParams(t *testing.T) {
+	rc := &action.RunCustom{
+		Driver: &driver.DebugDriver{},
+		Action: "test",
+	}
+	testActionWithUndefinedParams(t, rc)
 }

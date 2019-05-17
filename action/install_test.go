@@ -1,10 +1,11 @@
-package action
+package action_test
 
 import (
 	"io/ioutil"
 	"testing"
 	"time"
 
+	"github.com/deislabs/cnab-go/action"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
 
@@ -12,7 +13,7 @@ import (
 )
 
 // makes sure Install implements Action interface
-var _ Action = &Install{}
+var _ action.Action = &action.Install{}
 
 func TestInstall_Run(t *testing.T) {
 	out := ioutil.Discard
@@ -26,12 +27,17 @@ func TestInstall_Run(t *testing.T) {
 		Parameters: map[string]interface{}{},
 	}
 
-	inst := &Install{Driver: &driver.DebugDriver{}}
+	inst := &action.Install{Driver: &driver.DebugDriver{}}
 	assert.NoError(t, inst.Run(c, mockSet, out))
 
-	inst = &Install{Driver: &mockFailingDriver{}}
+	inst = &action.Install{Driver: &mockFailingDriver{}}
 	assert.Error(t, inst.Run(c, mockSet, out))
 
-	inst = &Install{Driver: &mockFailingDriver{shouldHandle: true}}
+	inst = &action.Install{Driver: &mockFailingDriver{shouldHandle: true}}
 	assert.Error(t, inst.Run(c, mockSet, out))
+}
+
+func TestInstall_WithUndefinedParams(t *testing.T) {
+	inst := &action.Install{Driver: &mockFailingDriver{}}
+	testActionWithUndefinedParams(t, inst)
 }
