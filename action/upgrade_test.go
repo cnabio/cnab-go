@@ -62,3 +62,9 @@ func TestUpgrade_WithUndefinedParams(t *testing.T) {
 	inst := &action.Upgrade{Driver: &mockFailingDriver{}}
 	testActionWithUndefinedParams(t, inst)
 }
+
+func TestUpgradeFromClaim(t *testing.T) {
+	spyDriver := &spyDriver{}
+	rc := &action.Upgrade{Driver: spyDriver}
+	testOpFromClaim(t, rc, spyDriver)
+}

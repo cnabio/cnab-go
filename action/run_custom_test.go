@@ -58,3 +58,12 @@ func TestRunCustom_WithUndefinedParams(t *testing.T) {
 	}
 	testActionWithUndefinedParams(t, rc)
 }
+
+func TestRunCustomFromClaim(t *testing.T) {
+	spyDriver := &spyDriver{}
+	rc := &action.RunCustom{
+		Driver: spyDriver,
+		Action: "test",
+	}
+	testOpFromClaim(t, rc, spyDriver)
+}

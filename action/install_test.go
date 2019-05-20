@@ -41,3 +41,9 @@ func TestInstall_WithUndefinedParams(t *testing.T) {
 	inst := &action.Install{Driver: &mockFailingDriver{}}
 	testActionWithUndefinedParams(t, inst)
 }
+
+func TestInstallFromClaim(t *testing.T) {
+	spyDriver := &spyDriver{}
+	inst := &action.Install{Driver: spyDriver}
+	testOpFromClaim(t, inst, spyDriver)
+}

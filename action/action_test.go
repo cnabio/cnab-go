@@ -1,8 +1,10 @@
 package action_test
 
 import (
+	"encoding/json"
 	"errors"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -254,4 +256,56 @@ func testActionWithUndefinedParams(t *testing.T, inst action.Action) {
 	}
 
 	assert.Error(t, inst.Run(c, mockSet, out))
+}
+
+type spyDriver struct {
+	RunWasCalledWith *driver.Operation
+}
+
+func (f *spyDriver) Run(op *driver.Operation) error {
+	f.RunWasCalledWith = op
+	return nil
+}
+
+func (f *spyDriver) Handles(string) bool {
+	return true
+}
+
+func testOpFromClaim(t *testing.T, inst action.Action, spyDriver *spyDriver) {
+	out := os.Stdout
+	now := time.Now()
+	c := &claim.Claim{
+		Created:  now,
+		Modified: now,
+		Name:     "name",
+		Revision: "revision",
+		Bundle:   mockBundle(),
+		Parameters: map[string]interface{}{
+			"param_one":   "oneval",
+			"param_two":   "twoval",
+			"param_three": "threeval",
+		},
+	}
+	invocImage := c.Bundle.InvocationImages[0]
+
+	assert.NoError(t, inst.Run(c, mockSet, out))
+
+	is := assert.New(t)
+	op := spyDriver.RunWasCalledWith
+
+	is.Equal(c.Name, op.Installation)
+	is.Equal("revision", op.Revision)
+	is.Equal(invocImage.Image, op.Image)
+	is.Equal(driver.ImageTypeDocker, op.ImageType)
+	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
+	is.Equal(op.Environment["PARAM_TWO"], "twoval")
+	is.Equal(op.Environment["CNAB_P_PARAM_ONE"], "oneval")
+	is.Equal(op.Files["/secret/two"], "I'm also a secret")
+	is.Equal(op.Files["/param/three"], "threeval")
+	is.Contains(op.Files, "/cnab/app/image-map.json")
+	var imgMap map[string]bundle.Image
+	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
+	is.Equal(c.Bundle.Images, imgMap)
+	is.Len(op.Parameters, 3)
+	is.Equal(out, op.Out)
 }

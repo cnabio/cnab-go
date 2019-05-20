@@ -63,3 +63,9 @@ func TestUninstall_WithUndefinedParams(t *testing.T) {
 	inst := &action.Uninstall{Driver: &mockFailingDriver{}}
 	testActionWithUndefinedParams(t, inst)
 }
+
+func TestUninstallFromClaim(t *testing.T) {
+	spyDriver := &spyDriver{}
+	rc := &action.Uninstall{Driver: spyDriver}
+	testOpFromClaim(t, rc, spyDriver)
+}

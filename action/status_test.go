@@ -40,3 +40,9 @@ func TestStatus_WithUndefinedParams(t *testing.T) {
 	inst := &action.Status{Driver: &mockFailingDriver{}}
 	testActionWithUndefinedParams(t, inst)
 }
+
+func TestStatusFromClaim(t *testing.T) {
+	spyDriver := &spyDriver{}
+	rc := &action.Status{Driver: spyDriver}
+	testOpFromClaim(t, rc, spyDriver)
+}
