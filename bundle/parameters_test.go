@@ -41,12 +41,18 @@ func TestCanReadParameterDefinition(t *testing.T) {
 	description := "some description"
 	action0 := "action0"
 	action1 := "action1"
+	destinationEnvValue := "BACKEND_PORT"
+	destinationPathValue := "/some/path"
 
 	json := fmt.Sprintf(`{
 		"parameters": {
 			"test": {
 				"type": "%s",
-				"defaultValue": "%s",
+				"default": "%s",
+				"destination": {
+					"env": "%s",
+					"path": "%s"
+				},
 				"allowedValues": [ "%s", "%s" ],
 				"minValue": %d,
 				"maxValue": %d,
@@ -59,7 +65,8 @@ func TestCanReadParameterDefinition(t *testing.T) {
 			}
 		}
 	}`,
-		dataType, defaultValue, allowedValues0, allowedValues1,
+		dataType, defaultValue, destinationEnvValue, destinationPathValue,
+		allowedValues0, allowedValues1,
 		minValue, maxValue, minLength, maxLength, description,
 		action0, action1)
 
@@ -72,8 +79,14 @@ func TestCanReadParameterDefinition(t *testing.T) {
 	if p.DataType != dataType {
 		t.Errorf("Expected data type '%s' but got '%s'", dataType, p.DataType)
 	}
-	if p.DefaultValue != defaultValue {
-		t.Errorf("Expected default value '%s' but got '%s'", defaultValue, p.DefaultValue)
+	if p.Default != defaultValue {
+		t.Errorf("Expected default value '%s' but got '%s'", defaultValue, p.Default)
+	}
+	if p.Destination.EnvironmentVariable != destinationEnvValue {
+		t.Errorf("Expected destination environment value '%s' but got '%s'", destinationEnvValue, p.Destination.EnvironmentVariable)
+	}
+	if p.Destination.Path != destinationPathValue {
+		t.Errorf("Expected destination path value '%s' but got '%s'", destinationPathValue, p.Destination.Path)
 	}
 	if len(p.AllowedValues) != 2 {
 		t.Errorf("Expected 2 allowed values but got %d", len(p.AllowedValues))
@@ -114,7 +127,7 @@ func valueTestJSON(jsonRepresentation string) []byte {
 	return []byte(fmt.Sprintf(`{
 		"parameters": {
 			"test": {
-				"defaultValue": %s,
+				"default": %s,
 				"allowedValues": [ %s ]
 			}
 		}
@@ -160,21 +173,21 @@ func TestCanReadValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectString("default value", "some string", strDef.Parameters["test"].DefaultValue, t)
+	expectString("default value", "some string", strDef.Parameters["test"].Default, t)
 	expectString("allowed value", "some string", strDef.Parameters["test"].AllowedValues[0], t)
 
 	intDef, err := Unmarshal(valueTestJSON(intValue))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectInt("default value", 123, intDef.Parameters["test"].DefaultValue, t)
+	expectInt("default value", 123, intDef.Parameters["test"].Default, t)
 	expectInt("allowed value", 123, intDef.Parameters["test"].AllowedValues[0], t)
 
 	boolDef, err := Unmarshal(valueTestJSON(boolValue))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectBool("default value", true, boolDef.Parameters["test"].DefaultValue, t)
+	expectBool("default value", true, boolDef.Parameters["test"].Default, t)
 	expectBool("allowed value", true, boolDef.Parameters["test"].AllowedValues[0], t)
 }
 

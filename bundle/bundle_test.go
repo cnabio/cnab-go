@@ -107,20 +107,20 @@ func TestValuesOrDefaults(t *testing.T) {
 	b := &Bundle{
 		Parameters: map[string]ParameterDefinition{
 			"port": {
-				DataType:     "int",
-				DefaultValue: 1234,
+				DataType: "int",
+				Default:  1234,
 			},
 			"host": {
-				DataType:     "string",
-				DefaultValue: "localhost.localdomain",
+				DataType: "string",
+				Default:  "localhost.localdomain",
 			},
 			"enabled": {
-				DataType:     "bool",
-				DefaultValue: false,
+				DataType: "bool",
+				Default:  false,
 			},
 			"replicaCount": {
-				DataType:     "int",
-				DefaultValue: 3,
+				DataType: "int",
+				Default:  3,
 			},
 		},
 	}
@@ -151,8 +151,8 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 				Required: true,
 			},
 			"enabled": {
-				DataType:     "bool",
-				DefaultValue: false,
+				DataType: "bool",
+				Default:  false,
 			},
 		},
 	}

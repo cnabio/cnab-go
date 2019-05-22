@@ -53,16 +53,16 @@ func mockBundle() *bundle.Bundle {
 		},
 		Parameters: map[string]bundle.ParameterDefinition{
 			"param_one": {
-				DefaultValue: "one",
+				Default: "one",
 			},
 			"param_two": {
-				DefaultValue: "two",
+				Default: "two",
 				Destination: &bundle.Location{
 					EnvironmentVariable: "PARAM_TWO",
 				},
 			},
 			"param_three": {
-				DefaultValue: "three",
+				Default: "three",
 				Destination: &bundle.Location{
 					Path: "/param/three",
 				},

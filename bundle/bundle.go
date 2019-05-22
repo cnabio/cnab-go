@@ -138,7 +138,7 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 		} else if def.Required {
 			return res, fmt.Errorf("parameter %q is required", name)
 		}
-		res[name] = def.DefaultValue
+		res[name] = def.Default
 	}
 	return res, nil
 }
