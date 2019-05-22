@@ -47,3 +47,23 @@ func TestInstallFromClaim(t *testing.T) {
 	inst := &action.Install{Driver: spyDriver}
 	testOpFromClaim(t, inst, spyDriver)
 }
+
+func TestInstall_FromClaimMissingRequiredParameter(t *testing.T) {
+	inst := &action.Install{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParameter(t, inst, "install")
+}
+
+func TestInstall_FromClaimMissingRequiredParamSpecificToAction(t *testing.T) {
+	inst := &action.Install{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParamSpecificToAction(t, inst)
+}
+
+func TestInstall_SelectInvocationImageEmptyInvocationImages(t *testing.T) {
+	inst := &action.Install{Driver: &spyDriver{}}
+	testSelectInvocationImageEmptyInvocationImages(t, inst)
+}
+
+func TestInstall_SelectInvocationImageDriverIncompatible(t *testing.T) {
+	inst := &action.Install{Driver: &mockFailingDriver{}}
+	testSelectInvocationImageDriverIncompatible(t, inst)
+}

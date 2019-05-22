@@ -63,8 +63,28 @@ func TestUpgrade_WithUndefinedParams(t *testing.T) {
 	testActionWithUndefinedParams(t, inst)
 }
 
-func TestUpgradeFromClaim(t *testing.T) {
+func TestUpgrade_FromClaim(t *testing.T) {
 	spyDriver := &spyDriver{}
 	rc := &action.Upgrade{Driver: spyDriver}
 	testOpFromClaim(t, rc, spyDriver)
+}
+
+func TestUpgrade_FromClaimMissingRequiredParameter(t *testing.T) {
+	inst := &action.Upgrade{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParameter(t, inst, "upgrade")
+}
+
+func TestUpgrade_FromClaimMissingRequiredParamSpecificToAction(t *testing.T) {
+	inst := &action.Upgrade{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParamSpecificToAction(t, inst)
+}
+
+func TestUpgrade_SelectInvocationImageEmptyInvocationImages(t *testing.T) {
+	inst := &action.Upgrade{Driver: &spyDriver{}}
+	testSelectInvocationImageEmptyInvocationImages(t, inst)
+}
+
+func TestUpgrade_SelectInvocationImageDriverIncompatible(t *testing.T) {
+	inst := &action.Upgrade{Driver: &mockFailingDriver{}}
+	testSelectInvocationImageDriverIncompatible(t, inst)
 }

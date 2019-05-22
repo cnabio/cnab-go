@@ -59,11 +59,43 @@ func TestRunCustom_WithUndefinedParams(t *testing.T) {
 	testActionWithUndefinedParams(t, rc)
 }
 
-func TestRunCustomFromClaim(t *testing.T) {
+func TestRunCustom_FromClaim(t *testing.T) {
 	spyDriver := &spyDriver{}
 	rc := &action.RunCustom{
 		Driver: spyDriver,
 		Action: "test",
 	}
 	testOpFromClaim(t, rc, spyDriver)
+}
+
+func TestRunCustom_FromClaimMissingRequiredParameter(t *testing.T) {
+	rc := &action.RunCustom{
+		Driver: &spyDriver{},
+		Action: "test",
+	}
+	testOpFromClaimMissingRequiredParameter(t, rc, "test")
+}
+
+func TestRunCustom_FromClaimMissingRequiredParamSpecificToAction(t *testing.T) {
+	rc := &action.RunCustom{
+		Driver: &spyDriver{},
+		Action: "test",
+	}
+	testOpFromClaimMissingRequiredParamSpecificToAction(t, rc)
+}
+
+func TestRunCustom_SelectInvocationImageEmptyInvocationImages(t *testing.T) {
+	rc := &action.RunCustom{
+		Driver: &spyDriver{},
+		Action: "test",
+	}
+	testSelectInvocationImageEmptyInvocationImages(t, rc)
+}
+
+func TestRunCustom_SelectInvocationImageDriverIncompatible(t *testing.T) {
+	rc := &action.RunCustom{
+		Driver: &mockFailingDriver{},
+		Action: "test",
+	}
+	testSelectInvocationImageDriverIncompatible(t, rc)
 }

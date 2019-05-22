@@ -58,7 +58,6 @@ func TestUninstall_Run(t *testing.T) {
 	}
 }
 
-
 func TestUninstall_WithUndefinedParams(t *testing.T) {
 	inst := &action.Uninstall{Driver: &mockFailingDriver{}}
 	testActionWithUndefinedParams(t, inst)
@@ -68,4 +67,24 @@ func TestUninstallFromClaim(t *testing.T) {
 	spyDriver := &spyDriver{}
 	rc := &action.Uninstall{Driver: spyDriver}
 	testOpFromClaim(t, rc, spyDriver)
+}
+
+func TestUninstall_FromClaimMissingRequiredParameter(t *testing.T) {
+	inst := &action.Uninstall{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParameter(t, inst, "uninstall")
+}
+
+func TestUninstall_FromClaimMissingRequiredParamSpecificToAction(t *testing.T) {
+	inst := &action.Uninstall{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParamSpecificToAction(t, inst)
+}
+
+func TestUnintall_SelectInvocationImageEmptyInvocationImages(t *testing.T) {
+	inst := &action.Uninstall{Driver: &spyDriver{}}
+	testSelectInvocationImageEmptyInvocationImages(t, inst)
+}
+
+func TestUninstall_SelectInvocationImageDriverIncompatible(t *testing.T) {
+	inst := &action.Uninstall{Driver: &mockFailingDriver{}}
+	testSelectInvocationImageDriverIncompatible(t, inst)
 }

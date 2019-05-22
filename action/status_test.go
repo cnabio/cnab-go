@@ -41,8 +41,28 @@ func TestStatus_WithUndefinedParams(t *testing.T) {
 	testActionWithUndefinedParams(t, inst)
 }
 
-func TestStatusFromClaim(t *testing.T) {
+func TestStatus_FromClaim(t *testing.T) {
 	spyDriver := &spyDriver{}
 	rc := &action.Status{Driver: spyDriver}
 	testOpFromClaim(t, rc, spyDriver)
+}
+
+func TestStatus_FromClaimMissingRequiredParameter(t *testing.T) {
+	inst := &action.Status{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParameter(t, inst, "status")
+}
+
+func TestStatus_FromClaimMissingRequiredParamSpecificToAction(t *testing.T) {
+	inst := &action.Status{Driver: &spyDriver{}}
+	testOpFromClaimMissingRequiredParamSpecificToAction(t, inst)
+}
+
+func TestStatus_SelectInvocationImageEmptyInvocationImages(t *testing.T) {
+	inst := &action.Status{Driver: &spyDriver{}}
+	testSelectInvocationImageEmptyInvocationImages(t, inst)
+}
+
+func TestStatus_SelectInvocationImageDriverIncompatible(t *testing.T) {
+	inst := &action.Status{Driver: &mockFailingDriver{}}
+	testSelectInvocationImageDriverIncompatible(t, inst)
 }
