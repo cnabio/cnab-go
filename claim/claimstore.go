@@ -8,7 +8,7 @@ import (
 )
 
 // ErrClaimNotFound represents a claim not found in claim storage
-var ErrClaimNotFound = errors.New(`Claim does not exist`)
+var ErrClaimNotFound = errors.New("Claim does not exist")
 
 // Store is a persistent store for claims.
 type Store struct {
