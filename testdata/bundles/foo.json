@@ -41,5 +41,15 @@
             "path": "pquux",
             "env": "equux"
         }
+    },
+    "custom": {
+        "com.example.duffle-bag": {
+            "icon": "https://example.com/icon.png",
+            "iconType": "PNG"
+        },
+        "com.example.backup-preferences": {
+            "enabled": true,
+            "frequency": "daily"
+        }
     }
 }

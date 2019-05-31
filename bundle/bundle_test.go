@@ -12,7 +12,8 @@ func TestReadTopLevelProperties(t *testing.T) {
 		"name": "foo",
 		"version": "1.0",
 		"images": {},
-		"credentials": {}
+		"credentials": {},
+		"custom": {}
 	}`
 	bundle, err := Unmarshal([]byte(json))
 	if err != nil {
@@ -29,6 +30,9 @@ func TestReadTopLevelProperties(t *testing.T) {
 	}
 	if len(bundle.Credentials) != 0 {
 		t.Errorf("Expected no credentials, got %d", len(bundle.Credentials))
+	}
+	if len(bundle.Custom) != 0 {
+		t.Errorf("Expected no custom extensions, got %d", len(bundle.Custom))
 	}
 }
 
@@ -203,4 +207,42 @@ func TestValidateBundle_RequiresInvocationImage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestReadCustomExtensions(t *testing.T) {
+	data, err := ioutil.ReadFile("../testdata/bundles/foo.json")
+	if err != nil {
+		t.Errorf("cannot read bundle file: %v", err)
+	}
+
+	bundle, err := Unmarshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(bundle.Custom) != 2 {
+		t.Errorf("Expected 2 custom extensions, got %d", len(bundle.Custom))
+	}
+
+	duffleExtI, ok := bundle.Custom["com.example.duffle-bag"]
+	if !ok {
+		t.Fatal("Expected the com.example.duffle-bag extension")
+	}
+	duffleExt, ok := duffleExtI.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected the com.example.duffle-bag to be of type map[string]interface{} but got %T ", duffleExtI)
+	}
+	assert.Equal(t, "PNG", duffleExt["iconType"])
+	assert.Equal(t, "https://example.com/icon.png", duffleExt["icon"])
+
+	backupExtI, ok := bundle.Custom["com.example.backup-preferences"]
+	if !ok {
+		t.Fatal("Expected the com.example.backup-preferences extension")
+	}
+	backupExt, ok := backupExtI.(map[string]interface{})
+	if !ok {
+		t.Fatalf("Expected the com.example.backup-preferences to be of type map[string]interface{} but got %T ", backupExtI)
+	}
+	assert.Equal(t, true, backupExt["enabled"])
+	assert.Equal(t, "daily", backupExt["frequency"])
 }
