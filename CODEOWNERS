@@ -1,0 +1,6 @@
+# This file is described here:  https://help.github.com/en/articles/about-code-owners
+
+# Global Owners: These members are Core Maintainers of Duffle
+CODEOWNERS @technosophos @michellenoorali @vdice @radu-matei @jeremyrickard @carolynvs @bacongobbler @glyn @silvin-lubecki
+LICENSE    @technosophos @michellenoorali @vdice @radu-matei @jeremyrickard @carolynvs @bacongobbler @glyn @silvin-lubecki
+NOTICE     @technosophos @michellenoorali @vdice @radu-matei @jeremyrickard @carolynvs @bacongobbler @glyn @silvin-lubecki
