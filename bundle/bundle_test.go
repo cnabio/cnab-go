@@ -464,3 +464,33 @@ func TestValidateABundleAndParams(t *testing.T) {
 	assert.NoError(t, err, "should not have encountered an error with the validator")
 	assert.NotEmpty(t, valErrors, "validation should not have been successful")
 }
+
+func TestBundle_RoundTrip(t *testing.T) {
+	testCases := []struct {
+		name     string
+		testFile string
+	}{
+		{name: "EmptyJson", testFile: "testdata/empty.json"},
+		{name: "MinimalJson", testFile: "testdata/minimal.json"},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			wantData, err := ioutil.ReadFile(tc.testFile)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			bun, err := Unmarshal(wantData)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			output := &bytes.Buffer{}
+			_, err = bun.WriteTo(output)
+			require.NoError(t, err, "writing the bundle to json failed")
+
+			gotData := output.String()
+			assert.Equal(t, string(wantData), gotData)
+		})
+	}
+}
