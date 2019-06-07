@@ -29,12 +29,28 @@ type Operation struct {
 	Image string `json:"image"`
 	// ImageType is the type of image.
 	ImageType string `json:"image_type"`
-	// Environment contains environment variables that should be injected into the invocation image
-	Environment map[string]string `json:"environment"`
+	// Environment contains environment variables that should be set in the invocation image
+	Environment []EnvVar `json:"environment"`
 	// Files contains files that should be injected into the invocation image.
-	Files map[string]string `json:"files"`
+	Files []File `json:"files"`
 	// Output stream for log messages from the driver
 	Out io.Writer `json:"-"`
+}
+
+// EnvVar represents an environment variable set in the invocation image.
+type EnvVar struct {
+	// Name of the environment variable.
+	Name string
+	// Value of the environment variable.
+	Value string
+}
+
+// A File represents the path and file content injected in the invocation image.
+type File struct {
+	// Path of the file, eg. /cnab/app/nginx.conf
+	Path string
+	// File content
+	Bytes []byte
 }
 
 // ResolvedCred is a credential that has been resolved and is ready for injection into the runtime.
