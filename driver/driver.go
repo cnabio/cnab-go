@@ -23,8 +23,6 @@ type Operation struct {
 	Revision string `json:"revision"`
 	// Action is the action to be performed
 	Action string `json:"action"`
-	// Parameters are the parameters to be injected into the container
-	Parameters map[string]interface{} `json:"parameters"`
 	// Image is the invocation image
 	Image string `json:"image"`
 	// ImageType is the type of image.
