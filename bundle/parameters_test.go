@@ -61,7 +61,7 @@ func TestCanReadParameterDefinition(t *testing.T) {
 				"metadata": {
 					"description": "%s"
 				},
-				"apply-to": [ "%s", "%s" ]
+				"applyTo": [ "%s", "%s" ]
 			}
 		}
 	}`,
@@ -113,7 +113,7 @@ func TestCanReadParameterDefinition(t *testing.T) {
 		t.Errorf("Expected description '%s' but got '%s'", description, p.Metadata.Description)
 	}
 	if len(p.ApplyTo) != 2 {
-		t.Errorf("Expected 2 apply-to actions but got %d", len(p.ApplyTo))
+		t.Errorf("Expected 2 applyTo actions but got %d", len(p.ApplyTo))
 	}
 	if p.ApplyTo[0] != action0 {
 		t.Errorf("Expected action '%s' but got '%s'", action0, p.ApplyTo[0])
