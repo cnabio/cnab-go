@@ -22,7 +22,7 @@ type Bundle struct {
 	Images           map[string]Image               `json:"images" mapstructure:"images"`
 	Actions          map[string]Action              `json:"actions,omitempty" mapstructure:"actions"`
 	Parameters       map[string]ParameterDefinition `json:"parameters" mapstructure:"parameters"`
-	Credentials      map[string]Location            `json:"credentials" mapstructure:"credentials"`
+	Credentials      map[string]Credential          `json:"credentials" mapstructure:"credentials"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.

@@ -41,14 +41,18 @@ func mockBundle() *bundle.Bundle {
 				BaseImage: bundle.BaseImage{Image: "foo/bar:0.1.0", ImageType: "docker"},
 			},
 		},
-		Credentials: map[string]bundle.Location{
+		Credentials: map[string]bundle.Credential{
 			"secret_one": {
-				EnvironmentVariable: "SECRET_ONE",
-				Path:                "/foo/bar",
+				Location: bundle.Location{
+					EnvironmentVariable: "SECRET_ONE",
+					Path:                "/foo/bar",
+				},
 			},
 			"secret_two": {
-				EnvironmentVariable: "SECRET_TWO",
-				Path:                "/secret/two",
+				Location: bundle.Location{
+					EnvironmentVariable: "SECRET_TWO",
+					Path:                "/secret/two",
+				},
 			},
 		},
 		Parameters: map[string]bundle.ParameterDefinition{
