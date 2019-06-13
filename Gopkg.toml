@@ -10,6 +10,10 @@
   name = "gopkg.in/yaml.v2"
   version = "2.2.1"
 
+[[constraint]]
+  branch = "master"
+  name = "github.com/globalsign/mgo"
+
 [prune]
   non-go = true
   unused-packages = true
