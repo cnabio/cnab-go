@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadTopLevelProperties(t *testing.T) {
@@ -109,22 +110,24 @@ func TestValuesOrDefaults(t *testing.T) {
 		"enabled": true,
 	}
 	b := &Bundle{
-		Parameters: map[string]ParameterDefinition{
-			"port": {
-				DataType: "int",
-				Default:  1234,
-			},
-			"host": {
-				DataType: "string",
-				Default:  "localhost.localdomain",
-			},
-			"enabled": {
-				DataType: "bool",
-				Default:  false,
-			},
-			"replicaCount": {
-				DataType: "int",
-				Default:  3,
+		Parameters: ParametersDefinition{
+			Fields: map[string]ParameterDefinition{
+				"port": {
+					DataType: "int",
+					Default:  1234,
+				},
+				"host": {
+					DataType: "string",
+					Default:  "localhost.localdomain",
+				},
+				"enabled": {
+					DataType: "bool",
+					Default:  false,
+				},
+				"replicaCount": {
+					DataType: "int",
+					Default:  3,
+				},
 			},
 		},
 	}
@@ -149,15 +152,17 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 		"enabled": true,
 	}
 	b := &Bundle{
-		Parameters: map[string]ParameterDefinition{
-			"minimum": {
-				DataType: "int",
-				Required: true,
+		Parameters: ParametersDefinition{
+			Fields: map[string]ParameterDefinition{
+				"minimum": {
+					DataType: "int",
+				},
+				"enabled": {
+					DataType: "bool",
+					Default:  false,
+				},
 			},
-			"enabled": {
-				DataType: "bool",
-				Default:  false,
-			},
+			Required: []string{"minimum"},
 		},
 	}
 
@@ -245,4 +250,55 @@ func TestReadCustomExtensions(t *testing.T) {
 	}
 	assert.Equal(t, true, backupExt["enabled"])
 	assert.Equal(t, "daily", backupExt["frequency"])
+}
+
+func TestOutputs_Marshall(t *testing.T) {
+	bundleJSON := `
+	{
+		"outputs": {
+			"fields" : {
+				"clientCert": {
+					"contentEncoding": "base64",
+					"contentMediaType": "application/x-x509-user-cert",
+					"path": "/cnab/app/outputs/clientCert",
+					"sensitive": true,
+					"type": "string"
+				},
+				"hostName": {
+					"applyTo": [
+					"install"
+					],
+					"description": "the hostname produced installing the bundle",
+					"path": "/cnab/app/outputs/hostname",
+					"type": "string"
+				},
+				"port": {
+					"path": "/cnab/app/outputs/port",
+					"type": "integer"
+				}
+			}
+		}
+	}`
+
+	bundle, err := Unmarshal([]byte(bundleJSON))
+	assert.NoError(t, err, "should have unmarshalled the bundle")
+	require.NotNil(t, bundle.Outputs, "test must fail, not outputs found")
+	assert.Equal(t, 3, len(bundle.Outputs.Fields))
+	assert.Equal(t, 0, len(bundle.Outputs.Required))
+
+	clientCert, ok := bundle.Outputs.Fields["clientCert"]
+	require.True(t, ok, "expected clientCert to exist as an output")
+	assert.Equal(t, "string", clientCert.DataType)
+	assert.True(t, clientCert.Sensitive, "expected clientCert to be a sensitive value")
+	assert.Equal(t, "/cnab/app/outputs/clientCert", clientCert.Path, "clientCert path was not the expected value")
+
+	hostName, ok := bundle.Outputs.Fields["hostName"]
+	require.True(t, ok, "expected hostname to exist as an output")
+	assert.Equal(t, "string", hostName.DataType)
+	assert.Equal(t, "/cnab/app/outputs/hostname", hostName.Path, "hostName path was not the expected value")
+
+	port, ok := bundle.Outputs.Fields["port"]
+	require.True(t, ok, "expected port to exist as an output")
+	assert.Equal(t, "integer", port.DataType)
+	assert.Equal(t, "/cnab/app/outputs/port", port.Path, "port path was not the expected value")
 }

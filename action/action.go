@@ -71,15 +71,20 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 
 	// Quick verification that no params were passed that are not actual legit params.
 	for key := range c.Parameters {
-		if _, ok := c.Bundle.Parameters[key]; !ok {
+		if _, ok := c.Bundle.Parameters.Fields[key]; !ok {
 			return nil, fmt.Errorf("undefined parameter %q", key)
 		}
 	}
 
-	for k, param := range c.Bundle.Parameters {
+	requiredMap := map[string]struct{}{}
+	for _, key := range c.Bundle.Parameters.Required {
+		requiredMap[key] = struct{}{}
+	}
+	for k, param := range c.Bundle.Parameters.Fields {
 		rawval, ok := c.Parameters[k]
 		if !ok {
-			if param.Required && appliesToAction(action, param) {
+			_, required := requiredMap[k]
+			if required && appliesToAction(action, param) {
 				return nil, fmt.Errorf("missing required parameter %q for action %q", k, action)
 			}
 			continue

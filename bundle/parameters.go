@@ -7,12 +7,16 @@ import (
 	"strings"
 )
 
+type ParametersDefinition struct {
+	Fields   map[string]ParameterDefinition `json:"fields" mapstructure:"fields"`
+	Required []string                       `json:"required,omitempty" mapstructure:"required,omitempty"`
+}
+
 // ParameterDefinition defines a single parameter for a CNAB bundle
 type ParameterDefinition struct {
 	DataType      string             `json:"type" mapstructure:"type"`
 	Default       interface{}        `json:"default,omitempty" mapstructure:"default"`
 	AllowedValues []interface{}      `json:"allowedValues,omitempty" mapstructure:"allowedValues"`
-	Required      bool               `json:"required,omitempty" mapstructure:"required"`
 	MinValue      *int               `json:"minValue,omitempty" mapstructure:"minValue"`
 	MaxValue      *int               `json:"maxValue,omitempty" mapstructure:"maxValue"`
 	MinLength     *int               `json:"minLength,omitempty" mapstructure:"minLength"`
