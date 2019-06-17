@@ -10,6 +10,7 @@ import (
 
 func TestReadTopLevelProperties(t *testing.T) {
 	json := `{
+		"schemaVersion": "v1.0.0-WD",
 		"name": "foo",
 		"version": "1.0",
 		"images": {},
@@ -20,6 +21,7 @@ func TestReadTopLevelProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.Equal(t, "v1.0.0-WD", bundle.SchemaVersion)
 	if bundle.Name != "foo" {
 		t.Errorf("Expected name 'foo', got '%s'", bundle.Name)
 	}
