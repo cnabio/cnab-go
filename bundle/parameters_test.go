@@ -10,21 +10,23 @@ import (
 func TestCanReadParameterNames(t *testing.T) {
 	json := `{
 		"parameters": {
-			"foo": { },
-			"bar": { }
+			"fields" : {
+				"foo": { },
+				"bar": { }
+			}
 		}
 	}`
 	definitions, err := Unmarshal([]byte(json))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(definitions.Parameters) != 2 {
-		t.Fatalf("Expected 2 parameter definitons, got %d", len(definitions.Parameters))
+	if len(definitions.Parameters.Fields) != 2 {
+		t.Fatalf("Expected 2 parameter definitons, got %d", len(definitions.Parameters.Fields))
 	}
-	if _, ok := definitions.Parameters["foo"]; !ok {
+	if _, ok := definitions.Parameters.Fields["foo"]; !ok {
 		t.Errorf("Expected an entry with name 'foo' but didn't get one")
 	}
-	if _, ok := definitions.Parameters["bar"]; !ok {
+	if _, ok := definitions.Parameters.Fields["bar"]; !ok {
 		t.Errorf("Expected an entry with name 'bar' but didn't get one")
 	}
 }
@@ -46,22 +48,24 @@ func TestCanReadParameterDefinition(t *testing.T) {
 
 	json := fmt.Sprintf(`{
 		"parameters": {
-			"test": {
-				"type": "%s",
-				"default": "%s",
-				"destination": {
-					"env": "%s",
-					"path": "%s"
-				},
-				"allowedValues": [ "%s", "%s" ],
-				"minValue": %d,
-				"maxValue": %d,
-				"minLength": %d,
-				"maxLength": %d,
-				"metadata": {
-					"description": "%s"
-				},
-				"applyTo": [ "%s", "%s" ]
+			"fields" : {
+				"test": {
+					"type": "%s",
+					"default": "%s",
+					"destination": {
+						"env": "%s",
+						"path": "%s"
+					},
+					"allowedValues": [ "%s", "%s" ],
+					"minValue": %d,
+					"maxValue": %d,
+					"minLength": %d,
+					"maxLength": %d,
+					"metadata": {
+						"description": "%s"
+					},
+					"applyTo": [ "%s", "%s" ]
+				}
 			}
 		}
 	}`,
@@ -75,7 +79,7 @@ func TestCanReadParameterDefinition(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := definitions.Parameters["test"]
+	p := definitions.Parameters.Fields["test"]
 	if p.DataType != dataType {
 		t.Errorf("Expected data type '%s' but got '%s'", dataType, p.DataType)
 	}
@@ -126,9 +130,11 @@ func TestCanReadParameterDefinition(t *testing.T) {
 func valueTestJSON(jsonRepresentation string) []byte {
 	return []byte(fmt.Sprintf(`{
 		"parameters": {
-			"test": {
-				"default": %s,
-				"allowedValues": [ %s ]
+			"fields" : {
+				"test": {
+					"default": %s,
+					"allowedValues": [ %s ]
+				}
 			}
 		}
 	}`, jsonRepresentation, jsonRepresentation))
@@ -173,22 +179,22 @@ func TestCanReadValues(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectString("default value", "some string", strDef.Parameters["test"].Default, t)
-	expectString("allowed value", "some string", strDef.Parameters["test"].AllowedValues[0], t)
+	expectString("default value", "some string", strDef.Parameters.Fields["test"].Default, t)
+	expectString("allowed value", "some string", strDef.Parameters.Fields["test"].AllowedValues[0], t)
 
 	intDef, err := Unmarshal(valueTestJSON(intValue))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectInt("default value", 123, intDef.Parameters["test"].Default, t)
-	expectInt("allowed value", 123, intDef.Parameters["test"].AllowedValues[0], t)
+	expectInt("default value", 123, intDef.Parameters.Fields["test"].Default, t)
+	expectInt("allowed value", 123, intDef.Parameters.Fields["test"].AllowedValues[0], t)
 
 	boolDef, err := Unmarshal(valueTestJSON(boolValue))
 	if err != nil {
 		t.Fatal(err)
 	}
-	expectBool("default value", true, boolDef.Parameters["test"].Default, t)
-	expectBool("allowed value", true, boolDef.Parameters["test"].AllowedValues[0], t)
+	expectBool("default value", true, boolDef.Parameters.Fields["test"].Default, t)
+	expectBool("allowed value", true, boolDef.Parameters.Fields["test"].AllowedValues[0], t)
 }
 
 func TestValidateStringParameterValue_AnyAllowed(t *testing.T) {
