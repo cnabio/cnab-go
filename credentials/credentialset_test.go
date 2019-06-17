@@ -52,18 +52,25 @@ func TestCredentialSet(t *testing.T) {
 }
 
 func TestCredentialSet_Expand(t *testing.T) {
+
 	b := &bundle.Bundle{
 		Name: "knapsack",
-		Credentials: map[string]bundle.Location{
+		Credentials: map[string]bundle.Credential{
 			"first": {
-				EnvironmentVariable: "FIRST_VAR",
+				Location: bundle.Location{
+					EnvironmentVariable: "FIRST_VAR",
+				},
 			},
 			"second": {
-				Path: "/second/path",
+				Location: bundle.Location{
+					Path: "/second/path",
+				},
 			},
 			"third": {
-				EnvironmentVariable: "/THIRD_VAR",
-				Path:                "/third/path",
+				Location: bundle.Location{
+					EnvironmentVariable: "/THIRD_VAR",
+					Path:                "/third/path",
+				},
 			},
 		},
 	}
@@ -113,9 +120,11 @@ func TestCredentialSet_Merge(t *testing.T) {
 func TestCredentialSetMissingCred(t *testing.T) {
 	b := &bundle.Bundle{
 		Name: "knapsack",
-		Credentials: map[string]bundle.Location{
+		Credentials: map[string]bundle.Credential{
 			"first": {
-				EnvironmentVariable: "FIRST_VAR",
+				Location: bundle.Location{
+					EnvironmentVariable: "FIRST_VAR",
+				},
 			},
 		},
 	}
