@@ -51,5 +51,31 @@
             "enabled": true,
             "frequency": "daily"
         }
+    },
+    "definitions" : {
+        "complexThing" : {
+            "type" : "object",
+            "properties" : {
+                "host" : {
+                    "default" : "localhost",
+                    "type" : "string",
+                    "minLength" : 3,
+                    "maxLength" : 10
+                },
+                "port" : {
+                    "type" : "integer",
+                    "minimum": 8000
+                }
+            },
+            "required" : ["port"]
+        }
+    },
+    "parameters" : {
+        "serverConfig" : {
+            "definition" : "complexThing",
+            "destination" : {
+                "path": "/cnab/is/go"
+            }
+        }
     }
 }

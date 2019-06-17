@@ -13,6 +13,7 @@ import (
 	"github.com/deislabs/cnab-go/driver"
 
 	"github.com/deislabs/cnab-go/bundle"
+	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -55,19 +56,33 @@ func mockBundle() *bundle.Bundle {
 				},
 			},
 		},
+		Definitions: map[string]*definition.Schema{
+			"ParamOne": &definition.Schema{
+				Type:    "string",
+				Default: "one",
+			},
+			"ParamTwo": &definition.Schema{
+				Type:    "string",
+				Default: "two",
+			},
+			"ParamThree": &definition.Schema{
+				Type:    "string",
+				Default: "three",
+			},
+		},
 		Parameters: bundle.ParametersDefinition{
 			Fields: map[string]bundle.ParameterDefinition{
 				"param_one": {
-					Default: "one",
+					Definition: "ParamOne",
 				},
 				"param_two": {
-					Default: "two",
+					Definition: "ParamTwo",
 					Destination: &bundle.Location{
 						EnvironmentVariable: "PARAM_TWO",
 					},
 				},
 				"param_three": {
-					Default: "three",
+					Definition: "ParamThree",
 					Destination: &bundle.Location{
 						Path: "/param/three",
 					},

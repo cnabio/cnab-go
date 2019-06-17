@@ -1,9 +1,11 @@
 package bundle
 
 import (
+	"bytes"
 	"io/ioutil"
 	"testing"
 
+	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,23 +114,37 @@ func TestValuesOrDefaults(t *testing.T) {
 		"enabled": true,
 	}
 	b := &Bundle{
+		Definitions: map[string]*definition.Schema{
+			"portType": &definition.Schema{
+				Type:    "integer",
+				Default: 1234,
+			},
+			"hostType": &definition.Schema{
+				Type:    "string",
+				Default: "locahost.localdomain",
+			},
+			"replicaCountType": &definition.Schema{
+				Type:    "integer",
+				Default: 3,
+			},
+			"enabledType": &definition.Schema{
+				Type:    "boolean",
+				Default: false,
+			},
+		},
 		Parameters: ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
 				"port": {
-					DataType: "int",
-					Default:  1234,
+					Definition: "portType",
 				},
 				"host": {
-					DataType: "string",
-					Default:  "localhost.localdomain",
+					Definition: "hostType",
 				},
 				"enabled": {
-					DataType: "bool",
-					Default:  false,
+					Definition: "enabledType",
 				},
 				"replicaCount": {
-					DataType: "int",
-					Default:  3,
+					Definition: "replicaCountType",
 				},
 			},
 		},
@@ -154,14 +170,22 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 		"enabled": true,
 	}
 	b := &Bundle{
+		Definitions: map[string]*definition.Schema{
+			"minType": &definition.Schema{
+				Type: "integer",
+			},
+			"enabledType": &definition.Schema{
+				Type:    "boolean",
+				Default: false,
+			},
+		},
 		Parameters: ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
 				"minimum": {
-					DataType: "int",
+					Definition: "minType",
 				},
 				"enabled": {
-					DataType: "bool",
-					Default:  false,
+					Definition: "enabledType",
 				},
 			},
 			Required: []string{"minimum"},
@@ -264,7 +288,7 @@ func TestOutputs_Marshall(t *testing.T) {
 					"contentMediaType": "application/x-x509-user-cert",
 					"path": "/cnab/app/outputs/clientCert",
 					"sensitive": true,
-					"type": "string"
+					"definition": "clientCert"
 				},
 				"hostName": {
 					"applyTo": [
@@ -272,11 +296,11 @@ func TestOutputs_Marshall(t *testing.T) {
 					],
 					"description": "the hostname produced installing the bundle",
 					"path": "/cnab/app/outputs/hostname",
-					"type": "string"
+					"definition": "hostType"
 				},
 				"port": {
 					"path": "/cnab/app/outputs/port",
-					"type": "integer"
+					"definition": "portType"
 				}
 			}
 		}
@@ -286,21 +310,163 @@ func TestOutputs_Marshall(t *testing.T) {
 	assert.NoError(t, err, "should have unmarshalled the bundle")
 	require.NotNil(t, bundle.Outputs, "test must fail, not outputs found")
 	assert.Equal(t, 3, len(bundle.Outputs.Fields))
-	assert.Equal(t, 0, len(bundle.Outputs.Required))
 
 	clientCert, ok := bundle.Outputs.Fields["clientCert"]
 	require.True(t, ok, "expected clientCert to exist as an output")
-	assert.Equal(t, "string", clientCert.DataType)
+	assert.Equal(t, "clientCert", clientCert.Definition)
 	assert.True(t, clientCert.Sensitive, "expected clientCert to be a sensitive value")
 	assert.Equal(t, "/cnab/app/outputs/clientCert", clientCert.Path, "clientCert path was not the expected value")
 
 	hostName, ok := bundle.Outputs.Fields["hostName"]
 	require.True(t, ok, "expected hostname to exist as an output")
-	assert.Equal(t, "string", hostName.DataType)
+	assert.Equal(t, "hostType", hostName.Definition)
 	assert.Equal(t, "/cnab/app/outputs/hostname", hostName.Path, "hostName path was not the expected value")
 
 	port, ok := bundle.Outputs.Fields["port"]
 	require.True(t, ok, "expected port to exist as an output")
-	assert.Equal(t, "integer", port.DataType)
+	assert.Equal(t, "portType", port.Definition)
 	assert.Equal(t, "/cnab/app/outputs/port", port.Path, "port path was not the expected value")
+}
+
+func TestBundleMarshallAllThings(t *testing.T) {
+	cred := Credential{
+		Description: "a password",
+	}
+	cred.EnvironmentVariable = "PASSWORD"
+	cred.Path = "/cnab/app/path"
+
+	b := &Bundle{
+		SchemaVersion: "v1.0.0-WD",
+		Name:          "testBundle",
+		Description:   "something",
+		Version:       "1.0",
+		Credentials: map[string]Credential{
+			"password": cred,
+		},
+		Images: map[string]Image{
+			"server": {
+				BaseImage: BaseImage{
+					Image:     "nginx:1.0",
+					ImageType: "docker",
+				},
+				Description: "complicated",
+			},
+		},
+		InvocationImages: []InvocationImage{
+			InvocationImage{
+				BaseImage: BaseImage{
+					Image:     "deislabs/invocation-image:1.0",
+					ImageType: "docker",
+				},
+			},
+		},
+		Definitions: map[string]*definition.Schema{
+			"portType": &definition.Schema{
+				Type:    "integer",
+				Default: 1234,
+			},
+			"hostType": &definition.Schema{
+				Type:    "string",
+				Default: "locahost.localdomain",
+			},
+			"replicaCountType": &definition.Schema{
+				Type:    "integer",
+				Default: 3,
+			},
+			"enabledType": &definition.Schema{
+				Type:    "boolean",
+				Default: false,
+			},
+			"clientCert": &definition.Schema{
+				Type:            "string",
+				ContentEncoding: "base64",
+			},
+		},
+		Parameters: ParametersDefinition{
+			Fields: map[string]ParameterDefinition{
+				"port": {
+					Definition: "portType",
+					Destination: &Location{
+						EnvironmentVariable: "PORT",
+					},
+				},
+				"host": {
+					Definition: "hostType",
+					Destination: &Location{
+						EnvironmentVariable: "HOST",
+					},
+				},
+				"enabled": {
+					Definition: "enabledType",
+					Destination: &Location{
+						EnvironmentVariable: "ENABLED",
+					},
+				},
+				"replicaCount": {
+					Definition: "replicaCountType",
+					Destination: &Location{
+						EnvironmentVariable: "REPLICA_COUNT",
+					},
+				},
+			},
+			Required: []string{"port", "host"},
+		},
+		Outputs: OutputsDefinition{
+			Fields: map[string]OutputDefinition{
+				"clientCert": OutputDefinition{
+					Path:       "/cnab/app/outputs/blah",
+					Definition: "clientCert",
+				},
+			},
+		},
+	}
+
+	expectedJSON, err := ioutil.ReadFile("../testdata/bundles/canonical-bundle.json")
+	require.NoError(t, err, "couldn't read test data")
+
+	var buf bytes.Buffer
+
+	_, err = b.WriteTo(&buf)
+	require.NoError(t, err, "test requires output")
+	assert.Equal(t, []byte(expectedJSON), buf.Bytes(), "output should match expected canonical json")
+}
+
+func TestValidateABundleAndParams(t *testing.T) {
+
+	bun, err := ioutil.ReadFile("../testdata/bundles/foo.json")
+	require.NoError(t, err, "couldn't read test bundle")
+
+	bundle, err := Unmarshal(bun)
+	require.NoError(t, err, "the bundle should have been valid")
+
+	def, ok := bundle.Definitions["complexThing"]
+	require.True(t, ok, "test failed because definition not found")
+
+	testData := struct {
+		Port int    `json:"port"`
+		Host string `json:"hostName"`
+	}{
+		Host: "validhost",
+		Port: 8080,
+	}
+	valErr := def.Validate(testData)
+	assert.NoError(t, valErr, "validation should have been successful")
+
+	testData2 := struct {
+		Host string `json:"hostName"`
+	}{
+		Host: "validhost",
+	}
+	valErr = def.Validate(testData2)
+	assert.Error(t, valErr, "validation should not have been successful")
+
+	testData3 := struct {
+		Port int    `json:"port"`
+		Host string `json:"hostName"`
+	}{
+		Host: "validhost",
+		Port: 80,
+	}
+	valErr = def.Validate(testData3)
+	assert.Error(t, valErr, "validation should not have been successful")
 }
