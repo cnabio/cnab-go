@@ -1,6 +1,7 @@
 {
     "name": "foo",
     "version": "1.0",
+    "schemaVersion": "99.99",
     "invocationImages": [
         {
             "imageType": "docker",

@@ -207,6 +207,7 @@ func TestValidateVersionTag(t *testing.T) {
 	img := InvocationImage{BaseImage{}}
 	b := Bundle{
 		Version:          "latest",
+		SchemaVersion:    "99.98",
 		InvocationImages: []InvocationImage{img},
 	}
 
@@ -214,10 +215,66 @@ func TestValidateVersionTag(t *testing.T) {
 	is.EqualError(err, "'latest' is not a valid bundle version")
 }
 
+func TestValidateSchemaVersion(t *testing.T) {
+	is := assert.New(t)
+
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    "99.98",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	err := b.Validate()
+	is.Nil(err, "valid bundle schema failed to validate")
+}
+
+func TestValidateSchemaVersionWithPrefix(t *testing.T) {
+	is := assert.New(t)
+
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    "v99.98",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	err := b.Validate()
+	is.Nil(err, "valid bundle schema failed to validate")
+}
+
+func TestValidateMissingSchemaVersion(t *testing.T) {
+	is := assert.New(t)
+
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	err := b.Validate()
+	is.EqualError(err, "invalid bundle schema version \"\": Invalid Semantic Version")
+}
+
+func TestValidateInvalidSchemaVersion(t *testing.T) {
+	is := assert.New(t)
+
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    ".1",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	err := b.Validate()
+	is.EqualError(err, "invalid bundle schema version \".1\": Invalid Semantic Version")
+}
+
 func TestValidateBundle_RequiresInvocationImage(t *testing.T) {
 	b := Bundle{
-		Name:    "bar",
-		Version: "0.1.0",
+		Name:          "bar",
+		SchemaVersion: "99.98",
+		Version:       "0.1.0",
 	}
 
 	err := b.Validate()
