@@ -13,6 +13,7 @@ import (
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
+	SchemaVersion    string                `json:"schemaVersion" mapstructure:"schemaVersion"`
 	Name             string                `json:"name" mapstructure:"name"`
 	Version          string                `json:"version" mapstructure:"version"`
 	Description      string                `json:"description" mapstructure:"description"`
