@@ -57,13 +57,6 @@ func TestReadImageProperties(t *testing.T) {
 	if image1.Image != "urn:image1uri" {
 		t.Errorf("Expected Image 'urn:image1uri', got '%s'", image1.Image)
 	}
-	if image1.OriginalImage != "urn:image1originaluri" {
-		t.Errorf("Expected Image 'urn:image1originaluri', got '%s'", image1.OriginalImage)
-	}
-	image2 := bundle.Images["image2"]
-	if image2.OriginalImage != "" {
-		t.Errorf("Expected Image '', got '%s'", image2.OriginalImage)
-	}
 }
 
 func TestReadCredentialProperties(t *testing.T) {
