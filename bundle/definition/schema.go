@@ -57,11 +57,14 @@ type Schema struct {
 	WriteOnly     *bool              `json:"writeOnly,omitempty" mapstructure:"writeOnly,omitempty"`
 }
 
+// SingleType returns true if a schema has a single type declaration
 func (s *Schema) SingleType() bool {
 	_, ok := s.Type.(string)
 	return ok
 }
 
+// GetType will return the singular type for a given schema and a success boolean. If the
+// schema does not have a single type, it will return the false boolean and an error.
 func (s *Schema) GetType() (string, bool, error) {
 	if !s.SingleType() {
 		return "", false, errors.New("this schema has multiple types")
@@ -73,6 +76,8 @@ func (s *Schema) GetType() (string, bool, error) {
 	return typeString, ok, nil
 }
 
+// GetType will return the types for a given schema and a success boolean. If the
+// schema has a single type, it will return the false boolean and an error.
 func (s *Schema) GetTypes() ([]string, bool, error) {
 	if s.SingleType() {
 		return nil, false, errors.New("this schema a single type")

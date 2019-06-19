@@ -8,6 +8,8 @@ import (
 	"github.com/qri-io/jsonschema"
 )
 
+// Validate applies JSON Schema validation to the data passed as a paraemeter.
+// If validation errors occur, they will be returned in as an error.
 func (s *Schema) Validate(data interface{}) error {
 
 	b, err := json.Marshal(s)
@@ -40,8 +42,12 @@ func (s *Schema) Validate(data interface{}) error {
 	}
 	return nil
 }
+
+// CoerceValue can be used to turn float and other numeric types into integers. When
+// unmarshaled, often integer values are not represented as an integer. This is a
+// convenience method.
 func (s *Schema) CoerceValue(value interface{}) interface{} {
-	if s.Type == "int" {
+	if s.Type == "int" || s.Type == "integer" {
 		f, ok := value.(float64)
 		if ok {
 			i, ok := asInt(f)
