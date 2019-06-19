@@ -37,8 +37,9 @@ func TestObjectValidationValid(t *testing.T) {
 	}{
 		Port: 80,
 	}
-	err = definition.Validate(val)
-	assert.Nil(t, err, "expected no validation errors")
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 0, "expected no validation errors")
+	assert.NoError(t, err)
 }
 
 func TestObjectValidationInValidMinimum(t *testing.T) {
@@ -70,12 +71,13 @@ func TestObjectValidationInValidMinimum(t *testing.T) {
 	}{
 		Port: 80,
 	}
-	err = definition.Validate(val)
-	assert.NotNil(t, err, "expected a validation error")
-	assert.EqualError(t,
-		err,
-		"invalid parameter or output: unable to validate /port, error: must be greater than or equal to 100.000000",
-	)
+	valErrors, err := definition.Validate(val)
+	assert.Nil(t, err, "expected no error")
+	assert.Len(t, valErrors, 1, "expected a single validation error")
+	valErr := valErrors[0]
+	assert.NotNil(t, valErr, "expected the obtain the validation error")
+	assert.Equal(t, "/port", valErr.Path, "expected validation error to reference port")
+	assert.Equal(t, "must be greater than or equal to 100.000000", valErr.Error, "expected validation error to reference port")
 }
 
 func TestObjectValidationPropertyRequired(t *testing.T) {
@@ -110,12 +112,11 @@ func TestObjectValidationPropertyRequired(t *testing.T) {
 	}{
 		Port: 80,
 	}
-	err = definition.Validate(val)
-	assert.NotNil(t, err, "expected a validation error")
-	assert.EqualError(t,
-		err,
-		"invalid parameter or output: unable to validate /, error: \"host\" value is required",
-	)
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 1, "expected a validation error")
+	assert.NoError(t, err)
+	assert.Equal(t, "\"host\" value is required", valErrors[0].Error)
+
 }
 
 func TestObjectValidationNoAdditionalPropertiesAllowed(t *testing.T) {
@@ -155,12 +156,11 @@ func TestObjectValidationNoAdditionalPropertiesAllowed(t *testing.T) {
 		Host:     "localhost",
 		BadActor: true,
 	}
-	err = definition.Validate(val)
-	assert.NotNil(t, err, "expected a validation error")
-	assert.EqualError(t,
-		err,
-		"invalid parameter or output: unable to validate /badActor, error: cannot match schema",
-	)
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 1, "expected a validation error")
+	assert.NoError(t, err)
+	assert.Equal(t, "/badActor", valErrors[0].Path, "expected the error to be on badActor")
+	assert.Equal(t, "cannot match schema", valErrors[0].Error)
 }
 
 func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
@@ -204,10 +204,8 @@ func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
 		GoodActor: "hello",
 		BadActor:  false,
 	}
-	err = definition.Validate(val)
-	assert.NotNil(t, err, "expected a validation error")
-	assert.EqualError(t,
-		err,
-		"invalid parameter or output: unable to validate /badActor, error: type should be string",
-	)
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 1, "expected a validation error")
+	assert.NoError(t, err)
+	assert.Equal(t, "type should be string", valErrors[0].Error)
 }

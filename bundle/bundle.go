@@ -10,6 +10,7 @@ import (
 
 	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/docker/go/canonical/json"
+	pkgErrors "github.com/pkg/errors"
 )
 
 // Bundle is a CNAB metadata document
@@ -146,8 +147,15 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 			return res, fmt.Errorf("unable to find definition for %s", name)
 		}
 		if val, ok := vals[name]; ok {
-			if err := s.Validate(val); err != nil {
-				return res, fmt.Errorf("can't use %v as value of %s: %s", val, name, err)
+			valErrs, err := s.Validate(val)
+			if err != nil {
+				return res, pkgErrors.Wrap(err, fmt.Sprintf("encountered an error validating parameter %s", name))
+			}
+			// This interface returns a single error. Validation can have multiple errors. For now return the first
+			// We should update this later.
+			if len(valErrs) > 0 {
+				valErr := valErrs[0]
+				return res, fmt.Errorf("cannot use value: %v as parameter %s: %s ", val, name, valErr.Error)
 			}
 			typedVal := s.CoerceValue(val)
 			res[name] = typedVal

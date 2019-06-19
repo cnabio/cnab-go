@@ -154,8 +154,9 @@ func TestObjectDefinitionType(t *testing.T) {
 	}{
 		Port: 80,
 	}
-	err = definition.Validate(val)
-	assert.Nil(t, err, "expected no validation errors")
+	valErrors, err := definition.Validate(val)
+	assert.Empty(t, valErrors, "expected no validation errors")
+	assert.NoError(t, err, "expected not to encounter an error in the validation")
 }
 
 func TestBooleanTypeValidation(t *testing.T) {
@@ -165,21 +166,27 @@ func TestBooleanTypeValidation(t *testing.T) {
 	err := json.Unmarshal([]byte(s), definition)
 	require.NoError(t, err, "schema should be valid for bool test")
 	thingToCheck := true
-	err = definition.Validate(thingToCheck)
-	assert.NoError(t, err, "check of true should have resulted in no validation errors")
-	err = definition.Validate(!thingToCheck)
-	assert.Error(t, err, "check of false should have resulted in a validation error")
-	assert.EqualError(t, err, "invalid parameter or output: unable to validate /, error: should be one of [true]")
+	valErrors, err := definition.Validate(thingToCheck)
+	assert.Empty(t, valErrors, "check of true should have resulted in no validation errors")
+	assert.NoError(t, err, "should not have encountered an error in the validator")
+	valErrors, err = definition.Validate(!thingToCheck)
+	assert.NoError(t, err, "this check should not have resulted in an error")
+	assert.Len(t, valErrors, 1, "expected a validation error")
+	valErr := valErrors[0]
+	assert.Equal(t, "/", valErr.Path, "expected validation to fail at the root")
+	assert.Equal(t, "should be one of [true]", valErr.Error)
 
 	boolValue2 := "true, false"
 	s2 := valueTestJSON("boolean", boolValue, boolValue2)
 	definition2 := new(Schema)
 	err = json.Unmarshal([]byte(s2), definition2)
 	require.NoError(t, err, "test requires unmarshaled bundled")
-	err = definition2.Validate(thingToCheck)
-	assert.NoError(t, err, "check of true should have resulted in no validation errors with both allowed")
-	err = definition2.Validate(!thingToCheck)
-	assert.NoError(t, err, "check of false should have resulted in no validation errors with both allowed")
+	valErrors, err = definition2.Validate(thingToCheck)
+	assert.Len(t, valErrors, 0, "check of true should have resulted in no validation errors with both allowed")
+	assert.NoError(t, err, "should not have encountered an error")
+	valErrors, err = definition2.Validate(!thingToCheck)
+	assert.Len(t, valErrors, 0, "check of false should have resulted in no validation errors with both allowed")
+	assert.NoError(t, err, "should not have encountered an error")
 }
 
 func TestStringTypeValidationEnum(t *testing.T) {
@@ -188,11 +195,14 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	definition := new(Schema)
 	err := json.Unmarshal([]byte(s), definition)
 	require.NoError(t, err, "schema should be valid for string test")
-	err = definition.Validate("dog")
-	assert.NoError(t, err, "check of `dog` should have resulted in no validation errors")
-	err = definition.Validate("cat")
-	assert.Error(t, err, "check of 'cat' should have resulted in a validation error")
-	assert.EqualError(t, err, "invalid parameter or output: unable to validate /, error: should be one of [\"dog\"]")
+	valErrors, err := definition.Validate("dog")
+	assert.Len(t, valErrors, 0, "check of `dog` should have resulted in no validation errors")
+	assert.NoError(t, err, "should not have encountered an error")
+	valErrors, err = definition.Validate("cat")
+	assert.Len(t, valErrors, 1, "check of 'cat' should have resulted in a validation error")
+	valErr := valErrors[0]
+	assert.Equal(t, "/", valErr.Path, "expected validation to fail at the root")
+	assert.Equal(t, "should be one of [\"dog\"]", valErr.Error)
 
 	anotherSchema := `{
 		"type" : "string",
@@ -203,8 +213,9 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	err = json.Unmarshal([]byte(anotherSchema), definition2)
 	require.NoError(t, err, "should have been a valid schema")
 
-	err = definition2.Validate("pig")
-	assert.EqualError(t, err, "invalid parameter or output: unable to validate /, error: should be one of [\"chicken\", \"duck\"]")
+	valErrors, err = definition2.Validate("pig")
+	assert.Len(t, valErrors, 1, "expected validation failure for pig")
+	assert.Equal(t, "should be one of [\"chicken\", \"duck\"]", valErrors[0].Error)
 }
 
 func TestStringMinLengthValidator(t *testing.T) {
@@ -216,15 +227,18 @@ func TestStringMinLengthValidator(t *testing.T) {
 	err := json.Unmarshal([]byte(aSchema), definition)
 	require.NoError(t, err, "should have been a valid schema")
 
-	err = definition.Validate("four")
-	assert.Error(t, err, "expected the validation to fail with four characters")
-	assert.EqualError(t, err, "invalid parameter or output: unable to validate /, error: min length of 10 characters required: four")
+	valErrors, err := definition.Validate("four")
+	assert.Len(t, valErrors, 1, "expected the validation to fail with four characters")
+	assert.Equal(t, "min length of 10 characters required: four", valErrors[0].Error)
+	assert.NoError(t, err)
 
-	err = definition.Validate("abcdefghijklmnopqrstuvwxyz")
-	assert.NoError(t, err, "expected the validation to not fail with more than 10 characters")
+	valErrors, err = definition.Validate("abcdefghijklmnopqrstuvwxyz")
+	assert.Len(t, valErrors, 0, "expected the validation to not fail with more than 10 characters")
+	assert.NoError(t, err)
 
-	err = definition.Validate("qwertyuiop")
-	assert.NoError(t, err, "expected the validation to not fail with exactly 10 characters")
+	valErrors, err = definition.Validate("qwertyuiop")
+	assert.Len(t, valErrors, 0, "expected the validation to not fail with exactly 10 characters")
+	assert.NoError(t, err)
 }
 
 func TestStringMaxLengthValidator(t *testing.T) {
@@ -239,15 +253,17 @@ func TestStringMaxLengthValidator(t *testing.T) {
 	err := json.Unmarshal([]byte(aSchema), definition)
 	require.NoError(t, err, "should have been a valid schema")
 
-	err = definition.Validate("four")
-	assert.NoError(t, err, "expected the validation to not fail with four characters")
+	valErrors, err := definition.Validate("four")
+	assert.Len(t, valErrors, 0, "expected the validation to not fail with four characters")
+	assert.NoError(t, err)
 
-	err = definition.Validate("abcdefghijklmnopqrstuvwxyz")
-	assert.Error(t, err, "expected the validation to fail with more than 10 characters")
-	assert.EqualError(t, err, "invalid parameter or output: unable to validate /, error: max length of 10 characters exceeded: abcdefghijklmnopqrstuvwxyz")
+	valErrors, err = definition.Validate("abcdefghijklmnopqrstuvwxyz")
+	assert.Len(t, valErrors, 1, "expected the validation to fail with more than 10 characters")
+	assert.NoError(t, err)
 
-	err = definition.Validate("qwertyuiop")
-	assert.NoError(t, err, "expected the validation to not fail with exactly 10 characters")
+	valErrors, err = definition.Validate("qwertyuiop")
+	assert.Len(t, valErrors, 0, "expected the validation to not fail with exactly 10 characters")
+	assert.NoError(t, err)
 }
 
 func valueTestJSON(kind, def, enum string) []byte {

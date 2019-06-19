@@ -449,16 +449,18 @@ func TestValidateABundleAndParams(t *testing.T) {
 		Host: "validhost",
 		Port: 8080,
 	}
-	valErr := def.Validate(testData)
-	assert.NoError(t, valErr, "validation should have been successful")
+	valErrors, err := def.Validate(testData)
+	assert.NoError(t, err, "validation should not have resulted in an error")
+	assert.Empty(t, valErrors, "validation should have been successful")
 
 	testData2 := struct {
 		Host string `json:"hostName"`
 	}{
 		Host: "validhost",
 	}
-	valErr = def.Validate(testData2)
-	assert.Error(t, valErr, "validation should not have been successful")
+	valErrors, err = def.Validate(testData2)
+	assert.NoError(t, err, "validation should not have encountered an error")
+	assert.NotEmpty(t, valErrors, "validation should not have been successful")
 
 	testData3 := struct {
 		Port int    `json:"port"`
@@ -467,6 +469,7 @@ func TestValidateABundleAndParams(t *testing.T) {
 		Host: "validhost",
 		Port: 80,
 	}
-	valErr = def.Validate(testData3)
-	assert.Error(t, valErr, "validation should not have been successful")
+	valErrors, err = def.Validate(testData3)
+	assert.NoError(t, err, "should not have encountered an error with the validator")
+	assert.NotEmpty(t, valErrors, "validation should not have been successful")
 }

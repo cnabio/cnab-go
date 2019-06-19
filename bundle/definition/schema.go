@@ -101,18 +101,24 @@ func (s *Schema) GetTypes() ([]string, bool, error) {
 // github.com/qri-io/jsonschema to load and validate a given schema. If it is valid,
 // then the json is unmarshaled.
 func (s *Schema) UnmarshalJSON(data []byte) error {
+
+	// Before we unmarshal into the cnab-go bundle/definition/Schema type, unmarshal into
+	// the library struct so we can handle any validation errors in the schema. If there
+	// are any errors, return those.
 	js := new(jsonschema.RootSchema)
 	err := js.UnmarshalJSON(data)
 	if err != nil {
 		return err
 	}
-	type McGuffin Schema
-	mcguffin := struct {
-		*McGuffin
+	// The schema is valid at this point, so now use an indirect wrapper type to actually
+	// unmarshal into our type.
+	type wrapperType Schema
+	wrapper := struct {
+		*wrapperType
 	}{
-		McGuffin: (*McGuffin)(s),
+		wrapperType: (*wrapperType)(s),
 	}
-	err = json.Unmarshal(data, &mcguffin)
+	err = json.Unmarshal(data, &wrapper)
 	if err != nil {
 		return err
 	}

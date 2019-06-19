@@ -2,45 +2,54 @@ package definition
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/pkg/errors"
 	"github.com/qri-io/jsonschema"
 )
 
-// Validate applies JSON Schema validation to the data passed as a paraemeter.
-// If validation errors occur, they will be returned in as an error.
-func (s *Schema) Validate(data interface{}) error {
+// ValidationError error represents a validation error
+// against the JSON Schema. The type includes the path
+// in the given object and the error message
+type ValidationError struct {
+	Path  string
+	Error string
+}
+
+// Validate applies JSON Schema validation to the data passed as a parameter.
+// If validation errors occur, they will be returned in as a slice of ValidationError
+// structs. If any other error occurs, it will be returned as a separate error
+func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
 
 	b, err := json.Marshal(s)
 	if err != nil {
-		return errors.Wrap(err, "unable to load schema")
+		return nil, errors.Wrap(err, "unable to load schema")
 	}
 	def := new(jsonschema.RootSchema)
 	err = json.Unmarshal([]byte(b), def)
 	if err != nil {
-		return errors.Wrap(err, "unable to build schema")
+		return nil, errors.Wrap(err, "unable to build schema")
 	}
 	payload, err := json.Marshal(data)
 	if err != nil {
-		return errors.Wrap(err, "unable to process data")
+		return nil, errors.Wrap(err, "unable to process data")
 	}
 	valErrs, err := def.ValidateBytes(payload)
 	if err != nil {
-		return errors.Wrap(err, "unable to perform validation")
+		return nil, errors.Wrap(err, "unable to perform validation")
 	}
 	if len(valErrs) > 0 {
-		var anError error
+		valErrors := []ValidationError{}
+
 		for _, err := range valErrs {
-			if anError == nil {
-				anError = errors.New(fmt.Sprintf("unable to validate %s, error: %s", err.PropertyPath, err.Message))
-			} else {
-				anError = errors.Wrap(anError, fmt.Sprintf("unable to validate %s, error: %s", err.PropertyPath, err.Message))
+			valError := ValidationError{
+				Path:  err.PropertyPath,
+				Error: err.Message,
 			}
+			valErrors = append(valErrors, valError)
 		}
-		return errors.Wrap(anError, "invalid parameter or output")
+		return valErrors, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // CoerceValue can be used to turn float and other numeric types into integers. When
