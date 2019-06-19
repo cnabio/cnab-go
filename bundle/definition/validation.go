@@ -27,7 +27,7 @@ func (s *Schema) Validate(data interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "unable to perform validation")
 	}
-	if valErrs != nil && len(valErrs) > 0 {
+	if len(valErrs) > 0 {
 		var anError error
 		for _, err := range valErrs {
 			if anError == nil {

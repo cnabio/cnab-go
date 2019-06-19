@@ -175,6 +175,7 @@ func TestBooleanTypeValidation(t *testing.T) {
 	s2 := valueTestJSON("boolean", boolValue, boolValue2)
 	definition2 := new(Schema)
 	err = json.Unmarshal([]byte(s2), definition2)
+	require.NoError(t, err, "test requires unmarshaled bundled")
 	err = definition2.Validate(thingToCheck)
 	assert.NoError(t, err, "check of true should have resulted in no validation errors with both allowed")
 	err = definition2.Validate(!thingToCheck)

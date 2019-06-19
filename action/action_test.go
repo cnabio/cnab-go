@@ -57,15 +57,15 @@ func mockBundle() *bundle.Bundle {
 			},
 		},
 		Definitions: map[string]*definition.Schema{
-			"ParamOne": &definition.Schema{
+			"ParamOne": {
 				Type:    "string",
 				Default: "one",
 			},
-			"ParamTwo": &definition.Schema{
+			"ParamTwo": {
 				Type:    "string",
 				Default: "two",
 			},
-			"ParamThree": &definition.Schema{
+			"ParamThree": {
 				Type:    "string",
 				Default: "three",
 			},

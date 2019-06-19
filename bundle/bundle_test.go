@@ -115,19 +115,19 @@ func TestValuesOrDefaults(t *testing.T) {
 	}
 	b := &Bundle{
 		Definitions: map[string]*definition.Schema{
-			"portType": &definition.Schema{
+			"portType": {
 				Type:    "integer",
 				Default: 1234,
 			},
-			"hostType": &definition.Schema{
+			"hostType": {
 				Type:    "string",
 				Default: "locahost.localdomain",
 			},
-			"replicaCountType": &definition.Schema{
+			"replicaCountType": {
 				Type:    "integer",
 				Default: 3,
 			},
-			"enabledType": &definition.Schema{
+			"enabledType": {
 				Type:    "boolean",
 				Default: false,
 			},
@@ -171,10 +171,10 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 	}
 	b := &Bundle{
 		Definitions: map[string]*definition.Schema{
-			"minType": &definition.Schema{
+			"minType": {
 				Type: "integer",
 			},
-			"enabledType": &definition.Schema{
+			"enabledType": {
 				Type:    "boolean",
 				Default: false,
 			},
@@ -353,7 +353,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 			},
 		},
 		InvocationImages: []InvocationImage{
-			InvocationImage{
+			{
 				BaseImage: BaseImage{
 					Image:     "deislabs/invocation-image:1.0",
 					ImageType: "docker",
@@ -361,23 +361,23 @@ func TestBundleMarshallAllThings(t *testing.T) {
 			},
 		},
 		Definitions: map[string]*definition.Schema{
-			"portType": &definition.Schema{
+			"portType": {
 				Type:    "integer",
 				Default: 1234,
 			},
-			"hostType": &definition.Schema{
+			"hostType": {
 				Type:    "string",
 				Default: "locahost.localdomain",
 			},
-			"replicaCountType": &definition.Schema{
+			"replicaCountType": {
 				Type:    "integer",
 				Default: 3,
 			},
-			"enabledType": &definition.Schema{
+			"enabledType": {
 				Type:    "boolean",
 				Default: false,
 			},
-			"clientCert": &definition.Schema{
+			"clientCert": {
 				Type:            "string",
 				ContentEncoding: "base64",
 			},
@@ -413,7 +413,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 		},
 		Outputs: OutputsDefinition{
 			Fields: map[string]OutputDefinition{
-				"clientCert": OutputDefinition{
+				"clientCert": {
 					Path:       "/cnab/app/outputs/blah",
 					Definition: "clientCert",
 				},
