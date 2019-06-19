@@ -98,7 +98,7 @@ func TestSingleSchemaType(t *testing.T) {
 	err := json.Unmarshal([]byte(s), definition)
 	assert.NoError(t, err, "should have been able to marshall definition")
 
-	singleType := definition.SingleType()
+	singleType := definition.singleType()
 	assert.True(t, singleType, "this should have had a single type")
 	typeString, ok, err := definition.GetType()
 	assert.NoError(t, err, "should have gotten back no error on fetch of types")
@@ -116,7 +116,7 @@ func TestMultipleSchemaTypes(t *testing.T) {
 	definition := new(Schema)
 	err := json.Unmarshal([]byte(s), definition)
 	assert.NoError(t, err, "should have been able to marshall definition")
-	singleType := definition.SingleType()
+	singleType := definition.singleType()
 	assert.False(t, singleType, "this should have had multiple types")
 
 	types, ok, err := definition.GetTypes()

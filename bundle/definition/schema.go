@@ -58,7 +58,7 @@ type Schema struct {
 }
 
 // SingleType returns true if a schema has a single type declaration
-func (s *Schema) SingleType() bool {
+func (s *Schema) singleType() bool {
 	_, ok := s.Type.(string)
 	return ok
 }
@@ -66,7 +66,7 @@ func (s *Schema) SingleType() bool {
 // GetType will return the singular type for a given schema and a success boolean. If the
 // schema does not have a single type, it will return the false boolean and an error.
 func (s *Schema) GetType() (string, bool, error) {
-	if !s.SingleType() {
+	if !s.singleType() {
 		return "", false, errors.New("this schema has multiple types")
 	}
 	typeString, ok := s.Type.(string)
@@ -79,7 +79,7 @@ func (s *Schema) GetType() (string, bool, error) {
 // GetType will return the types for a given schema and a success boolean. If the
 // schema has a single type, it will return the false boolean and an error.
 func (s *Schema) GetTypes() ([]string, bool, error) {
-	if s.SingleType() {
+	if s.singleType() {
 		return nil, false, errors.New("this schema a single type")
 	}
 	data, ok := s.Type.([]interface{})
@@ -90,7 +90,7 @@ func (s *Schema) GetTypes() ([]string, bool, error) {
 	for _, val := range data {
 		typeString, ok := val.(string)
 		if !ok {
-			return nil, false, errors.New("unknown type value")
+			return nil, false, errors.Errorf("unknown type value %T", val)
 		}
 		typeStrings = append(typeStrings, typeString)
 	}
@@ -106,8 +106,7 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	// the library struct so we can handle any validation errors in the schema. If there
 	// are any errors, return those.
 	js := new(jsonschema.RootSchema)
-	err := js.UnmarshalJSON(data)
-	if err != nil {
+	if err := js.UnmarshalJSON(data); err != nil {
 		return err
 	}
 	// The schema is valid at this point, so now use an indirect wrapper type to actually
@@ -118,9 +117,5 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	}{
 		wrapperType: (*wrapperType)(s),
 	}
-	err = json.Unmarshal(data, &wrapper)
-	if err != nil {
-		return err
-	}
-	return nil
+	return json.Unmarshal(data, &wrapper)
 }

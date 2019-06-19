@@ -3,7 +3,6 @@ package bundle
 import (
 	"fmt"
 	"testing"
-	//"github.com/stretchr/testify/assert"
 )
 
 func TestCanReadParameterNames(t *testing.T) {

@@ -27,7 +27,7 @@ type Bundle struct {
 	Parameters       ParametersDefinition   `json:"parameters" mapstructure:"parameters"`
 	Credentials      map[string]Credential  `json:"credentials" mapstructure:"credentials"`
 	Outputs          OutputsDefinition      `json:"outputs" mapstructure:"outputs"`
-	Definitions      definition.Definitions `json:"definitions" mapstructure:"definitions"`
+	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions,omitempty"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
@@ -149,7 +149,7 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 		if val, ok := vals[name]; ok {
 			valErrs, err := s.Validate(val)
 			if err != nil {
-				return res, pkgErrors.Wrap(err, fmt.Sprintf("encountered an error validating parameter %s", name))
+				return res, pkgErrors.Wrapf(err, "encountered an error validating parameter %s", name)
 			}
 			// This interface returns a single error. Validation can have multiple errors. For now return the first
 			// We should update this later.
