@@ -200,6 +200,7 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	assert.NoError(t, err, "should not have encountered an error")
 	valErrors, err = definition.Validate("cat")
 	assert.Len(t, valErrors, 1, "check of 'cat' should have resulted in a validation error")
+	assert.NoError(t, err)
 	valErr := valErrors[0]
 	assert.Equal(t, "/", valErr.Path, "expected validation to fail at the root")
 	assert.Equal(t, "should be one of [\"dog\"]", valErr.Error)
@@ -214,6 +215,7 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	require.NoError(t, err, "should have been a valid schema")
 
 	valErrors, err = definition2.Validate("pig")
+	assert.NoError(t, err, "shouldn't have gotten an actual error")
 	assert.Len(t, valErrors, 1, "expected validation failure for pig")
 	assert.Equal(t, "should be one of [\"chicken\", \"duck\"]", valErrors[0].Error)
 }
