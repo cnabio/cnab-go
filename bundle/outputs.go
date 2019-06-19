@@ -9,5 +9,4 @@ type OutputDefinition struct {
 	ApplyTo     []string `json:"applyTo,omitempty" mapstructure:"applyTo,omitempty"`
 	Description string   `json:"description,omitempty" mapstructure:"description"`
 	Path        string   `json:"path,omitemtpty" mapstructure:"path,omitempty"`
-	Sensitive   bool     `json:"sensitive,omitempty" mapstructure:"sensitive,omitempty"`
 }

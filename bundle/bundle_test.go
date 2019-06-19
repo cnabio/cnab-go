@@ -287,7 +287,6 @@ func TestOutputs_Marshall(t *testing.T) {
 					"contentEncoding": "base64",
 					"contentMediaType": "application/x-x509-user-cert",
 					"path": "/cnab/app/outputs/clientCert",
-					"sensitive": true,
 					"definition": "clientCert"
 				},
 				"hostName": {
@@ -314,7 +313,6 @@ func TestOutputs_Marshall(t *testing.T) {
 	clientCert, ok := bundle.Outputs.Fields["clientCert"]
 	require.True(t, ok, "expected clientCert to exist as an output")
 	assert.Equal(t, "clientCert", clientCert.Definition)
-	assert.True(t, clientCert.Sensitive, "expected clientCert to be a sensitive value")
 	assert.Equal(t, "/cnab/app/outputs/clientCert", clientCert.Path, "clientCert path was not the expected value")
 
 	hostName, ok := bundle.Outputs.Fields["hostName"]
