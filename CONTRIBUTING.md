@@ -31,11 +31,12 @@ $ golangci-lint run --config ./golangci.yml
 
 We currently use [dep](https://github.com/golang/dep) for dependency management.
 
+[good-first-issue]: https://github.com/deislabs/cnab-go/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22
+[help-wanted]: https://github.com/deislabs/cnab-go/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22
+
 # Cutting a Release
 
-Our CI system watches for tags, and when a tag is pushed, it executes the
-publish target in the Makefile. When you are asked to cut a new release,
-here is the process:
+When you are asked to cut a new release, here is the process:
 
 1. Figure out the correct version number, we follow [semver](semver.org) and
     have a funny [release naming scheme][release-name]:
