@@ -62,7 +62,7 @@ type Schema struct {
 func (s *Schema) GetType() (string, bool, error) {
 	typeString, ok := s.Type.(string)
 	if !ok {
-		return "", false, errors.New("couldn't get type for schema")
+		return "", false, errors.Errorf("this schema has multiple types: %v", s.Type)
 	}
 	return typeString, ok, nil
 }
@@ -72,7 +72,7 @@ func (s *Schema) GetType() (string, bool, error) {
 func (s *Schema) GetTypes() ([]string, bool, error) {
 	data, ok := s.Type.([]interface{})
 	if !ok {
-		return nil, false, errors.New("schema does not contain multiple types")
+		return nil, false, errors.Errorf("this schema does not have multiple types: %v", s.Type)
 	}
 	typeStrings := []string{}
 	for _, val := range data {
