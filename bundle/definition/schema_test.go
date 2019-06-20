@@ -269,3 +269,30 @@ func valueTestJSON(kind, def, enum string) []byte {
 		"enum": [ %s ]
 	}`, kind, def, enum))
 }
+
+func TestConvertValue(t *testing.T) {
+	pd := Schema{
+		Type: "boolean",
+	}
+	is := assert.New(t)
+
+	out, _ := pd.ConvertValue("true")
+	is.True(out.(bool))
+	out, _ = pd.ConvertValue("false")
+	is.False(out.(bool))
+	out, _ = pd.ConvertValue("barbeque")
+	is.False(out.(bool))
+
+	pd.Type = "string"
+	out, err := pd.ConvertValue("hello")
+	is.NoError(err)
+	is.Equal("hello", out.(string))
+
+	pd.Type = "integer"
+	out, err = pd.ConvertValue("123")
+	is.NoError(err)
+	is.Equal(123, out.(int))
+
+	_, err = pd.ConvertValue("onetwothree")
+	is.Error(err)
+}
