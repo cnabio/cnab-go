@@ -14,7 +14,9 @@ import (
 
 	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/bundle/definition"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockFailingDriver struct {
@@ -290,4 +292,30 @@ func TestSelectInvocationImage_DriverIncompatible(t *testing.T) {
 	if !strings.Contains(got, want) {
 		t.Fatalf("expected an error containing %q but got %q", want, got)
 	}
+}
+
+func TestSelectInvocationImage_MapHaveImages_NotPresentInMap(t *testing.T) {
+	c := &claim.Claim{
+		Bundle: mockBundle(),
+		RelocationMap: bundle.ImageRelocationMap{
+			"some-image": "some-other-image",
+		},
+	}
+	invImage, err := selectInvocationImage(&driver.DebugDriver{}, c)
+	require.NoError(t, err)
+
+	assert.Equal(t, "foo/bar:0.1.0", invImage.Image)
+}
+
+func TestSelectInvocationImage_MapHaveImages_IsPresentMap_returnsNewImageTag(t *testing.T) {
+	c := &claim.Claim{
+		Bundle: mockBundle(),
+		RelocationMap: bundle.ImageRelocationMap{
+			"foo/bar:0.1.0": "some/other:1.0",
+		},
+	}
+	invImage, err := selectInvocationImage(&driver.DebugDriver{}, c)
+	require.NoError(t, err)
+
+	assert.Equal(t, "some/other:1.0", invImage.Image)
 }

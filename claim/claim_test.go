@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/deislabs/cnab-go/bundle"
 )
 
 func TestNew(t *testing.T) {
@@ -18,10 +20,14 @@ func TestNew(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
+	relocationMap := bundle.ImageRelocationMap{
+		"some.registry/image1": "some.other.registry/image1",
+	}
 	claim, err := New("claim")
 	assert.NoError(t, err)
 	oldMod := claim.Modified
 	oldUlid := claim.Revision
+	claim.RelocationMap = relocationMap
 
 	time.Sleep(1 * time.Millisecond) // Force the Update to happen at a new time. For those of us who remembered to press the Turbo button.
 
@@ -32,6 +38,7 @@ func TestUpdate(t *testing.T) {
 	is.NotEqual(oldUlid, claim.Revision)
 	is.Equal("install", claim.Result.Action)
 	is.Equal("success", claim.Result.Status)
+	is.Equal(relocationMap, claim.RelocationMap)
 }
 
 func TestValidName(t *testing.T) {

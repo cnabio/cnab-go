@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/deislabs/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/utils/crud"
 )
 
@@ -18,6 +19,9 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	claim, err := New("foo")
 	is.NoError(err)
 	claim.Bundle = &bundle.Bundle{Name: "foobundle", Version: "0.1.2"}
+	claim.RelocationMap = bundle.ImageRelocationMap{
+		"some.registry/image1": "some.other.registry/image1",
+	}
 
 	tempDir, err := ioutil.TempDir("", "duffletest")
 	if err != nil {
@@ -33,6 +37,7 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	c, err := store.Read("foo")
 	is.NoError(err, "Failed to read: %s", err)
 	is.Equal(c.Bundle, claim.Bundle, "Expected to read back bundle %s, got %s", claim.Bundle.Name, c.Bundle.Name)
+	is.Equal("some.other.registry/image1", c.RelocationMap["some.registry/image1"])
 
 	claims, err := store.List()
 	is.NoError(err, "Failed to list: %s", err)
@@ -46,44 +51,33 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 }
 
 func TestCanUpdate(t *testing.T) {
+	is := assert.New(t)
 	claim, err := New("foo")
-	assert.NoError(t, err)
+	is.NoError(err)
 	claim.Bundle = &bundle.Bundle{Name: "foobundle", Version: "0.1.2"}
 	rev := claim.Revision
 
 	tempDir, err := ioutil.TempDir("", "duffletest")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %s", err)
-	}
+	is.NoError(err, "Failed to create temp dir")
 	defer os.RemoveAll(tempDir)
 
 	storeDir := filepath.Join(tempDir, "claimstore")
 	store := NewClaimStore(crud.NewFileSystemStore(storeDir, "json"))
 
 	err = store.Store(*claim)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond)
 	claim.Update(ActionInstall, StatusSuccess)
 
 	err = store.Store(*claim)
-	if err != nil {
-		t.Errorf("Failed to update: %s", err)
-	}
+	is.NoError(err, "Failed to update")
 
 	c, err := store.Read("foo")
-	if err != nil {
-		t.Errorf("Failed to read: %s", err)
-	}
+	is.NoError(err, "Failed to read")
 
-	if c.Result.Action != ActionInstall {
-		t.Errorf("Expected to read back action %s, got %s", ActionInstall, c.Result.Action)
-	}
-	if c.Revision == rev {
-		t.Errorf("Expected to read back new revision, got old revision %s", rev)
-	}
+	is.Equal(ActionInstall, c.Result.Action, "wrong action")
+	is.NotEqual(rev, c.Revision, "revision did not update")
 }
 
 func TestReadAll(t *testing.T) {
