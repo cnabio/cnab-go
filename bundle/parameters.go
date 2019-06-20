@@ -1,7 +1,7 @@
 package bundle
 
 type ParametersDefinition struct {
-	Fields   map[string]ParameterDefinition `json:"fields,omitempty" mapstructure:"fields,omitempty"`
+	Fields   map[string]ParameterDefinition `json:"fields" mapstructure:"fields"`
 	Required []string                       `json:"required,omitempty" mapstructure:"required,omitempty"`
 }
 

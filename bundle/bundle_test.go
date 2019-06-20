@@ -125,7 +125,7 @@ func TestValuesOrDefaults(t *testing.T) {
 				Default: false,
 			},
 		},
-		Parameters: ParametersDefinition{
+		Parameters: &ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
 				"port": {
 					Definition: "portType",
@@ -172,7 +172,7 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 				Default: false,
 			},
 		},
-		Parameters: ParametersDefinition{
+		Parameters: &ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
 				"minimum": {
 					Definition: "minType",
@@ -430,7 +430,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				ContentEncoding: "base64",
 			},
 		},
-		Parameters: ParametersDefinition{
+		Parameters: &ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
 				"port": {
 					Definition: "portType",
@@ -459,7 +459,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 			},
 			Required: []string{"port", "host"},
 		},
-		Outputs: OutputsDefinition{
+		Outputs: &OutputsDefinition{
 			Fields: map[string]OutputDefinition{
 				"clientCert": {
 					Path:       "/cnab/app/outputs/blah",
