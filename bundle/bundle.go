@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/docker/go/canonical/json"
 	pkgErrors "github.com/pkg/errors"
@@ -169,6 +170,11 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 
 // Validate the bundle contents.
 func (b Bundle) Validate() error {
+	_, err := semver.NewVersion(b.SchemaVersion)
+	if err != nil {
+		return fmt.Errorf("invalid bundle schema version %q: %v", b.SchemaVersion, err)
+	}
+
 	if len(b.InvocationImages) == 0 {
 		return errors.New("at least one invocation image must be defined in the bundle")
 	}
