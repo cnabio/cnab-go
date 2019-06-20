@@ -23,11 +23,11 @@ type Bundle struct {
 	Keywords         []string               `json:"keywords,omitempty" mapstructure:"keywords"`
 	Maintainers      []Maintainer           `json:"maintainers,omitempty" mapstructure:"maintainers"`
 	InvocationImages []InvocationImage      `json:"invocationImages" mapstructure:"invocationImages"`
-	Images           map[string]Image       `json:"images" mapstructure:"images"`
-	Actions          map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
-	Parameters       ParametersDefinition   `json:"parameters" mapstructure:"parameters"`
-	Credentials      map[string]Credential  `json:"credentials" mapstructure:"credentials"`
-	Outputs          OutputsDefinition      `json:"outputs" mapstructure:"outputs"`
+	Images           map[string]Image       `json:"images,omitempty" mapstructure:"images,omitempty"`
+	Actions          map[string]Action      `json:"actions,omitempty" mapstructure:"actions,omitempty"`
+	Parameters       ParametersDefinition   `json:"parameters,omitempty" mapstructure:"parameters,omitempty"`
+	Credentials      map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials,omitempty"`
+	Outputs          OutputsDefinition      `json:"outputs,omitempty" mapstructure:"outputs,omitempty"`
 	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions,omitempty"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
