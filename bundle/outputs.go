@@ -1,7 +1,7 @@
 package bundle
 
 type OutputsDefinition struct {
-	Fields map[string]OutputDefinition `json:"fields" mapstructure:"fields"`
+	Fields map[string]OutputDefinition `json:"fields,omitempty" mapstructure:"fields"`
 }
 
 type OutputDefinition struct {
