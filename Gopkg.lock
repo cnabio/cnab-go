@@ -40,12 +40,36 @@
   version = "v2.0.2"
 
 [[projects]]
+  digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   pruneopts = "NUT"
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:51365c3135ef6d52b4134bfa52005cb4f0cb7740a1ddc5ce46398a2ddf033eef"
+  name = "github.com/qri-io/jsonpointer"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "43be820608971e680b60469cfc7cc0e2e75fd4ef"
+  version = "v0.1.0"
+
+[[projects]]
+  digest = "1:7413856103afc3d0d748c26346ff4e82222cd57cc095e28d18194dfc50ac5582"
+  name = "github.com/qri-io/jsonschema"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "b244d4b99401d163bd9e382fd58698794259d091"
+  version = "v0.1.1"
 
 [[projects]]
   digest = "1:85adecf1dbfae5769cc62a8bcea6498f8e9f0e2452e4e6686eb36fa4428a5a6e"
@@ -73,6 +97,8 @@
     "github.com/docker/go/canonical/json",
     "github.com/globalsign/mgo",
     "github.com/oklog/ulid",
+    "github.com/pkg/errors",
+    "github.com/qri-io/jsonschema",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",
     "gopkg.in/yaml.v2",

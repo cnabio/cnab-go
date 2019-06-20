@@ -8,23 +8,26 @@ import (
 	"os"
 	"strings"
 
+	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/docker/go/canonical/json"
+	pkgErrors "github.com/pkg/errors"
 )
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
-	SchemaVersion    string                `json:"schemaVersion" mapstructure:"schemaVersion"`
-	Name             string                `json:"name" mapstructure:"name"`
-	Version          string                `json:"version" mapstructure:"version"`
-	Description      string                `json:"description" mapstructure:"description"`
-	Keywords         []string              `json:"keywords,omitempty" mapstructure:"keywords"`
-	Maintainers      []Maintainer          `json:"maintainers,omitempty" mapstructure:"maintainers"`
-	InvocationImages []InvocationImage     `json:"invocationImages" mapstructure:"invocationImages"`
-	Images           map[string]Image      `json:"images" mapstructure:"images"`
-	Actions          map[string]Action     `json:"actions,omitempty" mapstructure:"actions"`
-	Parameters       ParametersDefinition  `json:"parameters" mapstructure:"parameters"`
-	Credentials      map[string]Credential `json:"credentials" mapstructure:"credentials"`
-	Outputs          OutputsDefinition     `json:"outputs" mapstructure:"outputs"`
+	SchemaVersion    string                 `json:"schemaVersion" mapstructure:"schemaVersion"`
+	Name             string                 `json:"name" mapstructure:"name"`
+	Version          string                 `json:"version" mapstructure:"version"`
+	Description      string                 `json:"description" mapstructure:"description"`
+	Keywords         []string               `json:"keywords,omitempty" mapstructure:"keywords"`
+	Maintainers      []Maintainer           `json:"maintainers,omitempty" mapstructure:"maintainers"`
+	InvocationImages []InvocationImage      `json:"invocationImages" mapstructure:"invocationImages"`
+	Images           map[string]Image       `json:"images" mapstructure:"images"`
+	Actions          map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
+	Parameters       ParametersDefinition   `json:"parameters" mapstructure:"parameters"`
+	Credentials      map[string]Credential  `json:"credentials" mapstructure:"credentials"`
+	Outputs          OutputsDefinition      `json:"outputs" mapstructure:"outputs"`
+	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions,omitempty"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
@@ -139,17 +142,28 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 	res := map[string]interface{}{}
 
 	for name, def := range b.Parameters.Fields {
+		s, ok := b.Definitions[def.Definition]
+		if !ok {
+			return res, fmt.Errorf("unable to find definition for %s", name)
+		}
 		if val, ok := vals[name]; ok {
-			if err := def.ValidateParameterValue(val); err != nil {
-				return res, fmt.Errorf("can't use %v as value of %s: %s", val, name, err)
+			valErrs, err := s.Validate(val)
+			if err != nil {
+				return res, pkgErrors.Wrapf(err, "encountered an error validating parameter %s", name)
 			}
-			typedVal := def.CoerceValue(val)
+			// This interface returns a single error. Validation can have multiple errors. For now return the first
+			// We should update this later.
+			if len(valErrs) > 0 {
+				valErr := valErrs[0]
+				return res, fmt.Errorf("cannot use value: %v as parameter %s: %s ", val, name, valErr.Error)
+			}
+			typedVal := s.CoerceValue(val)
 			res[name] = typedVal
 			continue
 		} else if _, ok := requiredMap[name]; ok {
 			return res, fmt.Errorf("parameter %q is required", name)
 		}
-		res[name] = def.Default
+		res[name] = s.Default
 	}
 	return res, nil
 }
