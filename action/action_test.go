@@ -70,7 +70,7 @@ func mockBundle() *bundle.Bundle {
 				Default: "three",
 			},
 		},
-		Parameters: bundle.ParametersDefinition{
+		Parameters: &bundle.ParametersDefinition{
 			Fields: map[string]bundle.ParameterDefinition{
 				"param_one": {
 					Definition: "ParamOne",
