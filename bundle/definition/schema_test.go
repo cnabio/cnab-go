@@ -269,3 +269,69 @@ func valueTestJSON(kind, def, enum string) []byte {
 		"enum": [ %s ]
 	}`, kind, def, enum))
 }
+
+func TestConvertValue(t *testing.T) {
+	pd := Schema{
+		Type: "boolean",
+	}
+	is := assert.New(t)
+
+	out, _ := pd.ConvertValue("true")
+	is.True(out.(bool))
+	out, _ = pd.ConvertValue("false")
+	is.False(out.(bool))
+	out, _ = pd.ConvertValue("barbeque")
+	is.False(out.(bool))
+
+	pd.Type = "string"
+	out, err := pd.ConvertValue("hello")
+	is.NoError(err)
+	is.Equal("hello", out.(string))
+
+	pd.Type = "integer"
+	out, err = pd.ConvertValue("123")
+	is.NoError(err)
+	is.Equal(123, out.(int))
+
+	_, err = pd.ConvertValue("onetwothree")
+	is.Error(err)
+
+	pd.Type = "number"
+	out, err = pd.ConvertValue("123")
+	is.NoError(err)
+	is.Equal(float64(123), out.(float64))
+
+	out, err = pd.ConvertValue("5.5")
+	is.NoError(err)
+	is.Equal(5.5, out.(float64))
+
+	_, err = pd.ConvertValue("nope")
+	is.Error(err)
+
+	pd.Type = "array"
+	_, err = pd.ConvertValue("nope")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("123")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("true")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("123.5")
+	is.Error(err)
+
+	pd.Type = "object"
+	_, err = pd.ConvertValue("nope")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("123")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("true")
+	is.Error(err)
+
+	_, err = pd.ConvertValue("123.5")
+	is.Error(err)
+
+}

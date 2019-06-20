@@ -2,6 +2,8 @@ package definition
 
 import (
 	"encoding/json"
+	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/qri-io/jsonschema"
@@ -106,4 +108,35 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 		wrapperType: (*wrapperType)(s),
 	}
 	return json.Unmarshal(data, &wrapper)
+}
+
+// ConvertValue attempts to convert the given string value to the type from the
+// definition. Note: this is only applicable to string, number, integer and boolean types
+func (s *Schema) ConvertValue(val string) (interface{}, error) {
+	dataType, ok, err := s.GetType()
+	if !ok {
+		return nil, errors.Wrapf(err, "unable to determine type: %v", s.Type)
+	}
+	switch dataType {
+	case "string":
+		return val, nil
+	case "number":
+		num, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to convert %s to number", val)
+		}
+		return num, nil
+	case "integer":
+		return strconv.Atoi(val)
+	case "boolean":
+		if strings.ToLower(val) == "true" {
+			return true, nil
+		} else if strings.ToLower(val) == "false" {
+			return false, nil
+		} else {
+			return false, errors.Errorf("%q is not a valid boolean", val)
+		}
+	default:
+		return nil, errors.New("invalid definition")
+	}
 }
