@@ -305,33 +305,33 @@ func TestConvertValue(t *testing.T) {
 	is.NoError(err)
 	is.Equal(5.5, out.(float64))
 
-	out, err = pd.ConvertValue("nope")
+	_, err = pd.ConvertValue("nope")
 	is.Error(err)
 
 	pd.Type = "array"
-	out, err = pd.ConvertValue("nope")
+	_, err = pd.ConvertValue("nope")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("123")
+	_, err = pd.ConvertValue("123")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("true")
+	_, err = pd.ConvertValue("true")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("123.5")
+	_, err = pd.ConvertValue("123.5")
 	is.Error(err)
 
 	pd.Type = "object"
-	out, err = pd.ConvertValue("nope")
+	_, err = pd.ConvertValue("nope")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("123")
+	_, err = pd.ConvertValue("123")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("true")
+	_, err = pd.ConvertValue("true")
 	is.Error(err)
 
-	out, err = pd.ConvertValue("123.5")
+	_, err = pd.ConvertValue("123.5")
 	is.Error(err)
 
 }
