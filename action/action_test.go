@@ -106,6 +106,24 @@ func mockBundle() *bundle.Bundle {
 
 }
 
+func getEnv(name string, op *driver.Operation) string {
+	for _, env := range op.Environment {
+		if env.Name == name {
+			return env.Value
+		}
+	}
+	return ""
+}
+
+func getFile(path string, op *driver.Operation) []byte {
+	for _, file := range op.Files {
+		if file.Path == path {
+			return file.Content
+		}
+	}
+	return nil
+}
+
 func TestOpFromClaim(t *testing.T) {
 	now := time.Now()
 	c := &claim.Claim{
@@ -133,16 +151,15 @@ func TestOpFromClaim(t *testing.T) {
 	is.Equal(c.Revision, op.Revision)
 	is.Equal(invocImage.Image, op.Image)
 	is.Equal(driver.ImageTypeDocker, op.ImageType)
-	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
-	is.Equal(op.Environment["PARAM_TWO"], "twoval")
-	is.Equal(op.Environment["CNAB_P_PARAM_ONE"], "oneval")
-	is.Equal(op.Files["/secret/two"], "I'm also a secret")
-	is.Equal(op.Files["/param/three"], "threeval")
-	is.Contains(op.Files, "/cnab/app/image-map.json")
+	is.Equal(getEnv("SECRET_ONE", op), "I'm a secret")
+	is.Equal(getEnv("PARAM_TWO", op), "twoval")
+	is.Equal(getEnv("CNAB_P_PARAM_ONE", op), "oneval")
+	is.Equal(string(getFile("/secret/two", op)), "I'm also a secret")
+	is.Equal(string(getFile("/param/three", op)), "threeval")
+	is.NotNil(getFile("/cnab/app/image-map.json", op))
 	var imgMap map[string]bundle.Image
-	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
+	is.NoError(json.Unmarshal(getFile("/cnab/app/image-map.json", op), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
-	is.Len(op.Parameters, 3)
 	is.Equal(os.Stdout, op.Out)
 }
 
@@ -170,13 +187,11 @@ func TestOpFromClaim_NoParameter(t *testing.T) {
 	is.Equal(c.Revision, op.Revision)
 	is.Equal(invocImage.Image, op.Image)
 	is.Equal(driver.ImageTypeDocker, op.ImageType)
-	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
-	is.Equal(op.Files["/secret/two"], "I'm also a secret")
-	is.Contains(op.Files, "/cnab/app/image-map.json")
+	is.Equal("I'm a secret", getEnv("SECRET_ONE", op))
+	is.Equal("I'm also a secret", string(getFile("/secret/two", op)))
 	var imgMap map[string]bundle.Image
-	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
+	is.NoError(json.Unmarshal(getFile("/cnab/app/image-map.json", op), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
-	is.Len(op.Parameters, 0)
 	is.Equal(os.Stdout, op.Out)
 }
 func TestOpFromClaim_UndefinedParams(t *testing.T) {

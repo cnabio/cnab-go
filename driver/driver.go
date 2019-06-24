@@ -38,17 +38,17 @@ type Operation struct {
 // EnvVar represents an environment variable set in the invocation image.
 type EnvVar struct {
 	// Name of the environment variable.
-	Name string
+	Name string `json:"name"`
 	// Value of the environment variable.
-	Value string
+	Value string `json:"value"`
 }
 
 // A File represents the path and file content injected in the invocation image.
 type File struct {
 	// Path of the file, eg. /cnab/app/nginx.conf
-	Path string
+	Path string `json:"path"`
 	// File content
-	Bytes []byte
+	Content []byte `json:"content"`
 }
 
 // ResolvedCred is a credential that has been resolved and is ready for injection into the runtime.

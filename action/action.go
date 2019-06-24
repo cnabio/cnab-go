@@ -98,15 +98,33 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	env["CNAB_BUNDLE_NAME"] = c.Bundle.Name
 	env["CNAB_BUNDLE_VERSION"] = c.Bundle.Version
 
+	envSlice := make([]driver.EnvVar, len(env))
+	i := 0
+	for k, v := range env {
+		envSlice[i] = driver.EnvVar{
+			Name:  k,
+			Value: v,
+		}
+		i++
+	}
+	fileSlice := make([]driver.File, len(env))
+	j := 0
+	for k, v := range files {
+		fileSlice[j] = driver.File{
+			Path:    k,
+			Content: []byte(v),
+		}
+		j++
+	}
+
 	return &driver.Operation{
 		Action:       action,
 		Installation: c.Name,
-		Parameters:   c.Parameters,
 		Image:        ii.Image,
 		ImageType:    ii.ImageType,
 		Revision:     c.Revision,
-		Environment:  env,
-		Files:        files,
+		Environment:  envSlice,
+		Files:        fileSlice,
 		Out:          w,
 	}, nil
 }
