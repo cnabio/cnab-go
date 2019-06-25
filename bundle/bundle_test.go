@@ -157,6 +157,15 @@ func TestValuesOrDefaults(t *testing.T) {
 	is.Error(err)
 }
 
+func TestValuesOrDefaults_NoParameter(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{}
+	b := &Bundle{}
+	vod, err := ValuesOrDefaults(vals, b)
+	is.NoError(err)
+	is.Len(vod, 0)
+}
+
 func TestValuesOrDefaults_Required(t *testing.T) {
 	is := assert.New(t)
 	vals := map[string]interface{}{
