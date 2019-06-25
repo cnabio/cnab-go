@@ -140,11 +140,16 @@ type Action struct {
 
 // ValuesOrDefaults returns parameter values or the default parameter values
 func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interface{}, error) {
+	res := map[string]interface{}{}
+
+	if b.Parameters == nil {
+		return res, nil
+	}
+
 	requiredMap := map[string]struct{}{}
 	for _, key := range b.Parameters.Required {
 		requiredMap[key] = struct{}{}
 	}
-	res := map[string]interface{}{}
 
 	for name, def := range b.Parameters.Fields {
 		s, ok := b.Definitions[def.Definition]
