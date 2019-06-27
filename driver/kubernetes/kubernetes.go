@@ -29,8 +29,8 @@ const (
 	k8sFileSecretVolume = "files"
 )
 
-// KubernetesDriver runs an invocation image in a Kubernetes cluster.
-type KubernetesDriver struct {
+// Driver runs an invocation image in a Kubernetes cluster.
+type Driver struct {
 	Namespace             string
 	ServiceAccountName    string
 	LimitCPU              resource.Quantity
@@ -46,9 +46,9 @@ type KubernetesDriver struct {
 	requiredCompletions   int32
 }
 
-// NewKubernetesDriver initializes a Kubernetes driver.
-func NewKubernetesDriver(namespace, serviceAccount string, conf *rest.Config) (*KubernetesDriver, error) {
-	driver := &KubernetesDriver{
+// New initializes a Kubernetes driver.
+func New(namespace, serviceAccount string, conf *rest.Config) (*Driver, error) {
+	driver := &Driver{
 		Namespace:          namespace,
 		ServiceAccountName: serviceAccount,
 	}
@@ -58,12 +58,12 @@ func NewKubernetesDriver(namespace, serviceAccount string, conf *rest.Config) (*
 }
 
 // Handles receives an ImageType* and answers whether this driver supports that type.
-func (k *KubernetesDriver) Handles(imagetype string) bool {
+func (k *Driver) Handles(imagetype string) bool {
 	return imagetype == driver.ImageTypeDocker || imagetype == driver.ImageTypeOCI
 }
 
 // Config returns the Kubernetes driver configuration options.
-func (k *KubernetesDriver) Config() map[string]string {
+func (k *Driver) Config() map[string]string {
 	return map[string]string{
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
@@ -73,7 +73,7 @@ func (k *KubernetesDriver) Config() map[string]string {
 }
 
 // SetConfig sets Kubernetes driver configuration.
-func (k *KubernetesDriver) SetConfig(settings map[string]string) {
+func (k *Driver) SetConfig(settings map[string]string) {
 	k.setDefaults()
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
@@ -95,7 +95,7 @@ func (k *KubernetesDriver) SetConfig(settings map[string]string) {
 	}
 }
 
-func (k *KubernetesDriver) setDefaults() {
+func (k *Driver) setDefaults() {
 	k.SkipCleanup = false
 	k.BackoffLimit = 0
 	k.ActiveDeadlineSeconds = 300
@@ -103,7 +103,7 @@ func (k *KubernetesDriver) setDefaults() {
 	k.deletionPolicy = metav1.DeletePropagationBackground
 }
 
-func (k *KubernetesDriver) setClient(conf *rest.Config) error {
+func (k *Driver) setClient(conf *rest.Config) error {
 	coreClient, err := coreclientv1.NewForConfig(conf)
 	if err != nil {
 		return err
@@ -120,7 +120,7 @@ func (k *KubernetesDriver) setClient(conf *rest.Config) error {
 }
 
 // Run executes the operation inside of the invocation image.
-func (k *KubernetesDriver) Run(op *driver.Operation) error {
+func (k *Driver) Run(op *driver.Operation) error {
 	if k.Namespace == "" {
 		return fmt.Errorf("KUBE_NAMESPACE is required")
 	}
@@ -236,7 +236,7 @@ func (k *KubernetesDriver) Run(op *driver.Operation) error {
 	return k.watchJobStatusAndLogs(selector, op.Out)
 }
 
-func (k *KubernetesDriver) watchJobStatusAndLogs(selector metav1.ListOptions, out io.Writer) error {
+func (k *Driver) watchJobStatusAndLogs(selector metav1.ListOptions, out io.Writer) error {
 	// Stream Pod logs in the background
 	logsStreamingComplete := make(chan bool)
 	err := k.streamPodLogs(selector, out, logsStreamingComplete)
@@ -281,7 +281,7 @@ func (k *KubernetesDriver) watchJobStatusAndLogs(selector metav1.ListOptions, ou
 	return nil
 }
 
-func (k *KubernetesDriver) streamPodLogs(options metav1.ListOptions, out io.Writer, done chan bool) error {
+func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done chan bool) error {
 	watcher, err := k.pods.Watch(options)
 	if err != nil {
 		return err
@@ -324,13 +324,13 @@ func (k *KubernetesDriver) streamPodLogs(options metav1.ListOptions, out io.Writ
 	return nil
 }
 
-func (k *KubernetesDriver) deleteSecret(name string) error {
+func (k *Driver) deleteSecret(name string) error {
 	return k.secrets.Delete(name, &metav1.DeleteOptions{
 		PropagationPolicy: &k.deletionPolicy,
 	})
 }
 
-func (k *KubernetesDriver) deleteJob(name string) error {
+func (k *Driver) deleteJob(name string) error {
 	return k.jobs.Delete(name, &metav1.DeleteOptions{
 		PropagationPolicy: &k.deletionPolicy,
 	})

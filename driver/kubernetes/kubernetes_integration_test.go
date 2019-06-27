@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestKubernetesDriver_Run_Integration(t *testing.T) {
+func TestDriver_Run_Integration(t *testing.T) {
 	namespace := "default"
-	k := &KubernetesDriver{}
+	k := &Driver{}
 	k.SetConfig(map[string]string{
 		"KUBE_NAMESPACE": namespace,
 	})

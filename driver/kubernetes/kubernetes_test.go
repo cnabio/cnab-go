@@ -10,10 +10,10 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestKubernetesDriver_Run(t *testing.T) {
+func TestDriver_Run(t *testing.T) {
 	client := fake.NewSimpleClientset()
 	namespace := "default"
-	k := KubernetesDriver{
+	k := Driver{
 		Namespace:          namespace,
 		jobs:               client.BatchV1().Jobs(namespace),
 		secrets:            client.CoreV1().Secrets(namespace),
