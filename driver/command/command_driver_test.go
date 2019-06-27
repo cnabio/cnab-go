@@ -1,4 +1,4 @@
-package driver
+package command
 
 import "github.com/deislabs/cnab-go/driver"
 

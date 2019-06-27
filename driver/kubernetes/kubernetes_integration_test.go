@@ -1,6 +1,6 @@
 // +build integration
 
-package driver
+package kubernetes
 
 import (
 	"bytes"
