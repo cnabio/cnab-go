@@ -99,6 +99,31 @@ func TestReadCredentialProperties(t *testing.T) {
 	}
 }
 
+func TestReadDependencyProperties(t *testing.T) {
+	data, err := ioutil.ReadFile("../testdata/bundles/foo.json")
+	if err != nil {
+		t.Errorf("cannot read bundle file: %v", err)
+	}
+
+	bundle, err := Unmarshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.NotNil(t, bundle.Dependencies, "Dependencies was not populated")
+	assert.Len(t, bundle.Dependencies.Requires, 2, "Dependencies.Requires is the wrong length")
+
+	dep := bundle.Dependencies.Requires[0]
+	assert.Equal(t, "somecloud/blob-storage", dep.Bundle, "Dependency.Bundle is incorrect")
+	assert.Nil(t, dep.Version, "Dependency.Version should be nil")
+
+	dep = bundle.Dependencies.Requires[1]
+	assert.Equal(t, "somecloud/mysql", dep.Bundle, "Dependency.Bundle is incorrect")
+	assert.True(t, dep.Version.AllowPrereleases, "Dependency.Bundle.Version.AllowPrereleases should be true")
+	assert.Equal(t, []string{"5.7.x"}, dep.Version.Ranges, "Dependency.Bundle.Version.Ranges is incorrect")
+
+}
+
 func TestValuesOrDefaults(t *testing.T) {
 	is := assert.New(t)
 	vals := map[string]interface{}{
@@ -476,6 +501,20 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				},
 			},
 		},
+		Dependencies: &Dependencies{
+			Requires: []Dependency{
+				{
+					Bundle: "somecloud/blob-storage",
+				},
+				{
+					Bundle: "somecloud/mysql",
+					Version: &DependencyVersion{
+						AllowPrereleases: true,
+						Ranges:           []string{"5.7.x"},
+					},
+				},
+			},
+		},
 	}
 
 	expectedJSON, err := ioutil.ReadFile("../testdata/bundles/canonical-bundle.json")
@@ -485,7 +524,9 @@ func TestBundleMarshallAllThings(t *testing.T) {
 
 	_, err = b.WriteTo(&buf)
 	require.NoError(t, err, "test requires output")
-	assert.Equal(t, []byte(expectedJSON), buf.Bytes(), "output should match expected canonical json")
+	wantJSON := string(expectedJSON)
+	gotJSON := buf.String()
+	assert.Equal(t, wantJSON, gotJSON, "output should match expected canonical json")
 }
 
 func TestValidateABundleAndParams(t *testing.T) {

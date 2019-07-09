@@ -30,6 +30,10 @@ type Bundle struct {
 	Outputs          *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
 	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
 
+	// Dependencies defines metadata for the Deps Spec
+	// https://github.com/deislabs/cnab-spec/blob/master/500-CNAB-dependencies.md
+	Dependencies *Dependencies `json:"dependencies,omitempty" mapstructure:"dependencies"`
+
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
 	Custom map[string]interface{} `json:"custom,omitempty" mapstructure:"custom"`
@@ -136,6 +140,31 @@ type Action struct {
 	Stateless bool `json:"stateless,omitempty" mapstructure:"stateless"`
 	// Description describes the action as a user-readable string
 	Description string `json:"description,omitempty" mapstructure:"description"`
+}
+
+// Dependencies describes the set of metadata associated with the dependencies spec
+// https://github.com/deislabs/cnab-spec/blob/master/500-CNAB-dependencies.md
+type Dependencies struct {
+	// Requires is a list of bundles required by this bundle
+	Requires []Dependency `json:"requires,omitempty" mapstructure:"requires"`
+}
+
+// Dependency describes a dependency on another bundle
+type Dependency struct {
+	// Bundle is the location of the bundle in a registry, for example REGISTRY/NAME:TAG
+	Bundle string `json:"bundle" mapstructure:"bundle"`
+
+	// Version is a set of allowed versions
+	Version *DependencyVersion `json:"version,omitempty" mapstructure:"version"`
+}
+
+// DependencyVersion is a set of allowed versions for a dependency
+type DependencyVersion struct {
+	// Ranges of semantic versions, with or without the leading v prefix, allowed by the dependency
+	Ranges []string `json:"ranges,omitempty" mapstructure:"ranges"`
+
+	// AllowPrereleases specifies if prerelease versions can satisfy the dependency
+	AllowPrereleases bool `json:"prereleases" mapstructure:"prereleases"`
 }
 
 // ValuesOrDefaults returns parameter values or the default parameter values
