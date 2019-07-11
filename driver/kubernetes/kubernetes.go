@@ -163,10 +163,13 @@ func (k *Driver) Run(op *driver.Operation) error {
 		ImagePullPolicy: v1.PullIfNotPresent,
 	}
 
-	if len(op.Environment) > 0 {
+	if envSize := len(op.Environment); envSize > 0 {
 		secret := &v1.Secret{
 			ObjectMeta: meta,
-			StringData: op.Environment,
+			StringData: make(map[string]string, envSize),
+		}
+		for _, envVar := range op.Environment {
+			secret.StringData[envVar.Name] = envVar.Value
 		}
 		secret.ObjectMeta.GenerateName += "env-"
 		envsecret, err := k.secrets.Create(secret)
@@ -348,25 +351,25 @@ func generateLabels(op *driver.Operation) map[string]string {
 	}
 }
 
-func generateFileSecret(files map[string]string) (*v1.Secret, []v1.VolumeMount) {
+func generateFileSecret(files []driver.File) (*v1.Secret, []v1.VolumeMount) {
 	size := len(files)
-	data := make(map[string]string, size)
+	data := make(map[string][]byte, size)
 	mounts := make([]v1.VolumeMount, size)
 
 	i := 0
-	for path, contents := range files {
-		key := strings.Replace(filepath.ToSlash(path), "/", "_", -1)
-		data[key] = contents
+	for _, file := range files {
+		key := strings.Replace(filepath.ToSlash(file.Path), "/", "_", -1)
+		data[key] = file.Content
 		mounts[i] = v1.VolumeMount{
 			Name:      k8sFileSecretVolume,
-			MountPath: path,
+			MountPath: file.Path,
 			SubPath:   key,
 		}
 		i++
 	}
 
 	secret := &v1.Secret{
-		StringData: data,
+		Data: data,
 	}
 
 	return secret, mounts

@@ -38,19 +38,24 @@ func TestOperation_Unmarshall(t *testing.T) {
 	expectedOp := Operation{
 		Action:       "install",
 		Installation: "test",
-		Parameters: map[string]interface{}{
-			"param1": "value1",
-			"param2": "value2",
+		Image:        "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+		ImageType:    "docker",
+		Revision:     "01DDY0MT808KX0GGZ6SMXN4TW",
+		Environment: []EnvVar{
+			{
+				Name:  "ENV1",
+				Value: "value1",
+			},
+			{
+				Name:  "ENV2",
+				Value: "value2",
+			},
 		},
-		Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
-		ImageType: "docker",
-		Revision:  "01DDY0MT808KX0GGZ6SMXN4TW",
-		Environment: map[string]string{
-			"ENV1": "value1",
-			"ENV2": "value2",
-		},
-		Files: map[string]string{
-			"/cnab/app/image-map.json": "{}",
+		Files: []File{
+			{
+				Path:    "/cnab/app/image-map.json",
+				Content: []byte("{}"),
+			},
 		},
 	}
 	var op Operation
@@ -66,19 +71,24 @@ func TestOperation_Marshall(t *testing.T) {
 	actualOp := Operation{
 		Action:       "install",
 		Installation: "test",
-		Parameters: map[string]interface{}{
-			"param1": "value1",
-			"param2": "value2",
+		Image:        "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+		ImageType:    "docker",
+		Revision:     "01DDY0MT808KX0GGZ6SMXN4TW",
+		Environment: []EnvVar{
+			{
+				Name:  "ENV1",
+				Value: "value1",
+			},
+			{
+				Name:  "ENV2",
+				Value: "value2",
+			},
 		},
-		Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
-		ImageType: "docker",
-		Revision:  "01DDY0MT808KX0GGZ6SMXN4TW",
-		Environment: map[string]string{
-			"ENV1": "value1",
-			"ENV2": "value2",
-		},
-		Files: map[string]string{
-			"/cnab/app/image-map.json": "{}",
+		Files: []File{
+			{
+				Path:    "/cnab/app/image-map.json",
+				Content: []byte("{}"),
+			},
 		},
 		Out: os.Stdout,
 	}

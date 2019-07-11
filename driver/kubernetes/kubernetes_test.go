@@ -24,8 +24,11 @@ func TestDriver_Run(t *testing.T) {
 	op := driver.Operation{
 		Action: "install",
 		Out:    os.Stdout,
-		Environment: map[string]string{
-			"foo": "bar",
+		Environment: []driver.EnvVar{
+			{
+				Name:  "foo",
+				Value: "bar",
+			},
 		},
 	}
 

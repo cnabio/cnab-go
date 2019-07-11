@@ -1,18 +1,23 @@
 {
-    "installation_name": "test",
-    "revision": "01DDY0MT808KX0GGZ6SMXN4TW",
-    "action": "install",
-    "parameters": {
-        "param1": "value1",
-        "param2": "value2"
+  "installation_name": "test",
+  "revision": "01DDY0MT808KX0GGZ6SMXN4TW",
+  "action": "install",
+  "image": "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+  "image_type": "docker",
+  "environment": [
+    {
+      "name": "ENV1",
+      "value": "value1"
     },
-    "image": "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
-    "image_type": "docker",
-    "environment": {
-        "ENV1": "value1",
-        "ENV2": "value2"
-    },
-    "files": {
-        "/cnab/app/image-map.json": "{}"
+    {
+      "name": "ENV2",
+      "value": "value2"
     }
+  ],
+  "files": [
+    {
+      "path": "/cnab/app/image-map.json",
+      "content": "e30="
+    }
+  ]
 }

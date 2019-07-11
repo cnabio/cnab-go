@@ -141,8 +141,8 @@ func (d *Driver) exec(op *driver.Operation) error {
 		}
 	}
 	var env []string
-	for k, v := range op.Environment {
-		env = append(env, fmt.Sprintf("%s=%v", k, v))
+	for _, envVar := range op.Environment {
+		env = append(env, fmt.Sprintf("%s=%v", envVar.Name, envVar.Value))
 	}
 
 	cfg := &container.Config{
@@ -239,23 +239,23 @@ func (d *Driver) exec(op *driver.Operation) error {
 	return err
 }
 
-func generateTar(files map[string]string) (io.Reader, error) {
+func generateTar(files []driver.File) (io.Reader, error) {
 	r, w := io.Pipe()
 	tw := tar.NewWriter(w)
-	for path := range files {
-		if !unix_path.IsAbs(path) {
-			return nil, fmt.Errorf("destination path %s should be an absolute unix path", path)
+	for _, file := range files {
+		if !unix_path.IsAbs(file.Path) {
+			return nil, fmt.Errorf("destination path %s should be an absolute unix path", file.Path)
 		}
 	}
 	go func() {
-		for path, content := range files {
+		for _, file := range files {
 			hdr := &tar.Header{
-				Name: path,
+				Name: file.Path,
 				Mode: 0644,
-				Size: int64(len(content)),
+				Size: int64(len(file.Content)),
 			}
 			tw.WriteHeader(hdr)
-			tw.Write([]byte(content))
+			tw.Write(file.Content)
 		}
 		w.Close()
 	}()
