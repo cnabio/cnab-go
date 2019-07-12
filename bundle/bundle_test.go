@@ -414,6 +414,9 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				BaseImage: BaseImage{
 					Image:     "deislabs/invocation-image:1.0",
 					ImageType: "docker",
+					Labels: map[string]string{
+						"os" : "Linux",
+					},
 				},
 			},
 		},
