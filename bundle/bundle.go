@@ -85,12 +85,6 @@ type BaseImage struct {
 	MediaType string            `json:"mediaType,omitempty" mapstructure:"mediaType"`
 }
 
-// ImagePlatform indicates what type of platform an image is built for
-type ImagePlatform struct {
-	Architecture string `json:"architecture,omitempty" mapstructure:"architecture"`
-	OS           string `json:"os,omitempty" mapstructure:"os"`
-}
-
 // Image describes a container image in the bundle
 type Image struct {
 	BaseImage   `mapstructure:",squash"`
