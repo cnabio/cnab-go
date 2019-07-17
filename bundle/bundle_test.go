@@ -441,6 +441,9 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				Type:            "string",
 				ContentEncoding: "base64",
 			},
+			"productKeyType": {
+				Type: "string",
+			},
 		},
 		Parameters: &ParametersDefinition{
 			Fields: map[string]ParameterDefinition{
@@ -467,6 +470,13 @@ func TestBundleMarshallAllThings(t *testing.T) {
 					Destination: &Location{
 						EnvironmentVariable: "REPLICA_COUNT",
 					},
+				},
+				"productKey": {
+					Definition: "productKeyType",
+					Destination: &Location{
+						EnvironmentVariable: "PRODUCT_KEY",
+					},
+					Immutable: true,
 				},
 			},
 			Required: []string{"port", "host"},
