@@ -1,4 +1,4 @@
-package driver
+package command
 
 import (
 	"bytes"
@@ -12,18 +12,18 @@ import (
 	"github.com/deislabs/cnab-go/driver"
 )
 
-// CommandDriver relies upon a system command to provide a driver implementation
-type CommandDriver struct {
+// Driver relies upon a system command to provide a driver implementation
+type Driver struct {
 	Name string
 }
 
 // Run executes the command
-func (d *CommandDriver) Run(op *driver.Operation) error {
+func (d *Driver) Run(op *driver.Operation) error {
 	return d.exec(op)
 }
 
 // Handles executes the driver with `--handles` and parses the results
-func (d *CommandDriver) Handles(dt string) bool {
+func (d *Driver) Handles(dt string) bool {
 	out, err := exec.Command(d.cliName(), "--handles").CombinedOutput()
 	if err != nil {
 		fmt.Printf("%s --handles: %s", d.cliName(), err)
@@ -38,11 +38,11 @@ func (d *CommandDriver) Handles(dt string) bool {
 	return false
 }
 
-func (d *CommandDriver) cliName() string {
-	return "duffle-" + strings.ToLower(d.Name)
+func (d *Driver) cliName() string {
+	return "cnab-" + strings.ToLower(d.Name)
 }
 
-func (d *CommandDriver) exec(op *driver.Operation) error {
+func (d *Driver) exec(op *driver.Operation) error {
 	// We need to do two things here: We need to make it easier for the
 	// command to access data, and we need to make it easy for the command
 	// to pass that data on to the image it invokes. So we do some data
@@ -56,9 +56,9 @@ func (d *CommandDriver) exec(op *driver.Operation) error {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", k, v))
 		added = append(added, k)
 	}
-	// DUFFLE_VARS is a list of variables we added to the env. This is to make
+	// CNAB_VARS is a list of variables we added to the env. This is to make
 	// it easier for shell script drivers to clone the env vars.
-	pairs = append(pairs, fmt.Sprintf("DUFFLE_VARS=%s", strings.Join(added, ",")))
+	pairs = append(pairs, fmt.Sprintf("CNAB_VARS=%s", strings.Join(added, ",")))
 
 	data, err := json.Marshal(op)
 	if err != nil {

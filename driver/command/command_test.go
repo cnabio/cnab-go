@@ -1,4 +1,4 @@
-package driver
+package command
 
 import (
 	"fmt"
@@ -10,24 +10,24 @@ import (
 	"github.com/deislabs/cnab-go/driver"
 )
 
-var _ driver.Driver = &CommandDriver{}
+var _ driver.Driver = &Driver{}
 
 func TestCheckDriverExists(t *testing.T) {
 	name := "missing-driver"
-	cmddriver := &CommandDriver{Name: name}
+	cmddriver := &Driver{Name: name}
 	if cmddriver.CheckDriverExists() {
 		t.Errorf("Expected driver %s not to exist", name)
 	}
 
 	name = "existing-driver"
-	cmddriver = &CommandDriver{Name: name}
-	dirname, err := ioutil.TempDir("", "duffle")
+	cmddriver = &Driver{Name: name}
+	dirname, err := ioutil.TempDir("", "cnab")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer os.RemoveAll(dirname)
-	filename := fmt.Sprintf("%s/duffle-%s", dirname, name)
+	filename := fmt.Sprintf("%s/cnab-%s", dirname, name)
 	newfile, err := os.Create(filename)
 	if err != nil {
 		t.Fatal(err)
