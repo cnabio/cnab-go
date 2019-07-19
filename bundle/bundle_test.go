@@ -106,6 +106,7 @@ func TestValuesOrDefaults(t *testing.T) {
 		"host":    "localhost",
 		"enabled": true,
 	}
+	currentVals := map[string]interface{}{}
 	b := &Bundle{
 		Definitions: map[string]*definition.Schema{
 			"portType": {
@@ -143,7 +144,7 @@ func TestValuesOrDefaults(t *testing.T) {
 		},
 	}
 
-	vod, err := ValuesOrDefaults(vals, b)
+	vod, err := ValuesOrDefaults(vals, currentVals, b)
 
 	is.NoError(err)
 	is.True(vod["enabled"].(bool))
@@ -153,15 +154,16 @@ func TestValuesOrDefaults(t *testing.T) {
 
 	// This should err out because of type problem
 	vals["replicaCount"] = "banana"
-	_, err = ValuesOrDefaults(vals, b)
+	_, err = ValuesOrDefaults(vals, currentVals, b)
 	is.Error(err)
 }
 
 func TestValuesOrDefaults_NoParameter(t *testing.T) {
 	is := assert.New(t)
 	vals := map[string]interface{}{}
+	currentVals := map[string]interface{}{}
 	b := &Bundle{}
-	vod, err := ValuesOrDefaults(vals, b)
+	vod, err := ValuesOrDefaults(vals, currentVals, b)
 	is.NoError(err)
 	is.Len(vod, 0)
 }
@@ -171,6 +173,7 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 	vals := map[string]interface{}{
 		"enabled": true,
 	}
+	currentVals := map[string]interface{}{}
 	b := &Bundle{
 		Definitions: map[string]*definition.Schema{
 			"minType": {
@@ -194,7 +197,7 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 		},
 	}
 
-	_, err := ValuesOrDefaults(vals, b)
+	_, err := ValuesOrDefaults(vals, currentVals, b)
 	is.Error(err)
 
 	// It is unclear what the outcome should be when the user supplies
@@ -205,9 +208,46 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 	// Example: It makes perfect sense for a user to specify --set minimum=0
 	// and in so doing meet the requirement that a value be specified.
 	vals["minimum"] = 0
-	res, err := ValuesOrDefaults(vals, b)
+	res, err := ValuesOrDefaults(vals, currentVals, b)
 	is.NoError(err)
 	is.Equal(0, res["minimum"])
+}
+
+func TestValuesOrDefaults_Immutable(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{
+		"enabled":   true,
+		"namespace": "new-ns",
+	}
+	currentVals := map[string]interface{}{
+		"namespace": "actual-ns",
+		"enabled":   true,
+	}
+	b := &Bundle{
+		Definitions: map[string]*definition.Schema{
+			"namespaceType": {
+				Type: "string",
+			},
+			"enabledType": {
+				Type:    "boolean",
+				Default: false,
+			},
+		},
+		Parameters: &ParametersDefinition{
+			Fields: map[string]ParameterDefinition{
+				"namespace": {
+					Definition: "namespaceType",
+					Immutable:  true,
+				},
+				"enabled": {
+					Definition: "enabledType",
+				},
+			},
+		},
+	}
+
+	_, err := ValuesOrDefaults(vals, currentVals, b)
+	is.Error(err)
 }
 
 func TestValidateVersionTag(t *testing.T) {
