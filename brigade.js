@@ -7,12 +7,28 @@ const goImg = "golang:1.11";
 const gopath = "/go";
 const localPath = gopath + `/src/github.com/${projectOrg}/${projectName}`;
 
+const releaseTagRegex = /^refs\/tags\/(v[0-9]+(?:\.[0-9]+)*(?:\-.+)?)$/;
+
 // **********************************************
 // Event Handlers
 // **********************************************
 
 events.on("exec", (e, p) => {
   return test(e, p).run();
+})
+
+events.on("push", (e, p) => {
+  let matchStr = e.revision.ref.match(releaseTagRegex);
+
+  if (matchStr) {
+    // This is an official release with a semantically versioned tag
+    let matchTokens = Array.from(matchStr);
+    let version = matchTokens[1];
+    return test(e, p).run()
+      .then(() => {
+        githubRelease(p, version).run();
+      });
+  }
 })
 
 events.on("check_suite:requested", runSuite);
@@ -111,6 +127,40 @@ function checkRequested(e, p) {
     }
   }
 }
+
+// githubRelease creates a new release on GitHub, named by the provided tag
+function githubRelease(p, tag) {
+  if (!p.secrets.ghToken) {
+    throw new Error("Project must have 'secrets.ghToken' set");
+  }
+
+  var job = new Job("release", goImg);
+  job.mountPath = localPath;
+  parts = p.repo.name.split("/", 2);
+
+  job.env = {
+    "GITHUB_USER": parts[0],
+    "GITHUB_REPO": parts[1],
+    "GITHUB_TOKEN": p.secrets.ghToken,
+  };
+
+  job.tasks = [
+    "go get github.com/aktau/github-release",
+    `cd ${localPath}`,
+    `last_tag=$(git describe --tags ${tag}^ --abbrev=0 --always)`,
+    `github-release release \
+      -t ${tag} \
+      -n "${parts[1]} ${tag}" \
+      -d "$(git log --no-merges --pretty=format:'- %s %H (%aN)' HEAD ^$last_tag)" \
+      || echo "release ${tag} exists"`
+  ];
+
+  console.log(job.tasks);
+  console.log(`release at https://github.com/${p.repo.name}/releases/tag/${tag}`);
+
+  return job;
+}
+
 
 // **********************************************
 // Classes/Helpers
