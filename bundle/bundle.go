@@ -132,8 +132,9 @@ type Action struct {
 	Description string `json:"description,omitempty" mapstructure:"description"`
 }
 
-// ValuesOrDefaults returns parameter values or the default parameter values
-func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interface{}, error) {
+// ValuesOrDefaults returns parameter values or the default parameter values. An error is returned when the parameter value does not pass
+// the schema validation, a required parameter is missing or an immutable parameter is set with a new value.
+func ValuesOrDefaults(vals map[string]interface{}, currentVals map[string]interface{}, b *Bundle) (map[string]interface{}, error) {
 	res := map[string]interface{}{}
 
 	if b.Parameters == nil {
@@ -151,6 +152,9 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 			return res, fmt.Errorf("unable to find definition for %s", name)
 		}
 		if val, ok := vals[name]; ok {
+			if currentVal, ok := currentVals[name]; def.Immutable && ok && currentVal != val {
+				return res, fmt.Errorf("parameter %s is immutable and cannot be overridden with value %v", name, val)
+			}
 			valErrs, err := s.Validate(val)
 			if err != nil {
 				return res, pkgErrors.Wrapf(err, "encountered an error validating parameter %s", name)
