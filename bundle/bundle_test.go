@@ -247,7 +247,7 @@ func TestValuesOrDefaults_Immutable(t *testing.T) {
 	}
 
 	_, err := ValuesOrDefaults(vals, currentVals, b)
-	is.Error(err)
+	is.EqualError(err, "parameter namespace is immutable and cannot be overridden with value new-ns")
 }
 
 func TestValidateVersionTag(t *testing.T) {
