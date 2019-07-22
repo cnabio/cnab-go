@@ -118,3 +118,48 @@ func TestReadAll(t *testing.T) {
 	is.Equal("bar", claim2.Name)
 	is.Equal("baz", claim3.Name)
 }
+
+func TestCanUpdateOutputs(t *testing.T) {
+	is := assert.New(t)
+	claim, err := New("foo")
+	is.NoError(err)
+	is.Equal(map[string]interface{}{}, claim.Outputs)
+
+	tempDir, err := ioutil.TempDir("", "cnabgotest")
+	is.NoError(err, "Failed to create temp dir")
+	defer os.RemoveAll(tempDir)
+
+	storeDir := filepath.Join(tempDir, "claimstore")
+	store := NewClaimStore(crud.NewFileSystemStore(storeDir, "json"))
+
+	claim.Outputs = map[string]interface{}{
+		"foo-output": true,
+		"bar-output": "bar",
+	}
+
+	err = store.Store(*claim)
+	is.NoError(err, "Failed to store claim")
+
+	c, err := store.Read("foo")
+	is.NoError(err, "Failed to read claim")
+
+	want := map[string]interface{}{
+		"foo-output": true,
+		"bar-output": "bar",
+	}
+	is.Equal(want, c.Outputs, "Wrong outputs on claim")
+
+	claim.Outputs["bar-output"] = "baz"
+
+	err = store.Store(*claim)
+	is.NoError(err, "Failed to store claim")
+
+	c, err = store.Read("foo")
+	is.NoError(err, "Failed to read claim")
+
+	want = map[string]interface{}{
+		"foo-output": true,
+		"bar-output": "baz",
+	}
+	is.Equal(want, c.Outputs, "Wrong outputs on claim")
+}
