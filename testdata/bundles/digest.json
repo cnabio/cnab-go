@@ -1,0 +1,67 @@
+{
+  "name": "foo",
+  "version": "1.0",
+  "schemaVersion": "99.99",
+  "images": {
+    "my-microservice": {
+      "contentDigest": "sha256:aaaaaaaaaaaa...",
+      "description": "my microservice",
+      "image": "technosophos/microservice:1.2.3"
+    }
+  },
+  "invocationImages": [
+    {
+      "contentDigest": "sha256:aaaaaaa...",
+      "image": "technosophos/helloworld:0.1.0",
+      "imageType": "docker"
+    }
+  ],
+  "credentials": {
+      "foo": {
+          "path": "pfoo"
+      },
+      "bar": {
+          "env": "ebar"
+      },
+      "quux": {
+          "path": "pquux",
+          "env": "equux"
+      }
+  },
+  "custom": {
+      "com.example.duffle-bag": {
+          "icon": "https://example.com/icon.png",
+          "iconType": "PNG"
+      },
+      "com.example.backup-preferences": {
+          "enabled": true,
+          "frequency": "daily"
+      }
+  },
+  "definitions" : {
+      "complexThing" : {
+          "type" : "object",
+          "properties" : {
+              "host" : {
+                  "default" : "localhost",
+                  "type" : "string",
+                  "minLength" : 3,
+                  "maxLength" : 10
+              },
+              "port" : {
+                  "type" : "integer",
+                  "minimum": 8000
+              }
+          },
+          "required" : ["port"]
+      }
+  },
+  "parameters" : {
+      "serverConfig" : {
+          "definition" : "complexThing",
+          "destination" : {
+              "path": "/cnab/is/go"
+          }
+      }
+  }
+}
