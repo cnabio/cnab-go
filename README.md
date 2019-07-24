@@ -35,7 +35,7 @@ run `dep ensure` to download all the go package dependencies
 $ make bootstrap
 ```
 
-#### Building
+#### Building, testing and linting
 
 Compile all the code:
 
@@ -43,15 +43,11 @@ Compile all the code:
 $ make build
 ```
 
-#### Running tests
-
 Run tests:
 
 ```bash
 $ make test
 ```
-
-#### Run Linter
 
 This will only run the linter to ensure the code meet the standard.
 *It does not format the code*
