@@ -621,14 +621,17 @@ func TestDigestPresent(t *testing.T) {
 	bundle, err := Unmarshal(bun)
 	require.NoError(t, err, "the bundle should have been valid")
 
-	//invocationImages[] should have exactly 1 value
 	require.Equal(t, 1, len(bundle.InvocationImages), "there should be one invocation image in the bundle")
-	//the invocation image digest should equal sha256:aaaaaaa...
-	assert.Equal(t, "sha256:aaaaaaa...", bundle.InvocationImages[0].Digest)
+	assert.Equal(t,
+		"sha256:decafbad71b4175951f29eb96035604c8cc372c99affa2e6d05cde6e8e20cc9a",
+		bundle.InvocationImages[0].Digest,
+	)
 
-	//images[] should have exactly 1 values
-	_, ok := bundle.Images["my-microservice"]
+	image, ok := bundle.Images["my-microservice"]
 	require.True(t, ok, "there should been an image named my-microservice in the bundle")
-	// the image digest should equal sha256:aaaaaaaaaaaa...
-	assert.Equal(t, "sha256:aaaaaaaaaaaa...", bundle.Images["my-microservice"].Digest)
+	assert.Equal(
+		t,
+		"sha256:beefcacef6c04336a17761db2004813982abe0e87ab727a376c291e09391ea61",
+		image.Digest,
+	)
 }

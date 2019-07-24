@@ -4,14 +4,14 @@
   "schemaVersion": "99.99",
   "images": {
     "my-microservice": {
-      "contentDigest": "sha256:aaaaaaaaaaaa...",
+      "contentDigest": "sha256:beefcacef6c04336a17761db2004813982abe0e87ab727a376c291e09391ea61",
       "description": "my microservice",
       "image": "technosophos/microservice:1.2.3"
     }
   },
   "invocationImages": [
     {
-      "contentDigest": "sha256:aaaaaaa...",
+      "contentDigest": "sha256:decafbad71b4175951f29eb96035604c8cc372c99affa2e6d05cde6e8e20cc9a",
       "image": "technosophos/helloworld:0.1.0",
       "imageType": "docker"
     }
