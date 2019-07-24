@@ -613,3 +613,25 @@ func TestBundle_RoundTrip(t *testing.T) {
 		})
 	}
 }
+
+func TestDigestPresent(t *testing.T) {
+	bun, err := ioutil.ReadFile("../testdata/bundles/digest.json")
+	require.NoError(t, err, "couldn't read test bundle")
+
+	bundle, err := Unmarshal(bun)
+	require.NoError(t, err, "the bundle should have been valid")
+
+	require.Equal(t, 1, len(bundle.InvocationImages), "there should be one invocation image in the bundle")
+	assert.Equal(t,
+		"sha256:decafbad71b4175951f29eb96035604c8cc372c99affa2e6d05cde6e8e20cc9a",
+		bundle.InvocationImages[0].Digest,
+	)
+
+	image, ok := bundle.Images["my-microservice"]
+	require.True(t, ok, "there should been an image named my-microservice in the bundle")
+	assert.Equal(
+		t,
+		"sha256:beefcacef6c04336a17761db2004813982abe0e87ab727a376c291e09391ea61",
+		image.Digest,
+	)
+}
