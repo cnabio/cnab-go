@@ -437,6 +437,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 		Name:          "testBundle",
 		Description:   "something",
 		Version:       "1.0",
+		License:       "MIT License",
 		Credentials: map[string]Credential{
 			"password": cred,
 		},
