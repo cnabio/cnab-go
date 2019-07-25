@@ -1,9 +1,9 @@
 package action
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
-	"time"
 
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
@@ -17,42 +17,59 @@ var _ Action = &Upgrade{}
 func TestUpgrade_Run(t *testing.T) {
 	out := ioutil.Discard
 
-	c := &claim.Claim{
-		Created:    time.Time{},
-		Modified:   time.Time{},
-		Name:       "name",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
-	}
+	// happy path
+	c := newClaim()
+	upgr := &Upgrade{Driver: &mockDriver{
+		shouldHandle: true,
+		Result: driver.OperationResult{
+			Outputs: map[string]string{
+				"/tmp/some/path": "SOME CONTENT",
+			},
+		},
+		Error: nil,
+	}}
+	err := upgr.Run(c, mockSet, out)
+	assert.NoError(t, err)
+	assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during upgrade action")
+	assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
+	assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+	assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 
-	upgr := &Upgrade{Driver: &driver.DebugDriver{}}
-	assert.NoError(t, upgr.Run(c, mockSet, out))
-	if c.Created == c.Modified {
-		t.Error("Claim was not updated with modified time stamp during upgrade action")
-	}
+	// when there are no outputs in the bundle
+	c = newClaim()
+	c.Bundle.Outputs = nil
+	upgr = &Upgrade{Driver: &mockDriver{
+		shouldHandle: true,
+		Result:       driver.OperationResult{},
+		Error:        nil,
+	}}
+	err = upgr.Run(c, mockSet, out)
+	assert.NoError(t, err)
+	assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during upgrade action")
+	assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
+	assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+	assert.Empty(t, c.Outputs)
 
-	if c.Result.Action != claim.ActionUpgrade {
-		t.Errorf("Claim result action not successfully updated. Expected %v, got %v", claim.ActionUninstall, c.Result.Action)
-	}
-	if c.Result.Status != claim.StatusSuccess {
-		t.Errorf("Claim result status not successfully updated. Expected %v, got %v", claim.StatusSuccess, c.Result.Status)
-	}
+	// error case: driver doesn't handle image
+	c = newClaim()
+	upgr = &Upgrade{Driver: &mockDriver{
+		Error:        errors.New("I always fail"),
+		shouldHandle: false,
+	}}
+	err = upgr.Run(c, mockSet, out)
+	assert.Error(t, err)
+	assert.Empty(t, c.Outputs)
 
-	upgr = &Upgrade{Driver: &mockFailingDriver{}}
-	assert.Error(t, upgr.Run(c, mockSet, out))
-
-	upgr = &Upgrade{Driver: &mockFailingDriver{shouldHandle: true}}
-	assert.Error(t, upgr.Run(c, mockSet, out))
-	if c.Result.Message == "" {
-		t.Error("Expected error message in claim result message")
-	}
-
-	if c.Result.Action != claim.ActionUpgrade {
-		t.Errorf("Expected claim result action to be %v, got %v", claim.ActionUpgrade, c.Result.Action)
-	}
-
-	if c.Result.Status != claim.StatusFailure {
-		t.Errorf("Expected claim result status to be %v, got %v", claim.StatusFailure, c.Result.Status)
-	}
+	// error case: driver does handle image
+	c = newClaim()
+	upgr = &Upgrade{Driver: &mockDriver{
+		Error:        errors.New("I always fail"),
+		shouldHandle: true,
+	}}
+	err = upgr.Run(c, mockSet, out)
+	assert.Error(t, err)
+	assert.NotEmpty(t, c.Result.Message, "Expected error message in claim result message")
+	assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
+	assert.Equal(t, claim.StatusFailure, c.Result.Status)
+	assert.Empty(t, c.Outputs)
 }

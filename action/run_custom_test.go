@@ -1,9 +1,9 @@
 package action
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
-	"time"
 
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
@@ -17,35 +17,82 @@ var _ Action = &RunCustom{}
 
 func TestRunCustom(t *testing.T) {
 	out := ioutil.Discard
-	is := assert.New(t)
 
+	// happy path
 	rc := &RunCustom{
-		Driver: &driver.DebugDriver{},
+		Driver: &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		},
 		Action: "test",
 	}
-	c := &claim.Claim{
-		Created:    time.Time{},
-		Modified:   time.Time{},
-		Name:       "runcustom",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
-	}
+	c := newClaim()
+	err := rc.Run(c, mockSet, out)
+	assert.NoError(t, err)
+	assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+	assert.Equal(t, "test", c.Result.Action)
+	assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 
-	if err := rc.Run(c, mockSet, out); err != nil {
-		t.Fatal(err)
+	// when there are no outputs in the bundle
+	c = newClaim()
+	c.Bundle.Outputs = nil
+	rc.Driver = &mockDriver{
+		shouldHandle: true,
+		Result:       driver.OperationResult{},
+		Error:        nil,
 	}
-	is.Equal(claim.StatusSuccess, c.Result.Status)
-	is.Equal("test", c.Result.Action)
+	err = rc.Run(c, mockSet, out)
+	assert.NoError(t, err)
+	assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified timestamp after custom action")
+	assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+	assert.Equal(t, "test", c.Result.Action)
+	assert.Empty(t, c.Outputs)
 
-	// Make sure we don't allow forbidden custom actions
+	// error case: driver doesn't handle image
+	c = newClaim()
+	rc.Driver = &mockDriver{
+		Error:        errors.New("I always fail"),
+		shouldHandle: false,
+	}
+	err = rc.Run(c, mockSet, out)
+	assert.Error(t, err)
+	assert.Empty(t, c.Outputs)
+
+	// error case: driver returns error
+	c = newClaim()
+	rc.Driver = &mockDriver{
+		Result: driver.OperationResult{
+			Outputs: map[string]string{
+				"/tmp/some/path": "SOME CONTENT",
+			},
+		},
+		Error:        errors.New("I always fail"),
+		shouldHandle: true,
+	}
+	err = rc.Run(c, mockSet, out)
+	assert.Error(t, err)
+	assert.NotEqual(t, "", c.Result.Message, "Expected error message in claim result message")
+	assert.Equal(t, "test", c.Result.Action)
+	assert.Equal(t, claim.StatusFailure, c.Result.Status)
+	assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+
+	// error case: forbidden custom actions should fail
+	c = newClaim()
 	rc.Action = "install"
-	is.Error(rc.Run(c, mockSet, out))
+	err = rc.Run(c, mockSet, out)
+	assert.Error(t, err)
+	assert.Empty(t, c.Outputs)
 
-	// Get rid of custom actions, and this should fail
+	// error case: unknown actions should fail
+	c = newClaim()
 	rc.Action = "test"
 	c.Bundle.Actions = map[string]bundle.Action{}
-	if err := rc.Run(c, mockSet, out); err == nil {
-		t.Fatal("Unknown action should fail")
-	}
+	err = rc.Run(c, mockSet, out)
+	assert.Error(t, err, "Unknown action should fail")
+	assert.Empty(t, c.Outputs)
 }

@@ -29,7 +29,7 @@ func TestDriver_Run(t *testing.T) {
 		},
 	}
 
-	err := k.Run(&op)
+	_, err := k.Run(&op)
 	assert.NoError(t, err)
 
 	jobList, _ := k.jobs.List(metav1.ListOptions{})

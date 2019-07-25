@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 
 	"github.com/deislabs/cnab-go/bundle"
@@ -27,6 +28,90 @@ const stateful = false
 type Action interface {
 	// Run an action, and record the status in the given claim
 	Run(*claim.Claim, credentials.Set, io.Writer) error
+}
+
+func golangTypeToJSONType(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case nil:
+		return "null", nil
+	case bool:
+		return "boolean", nil
+	case float64:
+		// All numeric values are parsed by JSON into float64s. When a value could be an integer, it could also be a number, so give the more specific answer.
+		if math.Trunc(v) == v {
+			return "integer", nil
+		}
+		return "number", nil
+	case string:
+		return "string", nil
+	case map[string]interface{}:
+		return "object", nil
+	case []interface{}:
+		return "array", nil
+	default:
+		return fmt.Sprintf("%T", value), fmt.Errorf("unsupported type: %T", value)
+	}
+}
+
+func setOutputsOnClaim(claim *claim.Claim, outputs map[string]string) error {
+	outputErrors := []string{}
+	claim.Outputs = map[string]interface{}{}
+
+	if claim.Bundle.Outputs != nil {
+		for outputName, v := range claim.Bundle.Outputs.Fields {
+			name := claim.Bundle.Outputs.Fields[outputName].Definition
+			outputSchema := claim.Bundle.Definitions[name]
+
+			var outputTypes []string
+			outputType, ok, _ := outputSchema.GetType()
+			if !ok { // there are multiple types
+				var err error
+				outputTypes, ok, err = outputSchema.GetTypes()
+				if !ok {
+					panic(err)
+				}
+			} else {
+				outputTypes = []string{outputType}
+			}
+
+			mapOutputTypes := map[string]bool{}
+			for _, thing := range outputTypes {
+				mapOutputTypes[thing] = true
+			}
+
+			content := outputs[v.Path]
+			if content != "" {
+				var value interface{}
+
+				if !mapOutputTypes["string"] { // String output types are always passed through as the escape hatch for non-JSON bundle outputs.
+					err := json.Unmarshal([]byte(content), &value)
+					if err != nil {
+						outputErrors = append(outputErrors, fmt.Sprintf("failed to parse %q: %s", outputName, err))
+					} else {
+						v, err := golangTypeToJSONType(value)
+						if err != nil {
+							outputErrors = append(outputErrors, fmt.Sprintf("%q is not a known JSON type it is %q; expected one of: %s", outputName, v, strings.Join(outputTypes, ", ")))
+						}
+						switch {
+						case mapOutputTypes[v]:
+							break
+						case v == "integer" && mapOutputTypes["number"]: // All integers make acceptable numbers, and our helper function provides the most specific type.
+							break
+						default:
+							outputErrors = append(outputErrors, fmt.Sprintf("%q is not any of the expected types (%s) because it is %q", outputName, strings.Join(outputTypes, ", "), v))
+						}
+					}
+				}
+				claim.Outputs[outputName] = outputs[v.Path]
+			}
+		}
+	}
+
+	if len(outputErrors) > 0 {
+		return fmt.Errorf("error: %s", outputErrors)
+	}
+
+	return nil
 }
 
 func selectInvocationImage(d driver.Driver, c *claim.Claim) (bundle.InvocationImage, error) {
@@ -98,6 +183,13 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	env["CNAB_BUNDLE_NAME"] = c.Bundle.Name
 	env["CNAB_BUNDLE_VERSION"] = c.Bundle.Version
 
+	var outputs []string
+	if c.Bundle.Outputs != nil {
+		for k := range c.Bundle.Outputs.Fields {
+			outputs = append(outputs, c.Bundle.Outputs.Fields[k].Path)
+		}
+	}
+
 	return &driver.Operation{
 		Action:       action,
 		Installation: c.Name,
@@ -107,6 +199,7 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 		Revision:     c.Revision,
 		Environment:  env,
 		Files:        files,
+		Outputs:      outputs,
 		Out:          w,
 	}, nil
 }

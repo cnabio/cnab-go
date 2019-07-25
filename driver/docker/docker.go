@@ -8,6 +8,9 @@ import (
 	"io/ioutil"
 	"os"
 	unix_path "path"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/docker/cli/cli/command"
@@ -15,6 +18,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -34,7 +38,7 @@ type Driver struct {
 }
 
 // Run executes the Docker driver
-func (d *Driver) Run(op *driver.Operation) error {
+func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	return d.exec(op)
 }
 
@@ -54,6 +58,7 @@ func (d *Driver) Config() map[string]string {
 		"VERBOSE":             "Increase verbosity. true, false are supported values",
 		"PULL_ALWAYS":         "Always pull image, even if locally available (0|1)",
 		"DOCKER_DRIVER_QUIET": "Make the Docker driver quiet (only print container stdout/stderr)",
+		"OUTPUTS_MOUNT_PATH":  "Absolute path to where Docker driver can create temporary directories to bundle outputs. Defaults to temp dir.",
 	}
 }
 
@@ -124,20 +129,20 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 	return cli, nil
 }
 
-func (d *Driver) exec(op *driver.Operation) error {
+func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	ctx := context.Background()
 
 	cli, err := d.initializeDockerCli()
 	if err != nil {
-		return err
+		return driver.OperationResult{}, err
 	}
 
 	if d.Simulate {
-		return nil
+		return driver.OperationResult{}, nil
 	}
 	if d.config["PULL_ALWAYS"] == "1" {
 		if err := pullImage(ctx, cli, op.Image); err != nil {
-			return err
+			return driver.OperationResult{}, err
 		}
 	}
 	var env []string
@@ -153,11 +158,41 @@ func (d *Driver) exec(op *driver.Operation) error {
 		AttachStdout: true,
 	}
 
-	hostCfg := &container.HostConfig{AutoRemove: true}
+	outputsFolder, err := ioutil.TempDir(d.config["OUTPUTS_MOUNT_PATH"], "outputs")
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+	defer os.RemoveAll(outputsFolder)
+
+	// On Mac, the default temp folder (set by the $TMPDIR env variable) is in /var.
+	// Docker for Mac (by default) can access these paths at /private/var but not /var.
+	// To make things work smoothly, we'll adjust the path when no config is set:
+	if runtime.GOOS == "darwin" {
+		if d.config["OUTPUTS_MOUNT_PATH"] == "" && strings.HasPrefix(outputsFolder, "/var") {
+			outputsFolder = "/private" + outputsFolder
+		}
+	}
+
+	err = os.Chmod(outputsFolder, 0777)
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
+	hostCfg := &container.HostConfig{
+		AutoRemove: true,
+		Mounts: []mount.Mount{
+			{
+				Type:        mount.TypeBind,
+				Source:      outputsFolder,
+				Target:      "/cnab/app/outputs",
+				Consistency: mount.ConsistencyDefault,
+			},
+		},
+	}
 
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(cfg, hostCfg); err != nil {
-			return err
+			return driver.OperationResult{}, err
 		}
 	}
 
@@ -166,18 +201,18 @@ func (d *Driver) exec(op *driver.Operation) error {
 	case client.IsErrNotFound(err):
 		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", op.Image)
 		if err := pullImage(ctx, cli, op.Image); err != nil {
-			return err
+			return driver.OperationResult{}, err
 		}
 		if resp, err = cli.Client().ContainerCreate(ctx, cfg, hostCfg, nil, ""); err != nil {
-			return fmt.Errorf("cannot create container: %v", err)
+			return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 		}
 	case err != nil:
-		return fmt.Errorf("cannot create container: %v", err)
+		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
 
 	tarContent, err := generateTar(op.Files)
 	if err != nil {
-		return fmt.Errorf("error staging files: %s", err)
+		return driver.OperationResult{}, fmt.Errorf("error staging files: %s", err)
 	}
 	options := types.CopyToContainerOptions{
 		AllowOverwriteDirWithFile: false,
@@ -186,7 +221,7 @@ func (d *Driver) exec(op *driver.Operation) error {
 	// path from the given file, starting at the /.
 	err = cli.Client().CopyToContainer(ctx, resp.ID, "/", tarContent, options)
 	if err != nil {
-		return fmt.Errorf("error copying to / in container: %s", err)
+		return driver.OperationResult{}, fmt.Errorf("error copying to / in container: %s", err)
 	}
 
 	attach, err := cli.Client().ContainerAttach(ctx, resp.ID, types.ContainerAttachOptions{
@@ -196,7 +231,7 @@ func (d *Driver) exec(op *driver.Operation) error {
 		Logs:   true,
 	})
 	if err != nil {
-		return fmt.Errorf("unable to retrieve logs: %v", err)
+		return driver.OperationResult{}, fmt.Errorf("unable to retrieve logs: %v", err)
 	}
 	var (
 		stdout io.Writer = os.Stdout
@@ -220,23 +255,51 @@ func (d *Driver) exec(op *driver.Operation) error {
 
 	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionRemoved)
 	if err = cli.Client().ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("cannot start container: %v", err)
+		return driver.OperationResult{}, fmt.Errorf("cannot start container: %v", err)
 	}
 	select {
 	case err := <-errc:
 		if err != nil {
-			return fmt.Errorf("error in container: %v", err)
+			opResult, _ := fetchOutputs(outputsFolder)
+			return opResult, fmt.Errorf("error in container: %v", err)
 		}
 	case s := <-statusc:
 		if s.StatusCode == 0 {
-			return nil
+			return fetchOutputs(outputsFolder)
 		}
 		if s.Error != nil {
-			return fmt.Errorf("container exit code: %d, message: %v", s.StatusCode, s.Error.Message)
+			opResult, _ := fetchOutputs(outputsFolder)
+			return opResult, fmt.Errorf("container exit code: %d, message: %v", s.StatusCode, s.Error.Message)
 		}
-		return fmt.Errorf("container exit code: %d", s.StatusCode)
+		opResult, _ := fetchOutputs(outputsFolder)
+		return opResult, fmt.Errorf("container exit code: %d", s.StatusCode)
 	}
-	return err
+	opResult, _ := fetchOutputs(outputsFolder)
+	return opResult, err
+}
+
+// fetchOutputs takes a path to a directory on the local host and returns an OperationsResult or an error.
+// The goal is to collect all the files in the directory (recursively) and put them in a flat map of path to contents.
+// fetchOutputs will return partial results with an error.
+func fetchOutputs(hostpath string) (driver.OperationResult, error) {
+	opResult := driver.OperationResult{
+		Outputs: map[string]string{},
+	}
+	err := filepath.Walk(hostpath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		} else if info.IsDir() {
+			return nil
+		}
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		opResult.Outputs[strings.Replace(path, hostpath, "/cnab/app/outputs", 1)] = string(contents)
+		return nil
+	})
+
+	return opResult, err
 }
 
 func generateTar(files map[string]string) (io.Reader, error) {
