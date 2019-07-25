@@ -29,6 +29,7 @@ type Bundle struct {
 	Credentials      map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials"`
 	Outputs          *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
 	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
+	License          string                 `json:"license,omitempty" mapstructure:"license"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
