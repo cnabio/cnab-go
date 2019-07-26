@@ -16,20 +16,21 @@ import (
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
-	SchemaVersion    string                 `json:"schemaVersion" mapstructure:"schemaVersion"`
-	Name             string                 `json:"name" mapstructure:"name"`
-	Version          string                 `json:"version" mapstructure:"version"`
-	Description      string                 `json:"description" mapstructure:"description"`
-	Keywords         []string               `json:"keywords,omitempty" mapstructure:"keywords"`
-	Maintainers      []Maintainer           `json:"maintainers,omitempty" mapstructure:"maintainers"`
-	InvocationImages []InvocationImage      `json:"invocationImages" mapstructure:"invocationImages"`
-	Images           map[string]Image       `json:"images,omitempty" mapstructure:"images"`
-	Actions          map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
-	Parameters       *ParametersDefinition  `json:"parameters,omitempty" mapstructure:"parameters"`
-	Credentials      map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials"`
-	Outputs          *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
-	Definitions      definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
-	License          string                 `json:"license,omitempty" mapstructure:"license"`
+	SchemaVersion      string                 `json:"schemaVersion" mapstructure:"schemaVersion"`
+	Name               string                 `json:"name" mapstructure:"name"`
+	Version            string                 `json:"version" mapstructure:"version"`
+	Description        string                 `json:"description" mapstructure:"description"`
+	Keywords           []string               `json:"keywords,omitempty" mapstructure:"keywords"`
+	Maintainers        []Maintainer           `json:"maintainers,omitempty" mapstructure:"maintainers"`
+	InvocationImages   []InvocationImage      `json:"invocationImages" mapstructure:"invocationImages"`
+	Images             map[string]Image       `json:"images,omitempty" mapstructure:"images"`
+	Actions            map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
+	Parameters         *ParametersDefinition  `json:"parameters,omitempty" mapstructure:"parameters"`
+	Credentials        map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials"`
+	Outputs            *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
+	Definitions        definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
+	License            string                 `json:"license,omitempty" mapstructure:"license"`
+	RequiredExtensions []string               `json:"requiredExtensions,omitempty" mapstructure:"requiredExtensions"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
@@ -190,6 +191,22 @@ func (b Bundle) Validate() error {
 
 	if b.Version == "latest" {
 		return errors.New("'latest' is not a valid bundle version")
+	}
+
+	reqExt := make(map[string]bool, len(b.RequiredExtensions))
+	for _, requiredExtension := range b.RequiredExtensions {
+		// Verify the custom extension declared as required exists
+		if _, exists := b.Custom[requiredExtension]; !exists {
+			return fmt.Errorf("required extension '%s' is not defined in the Custom section of the bundle", requiredExtension)
+		}
+
+		// Check for duplicate entries
+		if _, exists := reqExt[requiredExtension]; exists {
+			return fmt.Errorf("required extension '%s' is already declared", requiredExtension)
+		}
+
+		// Populate map with required extension, for duplicate check above
+		reqExt[requiredExtension] = true
 	}
 
 	for _, img := range b.InvocationImages {

@@ -339,7 +339,39 @@ func TestValidateBundle_RequiresInvocationImage(t *testing.T) {
 	}
 }
 
-func TestReadCustomExtensions(t *testing.T) {
+func TestValidateRequiredExtensions(t *testing.T) {
+	is := assert.New(t)
+
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    "99.98",
+		InvocationImages: []InvocationImage{img},
+		RequiredExtensions: []string{
+			"my.custom.extension",
+		},
+	}
+
+	// Verify the error when a required extension is not present in custom
+	err := b.Validate()
+	is.EqualError(err, "required extension 'my.custom.extension' is not defined in the Custom section of the bundle")
+
+	// Add corresponding entry in custom
+	b.Custom = map[string]interface{}{
+		"my.custom.extension": true,
+	}
+
+	err = b.Validate()
+	is.NoError(err)
+
+	// Add duplicate required extension
+	b.RequiredExtensions = append(b.RequiredExtensions, "my.custom.extension")
+
+	err = b.Validate()
+	is.EqualError(err, "required extension 'my.custom.extension' is already declared")
+}
+
+func TestReadCustomAndRequiredExtensions(t *testing.T) {
 	data, err := ioutil.ReadFile("../testdata/bundles/foo.json")
 	if err != nil {
 		t.Errorf("cannot read bundle file: %v", err)
@@ -375,6 +407,11 @@ func TestReadCustomExtensions(t *testing.T) {
 	}
 	assert.Equal(t, true, backupExt["enabled"])
 	assert.Equal(t, "daily", backupExt["frequency"])
+
+	if len(bundle.RequiredExtensions) != 1 {
+		t.Errorf("Expected 1 required extension, got %d", len(bundle.RequiredExtensions))
+	}
+	assert.Equal(t, "com.example.duffle-bag", bundle.RequiredExtensions[0])
 }
 
 func TestOutputs_Marshall(t *testing.T) {
