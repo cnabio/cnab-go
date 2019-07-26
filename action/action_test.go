@@ -72,22 +72,20 @@ func mockBundle() *bundle.Bundle {
 				Default: "three",
 			},
 		},
-		Parameters: &bundle.ParametersDefinition{
-			Fields: map[string]bundle.ParameterDefinition{
-				"param_one": {
-					Definition: "ParamOne",
+		Parameters: map[string]bundle.Parameter{
+			"param_one": {
+				Definition: "ParamOne",
+			},
+			"param_two": {
+				Definition: "ParamTwo",
+				Destination: &bundle.Location{
+					EnvironmentVariable: "PARAM_TWO",
 				},
-				"param_two": {
-					Definition: "ParamTwo",
-					Destination: &bundle.Location{
-						EnvironmentVariable: "PARAM_TWO",
-					},
-				},
-				"param_three": {
-					Definition: "ParamThree",
-					Destination: &bundle.Location{
-						Path: "/param/three",
-					},
+			},
+			"param_three": {
+				Definition: "ParamThree",
+				Destination: &bundle.Location{
+					Path: "/param/three",
 				},
 			},
 		},
@@ -203,8 +201,9 @@ func TestOpFromClaim_UndefinedParams(t *testing.T) {
 func TestOpFromClaim_MissingRequiredParameter(t *testing.T) {
 	now := time.Now()
 	b := mockBundle()
-	b.Parameters.Required = []string{"param_one"}
-	b.Parameters.Fields["param_one"] = bundle.ParameterDefinition{}
+	b.Parameters["param_one"] = bundle.Parameter{
+		Required: true,
+	}
 
 	c := &claim.Claim{
 		Created:  now,
@@ -233,10 +232,10 @@ func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
 	now := time.Now()
 	b := mockBundle()
 	// Add a required parameter only defined for the test action
-	b.Parameters.Fields["param_test"] = bundle.ParameterDefinition{
-		ApplyTo: []string{"test"},
+	b.Parameters["param_test"] = bundle.Parameter{
+		ApplyTo:  []string{"test"},
+		Required: true,
 	}
-	b.Parameters.Required = []string{"param_test"}
 	c := &claim.Claim{
 		Created:  now,
 		Modified: now,

@@ -126,20 +126,18 @@ func TestValuesOrDefaults(t *testing.T) {
 				Default: false,
 			},
 		},
-		Parameters: &ParametersDefinition{
-			Fields: map[string]ParameterDefinition{
-				"port": {
-					Definition: "portType",
-				},
-				"host": {
-					Definition: "hostType",
-				},
-				"enabled": {
-					Definition: "enabledType",
-				},
-				"replicaCount": {
-					Definition: "replicaCountType",
-				},
+		Parameters: map[string]Parameter{
+			"port": {
+				Definition: "portType",
+			},
+			"host": {
+				Definition: "hostType",
+			},
+			"enabled": {
+				Definition: "enabledType",
+			},
+			"replicaCount": {
+				Definition: "replicaCountType",
 			},
 		},
 	}
@@ -156,6 +154,10 @@ func TestValuesOrDefaults(t *testing.T) {
 	vals["replicaCount"] = "banana"
 	_, err = ValuesOrDefaults(vals, currentVals, b)
 	is.Error(err)
+
+	// Check for panic when zero value Bundle is passed
+	_, err = ValuesOrDefaults(vals, currentVals, &Bundle{})
+	is.NoError(err)
 }
 
 func TestValuesOrDefaults_NoParameter(t *testing.T) {
@@ -184,16 +186,14 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 				Default: false,
 			},
 		},
-		Parameters: &ParametersDefinition{
-			Fields: map[string]ParameterDefinition{
-				"minimum": {
-					Definition: "minType",
-				},
-				"enabled": {
-					Definition: "enabledType",
-				},
+		Parameters: map[string]Parameter{
+			"minimum": {
+				Definition: "minType",
+				Required:   true,
 			},
-			Required: []string{"minimum"},
+			"enabled": {
+				Definition: "enabledType",
+			},
 		},
 	}
 
@@ -233,15 +233,13 @@ func TestValuesOrDefaults_Immutable(t *testing.T) {
 				Default: false,
 			},
 		},
-		Parameters: &ParametersDefinition{
-			Fields: map[string]ParameterDefinition{
-				"namespace": {
-					Definition: "namespaceType",
-					Immutable:  true,
-				},
-				"enabled": {
-					Definition: "enabledType",
-				},
+		Parameters: map[string]Parameter{
+			"namespace": {
+				Definition: "namespaceType",
+				Immutable:  true,
+			},
+			"enabled": {
+				Definition: "enabledType",
 			},
 		},
 	}
@@ -523,41 +521,40 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				Type: "string",
 			},
 		},
-		Parameters: &ParametersDefinition{
-			Fields: map[string]ParameterDefinition{
-				"port": {
-					Definition: "portType",
-					Destination: &Location{
-						EnvironmentVariable: "PORT",
-					},
+		Parameters: map[string]Parameter{
+			"port": {
+				Definition: "portType",
+				Destination: &Location{
+					EnvironmentVariable: "PORT",
 				},
-				"host": {
-					Definition: "hostType",
-					Destination: &Location{
-						EnvironmentVariable: "HOST",
-					},
+				Required: true,
+			},
+			"host": {
+				Definition: "hostType",
+				Destination: &Location{
+					EnvironmentVariable: "HOST",
 				},
-				"enabled": {
-					Definition: "enabledType",
-					Destination: &Location{
-						EnvironmentVariable: "ENABLED",
-					},
-				},
-				"replicaCount": {
-					Definition: "replicaCountType",
-					Destination: &Location{
-						EnvironmentVariable: "REPLICA_COUNT",
-					},
-				},
-				"productKey": {
-					Definition: "productKeyType",
-					Destination: &Location{
-						EnvironmentVariable: "PRODUCT_KEY",
-					},
-					Immutable: true,
+				Required: true,
+			},
+			"enabled": {
+				Definition: "enabledType",
+				Destination: &Location{
+					EnvironmentVariable: "ENABLED",
 				},
 			},
-			Required: []string{"port", "host"},
+			"replicaCount": {
+				Definition: "replicaCountType",
+				Destination: &Location{
+					EnvironmentVariable: "REPLICA_COUNT",
+				},
+			},
+			"productKey": {
+				Definition: "productKeyType",
+				Destination: &Location{
+					EnvironmentVariable: "PRODUCT_KEY",
+				},
+				Immutable: true,
+			},
 		},
 		Outputs: &OutputsDefinition{
 			Fields: map[string]OutputDefinition{
@@ -576,7 +573,7 @@ func TestBundleMarshallAllThings(t *testing.T) {
 
 	_, err = b.WriteTo(&buf)
 	require.NoError(t, err, "test requires output")
-	assert.Equal(t, []byte(expectedJSON), buf.Bytes(), "output should match expected canonical json")
+	assert.Equal(t, string(expectedJSON), buf.String(), "output should match expected canonical json")
 }
 
 func TestValidateABundleAndParams(t *testing.T) {
