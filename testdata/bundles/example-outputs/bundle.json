@@ -28,10 +28,12 @@
   "outputs": {
     "fields": {
       "output1": {
-        "path": "/cnab/app/outputs/output1"
+        "path": "/cnab/app/outputs/output1",
+        "definition": "StringParam"
       },
       "output2": {
-        "path": "/cnab/app/outputs/output2"
+        "path": "/cnab/app/outputs/output2",
+        "definition": "StringParam"
       }
     }
   }

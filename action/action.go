@@ -122,6 +122,9 @@ func setOutputsOnClaim(claim *claim.Claim, outputs map[string]string) error {
 		}
 
 		outputSchema := claim.Bundle.Definitions[name]
+		if outputSchema == nil {
+			return fmt.Errorf("invalid bundle: output %q references definition %q, which was not found", outputName, name)
+		}
 		outputTypes, allowedTypesList, err := allowedTypes(*outputSchema)
 		if err != nil {
 			return err
