@@ -117,6 +117,10 @@ func setOutputsOnClaim(claim *claim.Claim, outputs map[string]string) error {
 
 	for outputName, v := range claim.Bundle.Outputs.Fields {
 		name := v.Definition
+		if name == "" {
+			return fmt.Errorf("invalid bundle: no definition set for output %q", outputName)
+		}
+
 		outputSchema := claim.Bundle.Definitions[name]
 		outputTypes, allowedTypesList, err := allowedTypes(*outputSchema)
 		if err != nil {
