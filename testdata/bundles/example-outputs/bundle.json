@@ -1,0 +1,38 @@
+{
+  "name": "outputs",
+  "version": "0.1.1",
+  "schemaVersion": "1.0.0-WD",
+  "description": "An example bundle for showing outputs",
+  "invocationImages": [
+    {
+      "image": "pvtlmc/example-outputs:latest",
+      "imageType":"docker"
+    }
+  ],
+  "keywords": [
+    "outputs",
+    "cnab",
+    "example",
+    "test"
+  ],
+  "maintainers": [
+    {
+      "email": "john.doe@example.com",
+      "name": "John Doe",
+      "url": "https://example.com"
+    }
+  ],
+  "images": null,
+  "parameters": null,
+  "credentials": null,
+  "outputs": {
+    "fields": {
+      "output1": {
+        "path": "/cnab/app/outputs/output1"
+      },
+      "output2": {
+        "path": "/cnab/app/outputs/output2"
+      }
+    }
+  }
+}
