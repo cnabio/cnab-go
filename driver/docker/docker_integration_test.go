@@ -18,9 +18,10 @@ func TestDriver_Run(t *testing.T) {
 
 	var output bytes.Buffer
 	op.Out = &output
-	op.Environment = map[string]string{}
-	op.Environment["CNAB_ACTION"] = op.Action
-	op.Environment["CNAB_INSTALLATION_NAME"] = op.Installation
+	op.Environment = map[string]string{
+		"CNAB_ACTION":            op.Action,
+		"CNAB_INSTALLATION_NAME": op.Installation,
+	}
 
 	docker := &Driver{}
 	docker.SetContainerOut(op.Out) // Docker driver writes container stdout to driver.containerOut.

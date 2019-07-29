@@ -270,14 +270,16 @@ func TestOpFromClaim_MissingRequiredParameter(t *testing.T) {
 	c.Bundle.Parameters.Fields["param_one"] = bundle.ParameterDefinition{}
 	invocImage := c.Bundle.InvocationImages[0]
 
-	// missing required parameter fails
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.EqualError(t, err, `missing required parameter "param_one" for action "install"`)
+	t.Run("missing required parameter fails", func(t *testing.T) {
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		assert.EqualError(t, err, `missing required parameter "param_one" for action "install"`)
+	})
 
-	// fill the missing parameter
-	c.Parameters["param_one"] = "oneval"
-	_, err = opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
+	t.Run("fill the missing parameter", func(t *testing.T) {
+		c.Parameters["param_one"] = "oneval"
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		assert.Nil(t, err)
+	})
 }
 
 func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
@@ -295,138 +297,173 @@ func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
 	c.Bundle.Parameters.Required = []string{"param_test"}
 	invocImage := c.Bundle.InvocationImages[0]
 
-	// calling install action without the test required parameter for test action is ok
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
+	t.Run("if param is not required for this action, succeed", func(t *testing.T) {
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		assert.Nil(t, err)
+	})
 
-	// test action needs the required parameter
-	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
-	assert.EqualError(t, err, `missing required parameter "param_test" for action "test"`)
+	t.Run("if param is required for this action and is missing, error", func(t *testing.T) {
+		_, err := opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+		assert.EqualError(t, err, `missing required parameter "param_test" for action "test"`)
+	})
 
-	c.Parameters["param_test"] = "only for test action"
-	_, err = opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
-	assert.Nil(t, err)
+	t.Run("if param is required for this action and is set, succeed", func(t *testing.T) {
+		c.Parameters["param_test"] = "only for test action"
+		_, err := opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+		assert.Nil(t, err)
+	})
 }
 
 func TestSetOutputsOnClaim(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()
 
-	// Just some text in a file is a valid string
-	output := map[string]string{
-		"/tmp/some/path": "a valid output",
-	}
-	outputErrors := setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("any text in a file is a valid string", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "a valid output",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	// Accidentally only putting a real JSON value in your "string" file is still a string
-	output = map[string]string{
-		"/tmp/some/path": "2",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("a non-string JSON value is still a string", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "2",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	// Non strings given a good type should also work
 	// Types to check here: "null", "boolean", "object", "array", "number", or "integer"
 
-	field := c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "NullParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "null",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	// Non strings given a good type should also work
+	t.Run("null succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "NullParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "null",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	field = c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "BooleanParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "true",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("boolean succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "BooleanParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "true",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	field = c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "ObjectParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "{}",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("object succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "ObjectParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "{}",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	field = c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "ArrayParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "[]",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("array succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "ArrayParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "[]",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	field = c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "NumberParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "3.14",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("number succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "NumberParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "3.14",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	field = c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "IntegerParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
-	output = map[string]string{
-		"/tmp/some/path": "372",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("integer as number succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "NumberParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "372",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
+
+	t.Run("integer succeeds", func(t *testing.T) {
+		field := c.Bundle.Outputs.Fields["some-output"]
+		field.Definition = "IntegerParam"
+		c.Bundle.Outputs.Fields["some-output"] = field
+		output := map[string]string{
+			"/tmp/some/path": "372",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 }
 
 func TestSetOutputsOnClaim_MultipleTypes(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()
-
-	// accept boolean or integer
 	field := c.Bundle.Outputs.Fields["some-output"]
 	field.Definition = "BooleanAndIntegerParam"
 	c.Bundle.Outputs.Fields["some-output"] = field
 
-	// passes with boolean
-	output := map[string]string{
-		"/tmp/some/path": "false",
-	}
+	t.Run("BooleanOrInteger, so boolean succeeds", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "false",
+		}
 
-	outputErrors := setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	// passes with integer
-	output = map[string]string{
-		"/tmp/some/path": "5",
-	}
+	t.Run("BooleanOrInteger, so integer succeeds", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "5",
+		}
 
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
+}
 
-	// accept string or integer
-	field = c.Bundle.Outputs.Fields["some-output"]
+// Tests that strings accept anything even as part of a list of types.
+func TestSetOutputsOnClaim_MultipleTypesWithString(t *testing.T) {
+	c := newClaim()
+	c.Bundle = mockBundle()
+	field := c.Bundle.Outputs.Fields["some-output"]
 	field.Definition = "StringAndBooleanParam"
 	c.Bundle.Outputs.Fields["some-output"] = field
 
-	// passes with null because string accept anything
-	output = map[string]string{
-		"/tmp/some/path": "null",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("null succeeds", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "null",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 
-	// passes with non-json string because string accept anything
-	output = map[string]string{
-		"/tmp/some/path": "XYZ is not a JSON value",
-	}
-	outputErrors = setOutputsOnClaim(c, output)
-	assert.NoError(t, outputErrors)
+	t.Run("non-json string succeeds", func(t *testing.T) {
+		output := map[string]string{
+			"/tmp/some/path": "XYZ is not a JSON value",
+		}
+		outputErrors := setOutputsOnClaim(c, output)
+		assert.NoError(t, outputErrors)
+	})
 }
 
 func TestSetOutputsOnClaim_MismatchType(t *testing.T) {
@@ -437,21 +474,23 @@ func TestSetOutputsOnClaim_MismatchType(t *testing.T) {
 	field.Definition = "BooleanParam"
 	c.Bundle.Outputs.Fields["some-output"] = field
 
-	// error case: output content type does not match output definition
-	invalidParsableOutput := map[string]string{
-		"/tmp/some/path": "2",
-	}
+	t.Run("error case: content type does not match output definition", func(t *testing.T) {
+		invalidParsableOutput := map[string]string{
+			"/tmp/some/path": "2",
+		}
 
-	outputErrors := setOutputsOnClaim(c, invalidParsableOutput)
-	assert.EqualError(t, outputErrors, `error: ["some-output" is not any of the expected types (boolean) because it is "integer"]`)
+		outputErrors := setOutputsOnClaim(c, invalidParsableOutput)
+		assert.EqualError(t, outputErrors, `error: ["some-output" is not any of the expected types (boolean) because it is "integer"]`)
+	})
 
-	// error case: output content is not valid JSON and the definition is not a string
-	invalidNonParsableOutput := map[string]string{
-		"/tmp/some/path": "Not a boolean",
-	}
+	t.Run("error case: content is not valid JSON and definition is not string", func(t *testing.T) {
+		invalidNonParsableOutput := map[string]string{
+			"/tmp/some/path": "Not a boolean",
+		}
 
-	outputErrors = setOutputsOnClaim(c, invalidNonParsableOutput)
-	assert.EqualError(t, outputErrors, `error: [failed to parse "some-output": invalid character 'N' looking for beginning of value]`)
+		outputErrors := setOutputsOnClaim(c, invalidNonParsableOutput)
+		assert.EqualError(t, outputErrors, `error: [failed to parse "some-output": invalid character 'N' looking for beginning of value]`)
+	})
 }
 
 func TestSelectInvocationImage_EmptyInvocationImages(t *testing.T) {

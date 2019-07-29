@@ -169,7 +169,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	// To make things work smoothly, we'll adjust the path when no config is set:
 	if runtime.GOOS == "darwin" {
 		if d.config["OUTPUTS_MOUNT_PATH"] == "" && strings.HasPrefix(outputsFolder, "/var") {
-			outputsFolder = "/private" + outputsFolder
+			outputsFolder = filepath.Join("/private", outputsFolder)
 		}
 	}
 

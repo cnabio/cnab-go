@@ -33,7 +33,7 @@ type Operation struct {
 	Environment map[string]string `json:"environment"`
 	// Files contains files that should be injected into the invocation image.
 	Files map[string]string `json:"files"`
-	// Outputs
+	// Outputs is a list of paths starting with `/cnab/app/outputs` that the driver should return the contents of in the OperationResult.
 	Outputs []string `json:"outputs"`
 	// Output stream for log messages from the driver
 	Out io.Writer `json:"-"`

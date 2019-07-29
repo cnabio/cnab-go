@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/deislabs/cnab-go/bundle"
+	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/credentials"
 	"github.com/deislabs/cnab-go/driver"
@@ -53,57 +54,82 @@ func golangTypeToJSONType(value interface{}) (string, error) {
 	}
 }
 
+// allowedTypes takes an output Schema and returns a map of the allowed types (to true)
+// and a string that is a list of all the allowed types (for error messagse)
+// or an error (if reading the allowed types from the schema failed).
+func allowedTypes(outputSchema definition.Schema) (map[string]bool, string, error) {
+	var outputTypes []string
+	mapOutputTypes := map[string]bool{}
+
+	// Get list of one or more allowed types for this output
+	outputType, ok, err1 := outputSchema.GetType()
+	if !ok { // there are multiple types
+		var err2 error
+		outputTypes, ok, err2 = outputSchema.GetTypes()
+		if !ok {
+			return mapOutputTypes, "", fmt.Errorf("Getting a single type errored with %q and getting multiple types errored with %q", err1, err2)
+		}
+	} else {
+		outputTypes = []string{outputType}
+	}
+
+	// Turn allowed outputs into map for easier membership checking
+	for _, thing := range outputTypes {
+		mapOutputTypes[thing] = true
+	}
+
+	return mapOutputTypes, strings.Join(outputTypes, ", "), nil
+}
+
+// isTypeOK uses the content and allowedTypes arguments to make sure the content of an output file matches one of the allowed types.
+// The other arguments (name and allowedTypesList) are used when assembling error messages.
+func isTypeOk(name, content string, allowedTypes map[string]bool, allowedTypesList string) error {
+	if !allowedTypes["string"] { // String output types are always passed through as the escape hatch for non-JSON bundle outputs.
+		var value interface{}
+		err := json.Unmarshal([]byte(content), &value)
+		if err != nil {
+			return fmt.Errorf("failed to parse %q: %s", name, err)
+		} else {
+			v, err := golangTypeToJSONType(value)
+			if err != nil {
+				return fmt.Errorf("%q is not a known JSON type it is %q; expected one of: %s", name, v, allowedTypesList)
+			}
+			switch {
+			case allowedTypes[v]:
+				break
+			case v == "integer" && allowedTypes["number"]: // All integers make acceptable numbers, and our helper function provides the most specific type.
+				break
+			default:
+				return fmt.Errorf("%q is not any of the expected types (%s) because it is %q", name, allowedTypesList, v)
+			}
+		}
+	}
+	return nil
+}
+
 func setOutputsOnClaim(claim *claim.Claim, outputs map[string]string) error {
-	outputErrors := []string{}
+	var outputErrors []error
 	claim.Outputs = map[string]interface{}{}
 
-	if claim.Bundle.Outputs != nil {
-		for outputName, v := range claim.Bundle.Outputs.Fields {
-			name := claim.Bundle.Outputs.Fields[outputName].Definition
-			outputSchema := claim.Bundle.Definitions[name]
+	if claim.Bundle.Outputs == nil {
+		return nil
+	}
 
-			var outputTypes []string
-			outputType, ok, _ := outputSchema.GetType()
-			if !ok { // there are multiple types
-				var err error
-				outputTypes, ok, err = outputSchema.GetTypes()
-				if !ok {
-					panic(err)
-				}
-			} else {
-				outputTypes = []string{outputType}
+	for outputName, v := range claim.Bundle.Outputs.Fields {
+		name := v.Definition
+		outputSchema := claim.Bundle.Definitions[name]
+		outputTypes, allowedTypesList, err := allowedTypes(*outputSchema)
+		if err != nil {
+			return err
+		}
+
+		content := outputs[v.Path]
+		if content != "" {
+			err := isTypeOk(outputName, content, outputTypes, allowedTypesList)
+			if err != nil {
+				outputErrors = append(outputErrors, err)
 			}
-
-			mapOutputTypes := map[string]bool{}
-			for _, thing := range outputTypes {
-				mapOutputTypes[thing] = true
-			}
-
-			content := outputs[v.Path]
-			if content != "" {
-				var value interface{}
-
-				if !mapOutputTypes["string"] { // String output types are always passed through as the escape hatch for non-JSON bundle outputs.
-					err := json.Unmarshal([]byte(content), &value)
-					if err != nil {
-						outputErrors = append(outputErrors, fmt.Sprintf("failed to parse %q: %s", outputName, err))
-					} else {
-						v, err := golangTypeToJSONType(value)
-						if err != nil {
-							outputErrors = append(outputErrors, fmt.Sprintf("%q is not a known JSON type it is %q; expected one of: %s", outputName, v, strings.Join(outputTypes, ", ")))
-						}
-						switch {
-						case mapOutputTypes[v]:
-							break
-						case v == "integer" && mapOutputTypes["number"]: // All integers make acceptable numbers, and our helper function provides the most specific type.
-							break
-						default:
-							outputErrors = append(outputErrors, fmt.Sprintf("%q is not any of the expected types (%s) because it is %q", outputName, strings.Join(outputTypes, ", "), v))
-						}
-					}
-				}
-				claim.Outputs[outputName] = outputs[v.Path]
-			}
+			claim.Outputs[outputName] = outputs[v.Path]
 		}
 	}
 
@@ -185,8 +211,8 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 
 	var outputs []string
 	if c.Bundle.Outputs != nil {
-		for k := range c.Bundle.Outputs.Fields {
-			outputs = append(outputs, c.Bundle.Outputs.Fields[k].Path)
+		for _, v := range c.Bundle.Outputs.Fields {
+			outputs = append(outputs, v.Path)
 		}
 	}
 
