@@ -9,8 +9,6 @@ import (
 	"os"
 	unix_path "path"
 	"path/filepath"
-	"runtime"
-	"strings"
 
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/docker/cli/cli/command"
@@ -18,7 +16,6 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -158,38 +155,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		AttachStdout: true,
 	}
 
-	outputsFolder, err := ioutil.TempDir(d.config["OUTPUTS_MOUNT_PATH"], "outputs")
-	if err != nil {
-		return driver.OperationResult{}, err
-	}
-	defer os.RemoveAll(outputsFolder)
-
-	// On Mac, the default temp folder (set by the $TMPDIR env variable) is in /var.
-	// Docker for Mac (by default) can access these paths at /private/var but not /var.
-	// To make things work smoothly, we'll adjust the path when no config is set:
-	if runtime.GOOS == "darwin" {
-		if d.config["OUTPUTS_MOUNT_PATH"] == "" && strings.HasPrefix(outputsFolder, "/var") {
-			outputsFolder = filepath.Join("/private", outputsFolder)
-		}
-	}
-
-	err = os.Chmod(outputsFolder, 0777)
-	if err != nil {
-		return driver.OperationResult{}, err
-	}
-
-	hostCfg := &container.HostConfig{
-		AutoRemove: true,
-		Mounts: []mount.Mount{
-			{
-				Type:        mount.TypeBind,
-				Source:      outputsFolder,
-				Target:      "/cnab/app/outputs",
-				Consistency: mount.ConsistencyDefault,
-			},
-		},
-	}
-
+	hostCfg := &container.HostConfig{}
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(cfg, hostCfg); err != nil {
 			return driver.OperationResult{}, err
@@ -209,6 +175,8 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	case err != nil:
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
+
+	defer cli.Client().ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
 
 	tarContent, err := generateTar(op.Files)
 	if err != nil {
@@ -253,53 +221,71 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		}
 	}()
 
-	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionRemoved)
+	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	if err = cli.Client().ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot start container: %v", err)
 	}
 	select {
 	case err := <-errc:
 		if err != nil {
-			opResult, _ := fetchOutputs(outputsFolder)
+			opResult, _ := d.fetchOutputs(ctx, resp.ID)
 			return opResult, fmt.Errorf("error in container: %v", err)
 		}
 	case s := <-statusc:
 		if s.StatusCode == 0 {
-			return fetchOutputs(outputsFolder)
+			return d.fetchOutputs(ctx, resp.ID)
 		}
 		if s.Error != nil {
-			opResult, _ := fetchOutputs(outputsFolder)
+			opResult, _ := d.fetchOutputs(ctx, resp.ID)
 			return opResult, fmt.Errorf("container exit code: %d, message: %v", s.StatusCode, s.Error.Message)
 		}
-		opResult, _ := fetchOutputs(outputsFolder)
+		opResult, _ := d.fetchOutputs(ctx, resp.ID)
 		return opResult, fmt.Errorf("container exit code: %d", s.StatusCode)
 	}
-	opResult, _ := fetchOutputs(outputsFolder)
+	opResult, _ := d.fetchOutputs(ctx, resp.ID)
 	return opResult, err
 }
 
-// fetchOutputs takes a path to a directory on the local host and returns an OperationsResult or an error.
+// fetchOutputs takes a context and a container ID; it copies the /cnab/app/outputs directory from that container.
 // The goal is to collect all the files in the directory (recursively) and put them in a flat map of path to contents.
-// fetchOutputs will return partial results with an error.
-func fetchOutputs(hostpath string) (driver.OperationResult, error) {
+// This map will be inside the OperationResult. When fetchOutputs returns an error, it may also return partial results.
+func (d *Driver) fetchOutputs(ctx context.Context, container string) (driver.OperationResult, error) {
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
 	}
-	err := filepath.Walk(hostpath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		} else if info.IsDir() {
-			return nil
-		}
-		contents, err := ioutil.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		opResult.Outputs[strings.Replace(path, hostpath, "/cnab/app/outputs", 1)] = string(contents)
-		return nil
-	})
+	ioReader, _, err := d.dockerCli.Client().CopyFromContainer(ctx, container, "/cnab/app/outputs")
+	if err != nil {
+		return opResult, fmt.Errorf("error copying outputs from container: %s", err)
+	}
 
-	return opResult, err
+	tarReader := tar.NewReader(ioReader)
+	header, err := tarReader.Next()
+
+	// io.EOF pops us out of loop on successful run.
+	for err == nil {
+		// skip directories because we're gathering file contents
+		if header.FileInfo().IsDir() {
+			header, err = tarReader.Next()
+			continue
+		}
+
+		var contents []byte
+		// CopyFromContainer strips prefix above outputs directory.
+		pathInContainer := filepath.Join("/cnab/app", header.Name)
+
+		contents, err = ioutil.ReadAll(tarReader)
+		if err != nil {
+			return opResult, fmt.Errorf("error while reading %q from outputs tar: %s", pathInContainer, err)
+		}
+		opResult.Outputs[pathInContainer] = string(contents)
+		header, err = tarReader.Next()
+	}
+
+	if err != io.EOF {
+		return opResult, err
+	}
+
+	return opResult, nil
 }
 
 func generateTar(files map[string]string) (io.Reader, error) {

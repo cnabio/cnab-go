@@ -12,7 +12,7 @@ func TestDriver_Run(t *testing.T) {
 	op := &driver.Operation{
 		Installation: "example",
 		Action:       "install",
-		Image:        "pvtlmc/example-outputs@sha256:ae3c1c719d87e981ecfdf84862ff389ce6a1281c99372f45d158f52e3d5be3dc",
+		Image:        "pvtlmc/example-outputs@sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e",
 		Outputs:      []string{"/cnab/app/outputs/output1", "/cnab/app/outputs/output2"},
 	}
 
