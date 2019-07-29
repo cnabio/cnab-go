@@ -23,6 +23,11 @@
     }
   ],
   "images": null,
+  "definitions": {
+    "StringParam" : {
+      "type": "string"
+    }
+  },
   "parameters": null,
   "credentials": null,
   "outputs": {
