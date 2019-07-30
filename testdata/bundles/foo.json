@@ -77,5 +77,8 @@
                 "path": "/cnab/is/go"
             }
         }
-    }
+    },
+    "requiredExtensions": [
+      "com.example.duffle-bag"
+    ]
 }
