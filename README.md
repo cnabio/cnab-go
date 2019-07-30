@@ -43,10 +43,18 @@ Compile all the code:
 $ make build
 ```
 
-Run tests:
+Run unit tests:
 
 ```bash
 $ make test
+```
+
+Run integration tests:
+
+Note: The integration tests use a local docker daemon to create containers. Please ensure you have one configured before running the tests.
+
+```bash
+$ make integration-test
 ```
 
 This will only run the linter to ensure the code meet the standard.
