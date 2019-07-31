@@ -25,7 +25,7 @@ type Bundle struct {
 	InvocationImages   []InvocationImage      `json:"invocationImages" mapstructure:"invocationImages"`
 	Images             map[string]Image       `json:"images,omitempty" mapstructure:"images"`
 	Actions            map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
-	Parameters         *ParametersDefinition  `json:"parameters,omitempty" mapstructure:"parameters"`
+	Parameters         map[string]Parameter   `json:"parameters,omitempty" mapstructure:"parameters"`
 	Credentials        map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials"`
 	Outputs            *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
 	Definitions        definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
@@ -98,7 +98,7 @@ type InvocationImage struct {
 	BaseImage `mapstructure:",squash"`
 }
 
-// Map that stores the relocated images
+// ImageRelocationMap stores the relocated images
 // The key is the Image in bundle.json and the value is the new Image
 // from the relocated registry
 type ImageRelocationMap map[string]string
@@ -139,22 +139,13 @@ type Action struct {
 func ValuesOrDefaults(vals map[string]interface{}, currentVals map[string]interface{}, b *Bundle) (map[string]interface{}, error) {
 	res := map[string]interface{}{}
 
-	if b.Parameters == nil {
-		return res, nil
-	}
-
-	requiredMap := map[string]struct{}{}
-	for _, key := range b.Parameters.Required {
-		requiredMap[key] = struct{}{}
-	}
-
-	for name, def := range b.Parameters.Fields {
-		s, ok := b.Definitions[def.Definition]
+	for name, param := range b.Parameters {
+		s, ok := b.Definitions[param.Definition]
 		if !ok {
 			return res, fmt.Errorf("unable to find definition for %s", name)
 		}
 		if val, ok := vals[name]; ok {
-			if currentVal, ok := currentVals[name]; def.Immutable && ok && currentVal != val {
+			if currentVal, ok := currentVals[name]; param.Immutable && ok && currentVal != val {
 				return res, fmt.Errorf("parameter %s is immutable and cannot be overridden with value %v", name, val)
 			}
 			valErrs, err := s.Validate(val)
@@ -170,7 +161,7 @@ func ValuesOrDefaults(vals map[string]interface{}, currentVals map[string]interf
 			typedVal := s.CoerceValue(val)
 			res[name] = typedVal
 			continue
-		} else if _, ok := requiredMap[name]; ok {
+		} else if param.Required {
 			return res, fmt.Errorf("parameter %q is required", name)
 		}
 		res[name] = s.Default
