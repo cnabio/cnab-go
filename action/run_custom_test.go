@@ -85,6 +85,27 @@ func TestRunCustom(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 
+	t.Run("error case: driver returns an error but the action does not modify", func(t *testing.T) {
+		c := newClaim()
+		action := c.Bundle.Actions["test"]
+		action.Modifies = false
+		c.Bundle.Actions["test"] = action
+
+		rc.Driver = &mockDriver{
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error:        errors.New("I always fail"),
+			shouldHandle: true,
+		}
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.Empty(t, c.Result, "Expected claim results not to be tracked when the action does not modify")
+		assert.Empty(t, c.Outputs, "Expected output results not to be tracked with the action does not modify")
+	})
+
 	t.Run("error case: forbidden custom actions should fail", func(t *testing.T) {
 		c := newClaim()
 		rc.Action = "install"

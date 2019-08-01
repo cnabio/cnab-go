@@ -33,10 +33,7 @@ func (u *Uninstall) Run(c *claim.Claim, creds credentials.Set, w io.Writer) erro
 		c.Result.Message = err.Error()
 		return err
 	}
-
 	c.Update(claim.ActionUninstall, claim.StatusSuccess)
-	if outputErrors != nil {
-		return outputErrors
-	}
-	return nil
+
+	return outputErrors
 }

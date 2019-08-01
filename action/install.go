@@ -37,8 +37,5 @@ func (i *Install) Run(c *claim.Claim, creds credentials.Set, w io.Writer) error 
 	}
 	c.Update(claim.ActionInstall, claim.StatusSuccess)
 
-	if outputErrors != nil {
-		return outputErrors
-	}
-	return nil
+	return outputErrors
 }

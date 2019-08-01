@@ -105,7 +105,7 @@ func isTypeOk(name, content string, allowedTypes map[string]bool) error {
 
 		v, err := golangTypeToJSONType(value)
 		if err != nil {
-			return fmt.Errorf("%q is not a known JSON type it is %q; expected one of: %s", name, v, keys(allowedTypes))
+			return fmt.Errorf("%q is not a known JSON type. Expected %q to be one of: %s", name, v, keys(allowedTypes))
 		}
 		if !allowedTypes[v] {
 			return fmt.Errorf("%q is not any of the expected types (%s) because it is %q", name, keys(allowedTypes), v)
