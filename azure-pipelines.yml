@@ -25,14 +25,12 @@ steps:
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, build, test'
 
-- script: go get sigs.k8s.io/kind@v0.4.0
-  displayName: 'Install kind'
-
-- script: $(GOBIN)/kind create cluster --wait 300s
-  displayName: 'Deploying kind cluster'
+- script: /
+    go get sigs.k8s.io/kind@v0.4.0
+    $(GOBIN)/kind create cluster --wait 300s
+  displayName: 'Install kind and deploy cluster'
 
 - script: |
-    $(GOBIN)/kind create cluster --wait 300s
     cp $($(GOBIN)/kind get kubeconfig-path) ~/.kube/config
     make integration-test
-  displayName: 'Set up the Go workspace'
+  displayName: 'Run integration tests'
