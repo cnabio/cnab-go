@@ -7,42 +7,55 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	yaml "gopkg.in/yaml.v2"
 )
 
-func TestSimpleUnMarshallDefinition(t *testing.T) {
+func TestSimpleUnMarshalDefinition(t *testing.T) {
 	def := `{
+		"$comment": "schema comment",
+		"$id": "schema id",
+		"$ref": "schema ref",
 		"$schema": "http://json-schema.org/draft-07/schema#",
 		"type": "array",
-		"items": {
-			"type": "object",
-			"required": ["description", "schema", "tests"],
-			"properties": {
-				"description": {"type": "string"},
-				"schema": {},
-				"tests": {
-					"type": "array",
-					"items": {
-						"type": "object",
-						"required": ["description", "data", "valid"],
-						"properties": {
-							"description": {"type": "string"},
-							"data": {},
-							"valid": {"type": "boolean"}
+		"items": [
+			{
+				"type": "object",
+				"required": ["description", "schema", "tests"],
+				"properties": {
+					"description": {"type": "string"},
+					"schema": {},
+					"tests": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"required": ["description", "data", "valid"],
+							"properties": {
+								"description": {"type": "string"},
+								"data": {},
+								"valid": {"type": "boolean"}
+							},
+							"additionalProperties": false
 						},
-						"additionalProperties": false
-					},
-					"minItems": 1
-				}
-			},
-			"additionalProperties": false,
-			"minItems": 1
-		}	
+						"minItems": 1
+					}
+				},
+				"additionalProperties": false,
+				"minItems": 1
+			}
+		],
+		"additionalItems": {
+			"type": "string"
+		}
 	}`
 
 	definition := new(Schema)
 	err := json.Unmarshal([]byte(def), definition)
-	require.NoError(t, err, "should have been able to marshall definition")
+	require.NoError(t, err, "should have been able to json.Marshal definition")
 	assert.Equal(t, "array", definition.Type, "type should have been an array")
+
+	err = yaml.UnmarshalStrict([]byte(def), definition)
+	require.NoError(t, err, "should have been able to yaml.Marshal definition")
 }
 
 func TestSimpleSchema(t *testing.T) {
