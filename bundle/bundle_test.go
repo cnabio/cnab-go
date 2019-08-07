@@ -8,6 +8,8 @@ import (
 	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"gopkg.in/yaml.v2"
 )
 
 func TestReadTopLevelProperties(t *testing.T) {
@@ -420,117 +422,136 @@ func TestOutputs_Marshall(t *testing.T) {
 	assert.Equal(t, "/cnab/app/outputs/port", port.Path, "port path was not the expected value")
 }
 
+var exampleCred = Credential{
+	Description: "a password",
+	Location: Location{
+		EnvironmentVariable: "PASSWORD",
+		Path:                "/cnab/app/path",
+	},
+}
+
+var exampleBundle = &Bundle{
+	SchemaVersion: "v1.0.0-WD",
+	Name:          "testBundle",
+	Description:   "something",
+	Version:       "1.0",
+	License:       "MIT License",
+	Credentials: map[string]Credential{
+		"password": exampleCred,
+	},
+	Images: map[string]Image{
+		"server": {
+			BaseImage: BaseImage{
+				Image:     "nginx:1.0",
+				ImageType: "docker",
+			},
+			Description: "complicated",
+		},
+	},
+	InvocationImages: []InvocationImage{
+		{
+			BaseImage: BaseImage{
+				Image:     "deislabs/invocation-image:1.0",
+				ImageType: "docker",
+				Labels: map[string]string{
+					"os": "Linux",
+				},
+			},
+		},
+	},
+	Definitions: map[string]*definition.Schema{
+		"portType": {
+			Type:    "integer",
+			Default: 1234,
+		},
+		"hostType": {
+			Type:    "string",
+			Default: "locahost.localdomain",
+		},
+		"replicaCountType": {
+			Type:    "integer",
+			Default: 3,
+		},
+		"enabledType": {
+			Type:    "boolean",
+			Default: false,
+		},
+		"clientCert": {
+			Type:            "string",
+			ContentEncoding: "base64",
+		},
+		"productKeyType": {
+			Type: "string",
+		},
+	},
+	Parameters: map[string]Parameter{
+		"port": {
+			Definition: "portType",
+			Destination: &Location{
+				EnvironmentVariable: "PORT",
+				Path:                "/path/to/port",
+			},
+			Required: true,
+		},
+		"host": {
+			Definition: "hostType",
+			Destination: &Location{
+				EnvironmentVariable: "HOST",
+			},
+			Required: true,
+		},
+		"enabled": {
+			Definition: "enabledType",
+			Destination: &Location{
+				EnvironmentVariable: "ENABLED",
+			},
+		},
+		"replicaCount": {
+			Definition: "replicaCountType",
+			Destination: &Location{
+				EnvironmentVariable: "REPLICA_COUNT",
+			},
+		},
+		"productKey": {
+			Definition: "productKeyType",
+			Destination: &Location{
+				EnvironmentVariable: "PRODUCT_KEY",
+			},
+		},
+	},
+	Outputs: map[string]Output{
+		"clientCert": {
+			Path:       "/cnab/app/outputs/blah",
+			Definition: "clientCert",
+		},
+	},
+}
+
 func TestBundleMarshallAllThings(t *testing.T) {
-	cred := Credential{
-		Description: "a password",
-	}
-	cred.EnvironmentVariable = "PASSWORD"
-	cred.Path = "/cnab/app/path"
-
-	b := &Bundle{
-		SchemaVersion: "v1.0.0-WD",
-		Name:          "testBundle",
-		Description:   "something",
-		Version:       "1.0",
-		License:       "MIT License",
-		Credentials: map[string]Credential{
-			"password": cred,
-		},
-		Images: map[string]Image{
-			"server": {
-				BaseImage: BaseImage{
-					Image:     "nginx:1.0",
-					ImageType: "docker",
-				},
-				Description: "complicated",
-			},
-		},
-		InvocationImages: []InvocationImage{
-			{
-				BaseImage: BaseImage{
-					Image:     "deislabs/invocation-image:1.0",
-					ImageType: "docker",
-					Labels: map[string]string{
-						"os": "Linux",
-					},
-				},
-			},
-		},
-		Definitions: map[string]*definition.Schema{
-			"portType": {
-				Type:    "integer",
-				Default: 1234,
-			},
-			"hostType": {
-				Type:    "string",
-				Default: "locahost.localdomain",
-			},
-			"replicaCountType": {
-				Type:    "integer",
-				Default: 3,
-			},
-			"enabledType": {
-				Type:    "boolean",
-				Default: false,
-			},
-			"clientCert": {
-				Type:            "string",
-				ContentEncoding: "base64",
-			},
-			"productKeyType": {
-				Type: "string",
-			},
-		},
-		Parameters: map[string]Parameter{
-			"port": {
-				Definition: "portType",
-				Destination: &Location{
-					EnvironmentVariable: "PORT",
-				},
-				Required: true,
-			},
-			"host": {
-				Definition: "hostType",
-				Destination: &Location{
-					EnvironmentVariable: "HOST",
-				},
-				Required: true,
-			},
-			"enabled": {
-				Definition: "enabledType",
-				Destination: &Location{
-					EnvironmentVariable: "ENABLED",
-				},
-			},
-			"replicaCount": {
-				Definition: "replicaCountType",
-				Destination: &Location{
-					EnvironmentVariable: "REPLICA_COUNT",
-				},
-			},
-			"productKey": {
-				Definition: "productKeyType",
-				Destination: &Location{
-					EnvironmentVariable: "PRODUCT_KEY",
-				},
-			},
-		},
-		Outputs: map[string]Output{
-			"clientCert": {
-				Path:       "/cnab/app/outputs/blah",
-				Definition: "clientCert",
-			},
-		},
-	}
-
 	expectedJSON, err := ioutil.ReadFile("../testdata/bundles/canonical-bundle.json")
 	require.NoError(t, err, "couldn't read test data")
 
 	var buf bytes.Buffer
 
-	_, err = b.WriteTo(&buf)
+	_, err = exampleBundle.WriteTo(&buf)
 	require.NoError(t, err, "test requires output")
 	assert.Equal(t, string(expectedJSON), buf.String(), "output should match expected canonical json")
+}
+
+func TestBundleYamlRoundtrip(t *testing.T) {
+	bytes, err := yaml.Marshal(exampleBundle)
+	require.NoError(t, err, "should have been able to yaml.Marshal bundle")
+
+	expectedYAML, err := ioutil.ReadFile("../testdata/bundles/bundle.yaml")
+	require.NoError(t, err, "couldn't read test data")
+
+	assert.Equal(t, string(expectedYAML), string(bytes), "marshaled bytes should match expected yaml representation")
+
+	var roundTripBun Bundle
+	err = yaml.UnmarshalStrict(bytes, &roundTripBun)
+	require.NoError(t, err, "should have been able to yaml.UnmarshalStrict bundle")
+
+	assert.Equal(t, exampleBundle, &roundTripBun, "after a roundtrip yaml marshal/unmarshal, the bundle does not match expected")
 }
 
 func TestValidateABundleAndParams(t *testing.T) {

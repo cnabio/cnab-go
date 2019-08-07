@@ -1,0 +1,68 @@
+schemaVersion: v1.0.0-WD
+name: testBundle
+version: "1.0"
+description: something
+invocationImages:
+- imageType: docker
+  image: deislabs/invocation-image:1.0
+  contentDigest: ""
+  labels:
+    os: Linux
+images:
+  server:
+    imageType: docker
+    image: nginx:1.0
+    contentDigest: ""
+    description: complicated
+parameters:
+  enabled:
+    definition: enabledType
+    destination:
+      env: ENABLED
+  host:
+    definition: hostType
+    destination:
+      env: HOST
+    required: true
+  port:
+    definition: portType
+    destination:
+      path: /path/to/port
+      env: PORT
+    required: true
+  productKey:
+    definition: productKeyType
+    destination:
+      env: PRODUCT_KEY
+  replicaCount:
+    definition: replicaCountType
+    destination:
+      env: REPLICA_COUNT
+credentials:
+  password:
+    path: /cnab/app/path
+    env: PASSWORD
+    description: a password
+outputs:
+  clientCert:
+    definition: clientCert
+    path: /cnab/app/outputs/blah
+definitions:
+  clientCert:
+    contentEncoding: base64
+    type: string
+  enabledType:
+    default: false
+    type: boolean
+  hostType:
+    default: locahost.localdomain
+    type: string
+  portType:
+    default: 1234
+    type: integer
+  productKeyType:
+    type: string
+  replicaCountType:
+    default: 3
+    type: integer
+license: MIT License
