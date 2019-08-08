@@ -21,6 +21,16 @@ steps:
 - script: |
     go version
     go get -v -t -d ./...
-    make bootstrap build test lint
+    make bootstrap build test lint coverage
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, build, test'
+
+- task: PublishTestResults@2
+  inputs:
+    testRunner: JUnit
+    testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: Cobertura 
+    summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml

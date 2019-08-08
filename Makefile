@@ -29,6 +29,10 @@ HAS_GOLANGCI     := $(shell $(CHECK) golangci-lint)
 HAS_GOIMPORTS    := $(shell $(CHECK) goimports)
 GOLANGCI_VERSION := v1.16.0
 
+HAS_GOCOV_XML := $(shell command -v gocov-xml;)
+HAS_GOCOV := $(shell command -v gocov;)
+HAS_GO_JUNIT_REPORT := $(shell command -v go-junit-report;)
+
 
 .PHONY: bootstrap
 bootstrap:
@@ -43,3 +47,19 @@ ifndef HAS_GOIMPORTS
 	go get -u golang.org/x/tools/cmd/goimports
 endif
 	dep ensure -vendor-only -v
+
+ifndef HAS_GOCOV_XML
+	go get github.com/AlekSi/gocov-xml
+endif
+ifndef HAS_GOCOV
+	go get -u github.com/axw/gocov/gocov
+endif
+ifndef HAS_GO_JUNIT_REPORT
+	go get github.com/jstemmer/go-junit-report
+endif
+
+.PHONY: coverage
+coverage:
+	go test -v -coverprofile=coverage.txt -covermode count ./... 2>&1 | go-junit-report > report.xml
+	gocov convert coverage.txt > coverage.json
+	gocov-xml < coverage.json > coverage.xml
