@@ -1,9 +1,9 @@
 package action
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
-	"time"
 
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
@@ -17,42 +17,72 @@ var _ Action = &Uninstall{}
 func TestUninstall_Run(t *testing.T) {
 	out := ioutil.Discard
 
-	c := &claim.Claim{
-		Created:    time.Time{},
-		Modified:   time.Time{},
-		Name:       "name",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
-	}
+	t.Run("happy-path", func(t *testing.T) {
+		c := newClaim()
+		uninst := &Uninstall{
+			Driver: &mockDriver{
+				shouldHandle: true,
+				Result: driver.OperationResult{
+					Outputs: map[string]string{
+						"/tmp/some/path": "SOME CONTENT",
+					},
+				},
+				Error: nil,
+			},
+		}
+		err := uninst.Run(c, mockSet, out)
+		assert.NoError(t, err)
+		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during uninstall after uninstall action")
+		assert.Equal(t, claim.ActionUninstall, c.Result.Action, "Claim result action not successfully updated.")
+		assert.Equal(t, claim.StatusSuccess, c.Result.Status, "Claim result status not successfully updated.")
+		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
 
-	uninst := &Uninstall{Driver: &driver.DebugDriver{}}
-	assert.NoError(t, uninst.Run(c, mockSet, out))
-	if c.Created == c.Modified {
-		t.Error("Claim was not updated with modified time stamp during uninstallafter uninstall action")
-	}
+	t.Run("when there are no outputs in the bundle", func(t *testing.T) {
+		c := newClaim()
+		c.Bundle.Outputs = nil
+		uninst := &Uninstall{
+			Driver: &mockDriver{
+				shouldHandle: true,
+				Result:       driver.OperationResult{},
+				Error:        nil,
+			},
+		}
+		err := uninst.Run(c, mockSet, out)
+		assert.NoError(t, err)
+		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during uninstall after uninstall action")
+		assert.Equal(t, claim.ActionUninstall, c.Result.Action, "Claim result action not successfully updated.")
+		assert.Equal(t, claim.StatusSuccess, c.Result.Status, "Claim result status not successfully updated.")
+		assert.Empty(t, c.Outputs)
+	})
 
-	if c.Result.Action != claim.ActionUninstall {
-		t.Errorf("Claim result action not successfully updated. Expected %v, got %v", claim.ActionUninstall, c.Result.Action)
-	}
-	if c.Result.Status != claim.StatusSuccess {
-		t.Errorf("Claim result status not successfully updated. Expected %v, got %v", claim.StatusSuccess, c.Result.Status)
-	}
+	t.Run("error case: driver doesn't handle image", func(t *testing.T) {
+		c := newClaim()
+		uninst := &Uninstall{Driver: &mockDriver{
+			Error:        errors.New("I always fail"),
+			shouldHandle: false,
+		}}
+		err := uninst.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.Empty(t, c.Outputs)
+	})
 
-	uninst = &Uninstall{Driver: &mockFailingDriver{}}
-	assert.Error(t, uninst.Run(c, mockSet, out))
-
-	uninst = &Uninstall{Driver: &mockFailingDriver{shouldHandle: true}}
-	assert.Error(t, uninst.Run(c, mockSet, out))
-	if c.Result.Message == "" {
-		t.Error("Expected error message in claim result message")
-	}
-
-	if c.Result.Action != claim.ActionUninstall {
-		t.Errorf("Expected claim result action to be %v, got %v", claim.ActionUninstall, c.Result.Action)
-	}
-
-	if c.Result.Status != claim.StatusFailure {
-		t.Errorf("Expected claim result status to be %v, got %v", claim.StatusFailure, c.Result.Status)
-	}
+	t.Run("error case: driver does handle image", func(t *testing.T) {
+		c := newClaim()
+		uninst := &Uninstall{Driver: &mockDriver{
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error:        errors.New("I always fail"),
+			shouldHandle: true,
+		}}
+		err := uninst.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.NotEqual(t, "", c.Result.Message, "Expected error message in claim result message")
+		assert.Equal(t, claim.ActionUninstall, c.Result.Action)
+		assert.Equal(t, claim.StatusFailure, c.Result.Status)
+		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
 }

@@ -1,9 +1,9 @@
 package action
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
-	"time"
 
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
@@ -17,35 +17,109 @@ var _ Action = &RunCustom{}
 
 func TestRunCustom(t *testing.T) {
 	out := ioutil.Discard
-	is := assert.New(t)
-
 	rc := &RunCustom{
-		Driver: &driver.DebugDriver{},
+		Driver: &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		},
 		Action: "test",
 	}
-	c := &claim.Claim{
-		Created:    time.Time{},
-		Modified:   time.Time{},
-		Name:       "runcustom",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
-	}
 
-	if err := rc.Run(c, mockSet, out); err != nil {
-		t.Fatal(err)
-	}
-	is.Equal(claim.StatusSuccess, c.Result.Status)
-	is.Equal("test", c.Result.Action)
+	t.Run("happy-path", func(t *testing.T) {
+		c := newClaim()
+		err := rc.Run(c, mockSet, out)
+		assert.NoError(t, err)
+		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, "test", c.Result.Action)
+		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
 
-	// Make sure we don't allow forbidden custom actions
-	rc.Action = "install"
-	is.Error(rc.Run(c, mockSet, out))
+	t.Run("when there are no outputs in the bundle", func(t *testing.T) {
+		c := newClaim()
+		c.Bundle.Outputs = nil
+		rc.Driver = &mockDriver{
+			shouldHandle: true,
+			Result:       driver.OperationResult{},
+			Error:        nil,
+		}
+		err := rc.Run(c, mockSet, out)
+		assert.NoError(t, err)
+		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified timestamp after custom action")
+		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, "test", c.Result.Action)
+		assert.Empty(t, c.Outputs)
+	})
 
-	// Get rid of custom actions, and this should fail
-	rc.Action = "test"
-	c.Bundle.Actions = map[string]bundle.Action{}
-	if err := rc.Run(c, mockSet, out); err == nil {
-		t.Fatal("Unknown action should fail")
-	}
+	t.Run("error case: driver doesn't handle image", func(t *testing.T) {
+		c := newClaim()
+		rc.Driver = &mockDriver{
+			Error:        errors.New("I always fail"),
+			shouldHandle: false,
+		}
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.Empty(t, c.Outputs)
+	})
+
+	t.Run("error case: driver returns error", func(t *testing.T) {
+		c := newClaim()
+		rc.Driver = &mockDriver{
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error:        errors.New("I always fail"),
+			shouldHandle: true,
+		}
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.NotEqual(t, "", c.Result.Message, "Expected error message in claim result message")
+		assert.Equal(t, "test", c.Result.Action)
+		assert.Equal(t, claim.StatusFailure, c.Result.Status)
+		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
+
+	t.Run("error case: driver returns an error but the action does not modify", func(t *testing.T) {
+		c := newClaim()
+		action := c.Bundle.Actions["test"]
+		action.Modifies = false
+		c.Bundle.Actions["test"] = action
+
+		rc.Driver = &mockDriver{
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error:        errors.New("I always fail"),
+			shouldHandle: true,
+		}
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.Empty(t, c.Result, "Expected claim results not to be tracked when the action does not modify")
+		assert.Empty(t, c.Outputs, "Expected output results not to be tracked with the action does not modify")
+	})
+
+	t.Run("error case: forbidden custom actions should fail", func(t *testing.T) {
+		c := newClaim()
+		rc.Action = "install"
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err)
+		assert.Empty(t, c.Outputs)
+	})
+
+	t.Run("error case: unknown actions should fail", func(t *testing.T) {
+		c := newClaim()
+		rc.Action = "test"
+		c.Bundle.Actions = map[string]bundle.Action{}
+		err := rc.Run(c, mockSet, out)
+		assert.Error(t, err, "Unknown action should fail")
+		assert.Empty(t, c.Outputs)
+	})
 }
