@@ -1,11 +1,10 @@
 package action
 
 import (
+	"errors"
 	"io/ioutil"
 	"testing"
-	"time"
 
-	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
 
 	"github.com/stretchr/testify/assert"
@@ -17,20 +16,29 @@ var _ Action = &Status{}
 func TestStatus_Run(t *testing.T) {
 	out := ioutil.Discard
 
-	st := &Status{Driver: &driver.DebugDriver{}}
-	c := &claim.Claim{
-		Created:    time.Time{},
-		Modified:   time.Time{},
-		Name:       "name",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
-	}
+	t.Run("happy-path", func(t *testing.T) {
+		st := &Status{
+			Driver: &mockDriver{
+				shouldHandle: true,
+				Result: driver.OperationResult{
+					Outputs: map[string]string{
+						"/tmp/some/path": "SOME CONTENT",
+					},
+				},
+				Error: nil,
+			},
+		}
+		c := newClaim()
+		err := st.Run(c, mockSet, out)
+		assert.NoError(t, err)
+		// Status is not a modifying action
+		assert.Empty(t, c.Outputs)
+	})
 
-	if err := st.Run(c, mockSet, out); err != nil {
-		t.Fatal(err)
-	}
-
-	st = &Status{Driver: &mockFailingDriver{}}
-	assert.Error(t, st.Run(c, mockSet, out))
+	t.Run("error case: driver doesn't handle image", func(t *testing.T) {
+		c := newClaim()
+		st := &Status{Driver: &mockDriver{Error: errors.New("I always fail")}}
+		err := st.Run(c, mockSet, out)
+		assert.Error(t, err)
+	})
 }

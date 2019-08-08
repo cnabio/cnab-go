@@ -31,7 +31,9 @@ func TestDebugDriver_Run(t *testing.T) {
 		ImageType:    "oci",
 		Out:          ioutil.Discard,
 	}
-	is.NoError(d.Run(op))
+
+	_, err := d.Run(op)
+	is.NoError(err)
 }
 
 func TestOperation_Unmarshall(t *testing.T) {

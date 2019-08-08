@@ -16,6 +16,10 @@ build:
 test:
 	go test ./...
 
+.PHONY: integration-test
+integration-test:
+	go test -tags integration ./...
+
 .PHONY: lint
 lint:
 	golangci-lint run --config ./golangci.yml

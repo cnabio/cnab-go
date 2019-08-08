@@ -1,0 +1,33 @@
+#!/bin/sh
+
+#set -eo pipefail
+
+action=$CNAB_ACTION
+name=$CNAB_INSTALLATION_NAME
+
+case $action in
+    install)
+    echo "Install action"
+    echo >/cnab/app/outputs/output1 "SOME INSTALL CONTENT 1"
+    echo >/cnab/app/outputs/output2 "SOME INSTALL CONTENT 2"
+    ;;
+    uninstall)
+    echo "uninstall action"
+    echo >/cnab/app/outputs/output1 "SOME UNINSTALL CONTENT 1"
+    ;;
+    upgrade)
+    echo "Upgrade action"
+    echo >/cnab/app/outputs/output2 "SOME UPGRADE CONTENT 2"
+    ;;
+    status)
+    echo "Status action"
+    echo >/cnab/app/outputs/output1 "SOME STATUS CONTENT 1"
+    echo >/cnab/app/outputs/output2 "SOME STATUS CONTENT 2"
+    ;;
+    *)
+    echo "No action for $action"
+    echo >/cnab/app/outputs/output1 "SOME NOPE CONTENT 1"
+    echo >/cnab/app/outputs/output2 "SOME NOPE CONTENT 2"
+    ;;
+esac
+echo "Action $action complete for $name"

@@ -49,7 +49,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			tc.op.Environment["CNAB_ACTION"] = tc.op.Action
 			tc.op.Environment["CNAB_INSTALLATION_NAME"] = tc.op.Installation
 
-			err := k.Run(tc.op)
+			_, err := k.Run(tc.op)
 
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())
