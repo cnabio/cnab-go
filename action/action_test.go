@@ -116,12 +116,10 @@ func mockBundle() *bundle.Bundle {
 				Type: []interface{}{"string", "boolean"},
 			},
 		},
-		Outputs: &bundle.OutputsDefinition{
-			Fields: map[string]bundle.OutputDefinition{
-				"some-output": {
-					Path:       "/tmp/some/path",
-					Definition: "ParamOne",
-				},
+		Outputs: map[string]bundle.Output{
+			"some-output": {
+				Path:       "/tmp/some/path",
+				Definition: "ParamOne",
 			},
 		},
 		Parameters: map[string]bundle.Parameter{
@@ -335,9 +333,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 
 	// Non strings given a good type should also work
 	t.Run("null succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
-		field.Definition = "NullParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		o := c.Bundle.Outputs["some-output"]
+		o.Definition = "NullParam"
+		c.Bundle.Outputs["some-output"] = o
 		output := map[string]string{
 			"/tmp/some/path": "null",
 		}
@@ -346,9 +344,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("boolean succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
-		field.Definition = "BooleanParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		o := c.Bundle.Outputs["some-output"]
+		o.Definition = "BooleanParam"
+		c.Bundle.Outputs["some-output"] = o
 		output := map[string]string{
 			"/tmp/some/path": "true",
 		}
@@ -357,9 +355,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("object succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
-		field.Definition = "ObjectParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		o := c.Bundle.Outputs["some-output"]
+		o.Definition = "ObjectParam"
+		c.Bundle.Outputs["some-output"] = o
 		output := map[string]string{
 			"/tmp/some/path": "{}",
 		}
@@ -368,9 +366,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("array succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
+		field := c.Bundle.Outputs["some-output"]
 		field.Definition = "ArrayParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		c.Bundle.Outputs["some-output"] = field
 		output := map[string]string{
 			"/tmp/some/path": "[]",
 		}
@@ -379,9 +377,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("number succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
+		field := c.Bundle.Outputs["some-output"]
 		field.Definition = "NumberParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		c.Bundle.Outputs["some-output"] = field
 		output := map[string]string{
 			"/tmp/some/path": "3.14",
 		}
@@ -390,9 +388,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("integer as number succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
+		field := c.Bundle.Outputs["some-output"]
 		field.Definition = "NumberParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		c.Bundle.Outputs["some-output"] = field
 		output := map[string]string{
 			"/tmp/some/path": "372",
 		}
@@ -401,9 +399,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 	})
 
 	t.Run("integer succeeds", func(t *testing.T) {
-		field := c.Bundle.Outputs.Fields["some-output"]
-		field.Definition = "IntegerParam"
-		c.Bundle.Outputs.Fields["some-output"] = field
+		o := c.Bundle.Outputs["some-output"]
+		o.Definition = "IntegerParam"
+		c.Bundle.Outputs["some-output"] = o
 		output := map[string]string{
 			"/tmp/some/path": "372",
 		}
@@ -415,9 +413,9 @@ func TestSetOutputsOnClaim(t *testing.T) {
 func TestSetOutputsOnClaim_MultipleTypes(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()
-	field := c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "BooleanAndIntegerParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
+	o := c.Bundle.Outputs["some-output"]
+	o.Definition = "BooleanAndIntegerParam"
+	c.Bundle.Outputs["some-output"] = o
 
 	t.Run("BooleanOrInteger, so boolean succeeds", func(t *testing.T) {
 		output := map[string]string{
@@ -442,9 +440,9 @@ func TestSetOutputsOnClaim_MultipleTypes(t *testing.T) {
 func TestSetOutputsOnClaim_MultipleTypesWithString(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()
-	field := c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "StringAndBooleanParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
+	o := c.Bundle.Outputs["some-output"]
+	o.Definition = "StringAndBooleanParam"
+	c.Bundle.Outputs["some-output"] = o
 
 	t.Run("null succeeds", func(t *testing.T) {
 		output := map[string]string{
@@ -467,9 +465,9 @@ func TestSetOutputsOnClaim_MismatchType(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()
 
-	field := c.Bundle.Outputs.Fields["some-output"]
-	field.Definition = "BooleanParam"
-	c.Bundle.Outputs.Fields["some-output"] = field
+	o := c.Bundle.Outputs["some-output"]
+	o.Definition = "BooleanParam"
+	c.Bundle.Outputs["some-output"] = o
 
 	t.Run("error case: content type does not match output definition", func(t *testing.T) {
 		invalidParsableOutput := map[string]string{

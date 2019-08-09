@@ -27,7 +27,7 @@ type Bundle struct {
 	Actions            map[string]Action      `json:"actions,omitempty" mapstructure:"actions"`
 	Parameters         map[string]Parameter   `json:"parameters,omitempty" mapstructure:"parameters"`
 	Credentials        map[string]Credential  `json:"credentials,omitempty" mapstructure:"credentials"`
-	Outputs            *OutputsDefinition     `json:"outputs,omitempty" mapstructure:"outputs"`
+	Outputs            map[string]Output      `json:"outputs,omitempty" mapstructure:"outputs"`
 	Definitions        definition.Definitions `json:"definitions,omitempty" mapstructure:"definitions"`
 	License            string                 `json:"license,omitempty" mapstructure:"license"`
 	RequiredExtensions []string               `json:"requiredExtensions,omitempty" mapstructure:"requiredExtensions"`

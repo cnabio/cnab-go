@@ -122,7 +122,7 @@ func setOutputsOnClaim(claim *claim.Claim, outputs map[string]string) error {
 		return nil
 	}
 
-	for outputName, v := range claim.Bundle.Outputs.Fields {
+	for outputName, v := range claim.Bundle.Outputs {
 		name := v.Definition
 		if name == "" {
 			return fmt.Errorf("invalid bundle: no definition set for output %q", outputName)
@@ -223,7 +223,7 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 
 	var outputs []string
 	if c.Bundle.Outputs != nil {
-		for _, v := range c.Bundle.Outputs.Fields {
+		for _, v := range c.Bundle.Outputs {
 			outputs = append(outputs, v.Path)
 		}
 	}

@@ -376,47 +376,45 @@ func TestReadCustomAndRequiredExtensions(t *testing.T) {
 
 func TestOutputs_Marshall(t *testing.T) {
 	bundleJSON := `
-	{
-		"outputs": {
-			"fields" : {
-				"clientCert": {
-					"contentEncoding": "base64",
-					"contentMediaType": "application/x-x509-user-cert",
-					"path": "/cnab/app/outputs/clientCert",
-					"definition": "clientCert"
-				},
-				"hostName": {
-					"applyTo": [
-					"install"
-					],
-					"description": "the hostname produced installing the bundle",
-					"path": "/cnab/app/outputs/hostname",
-					"definition": "hostType"
-				},
-				"port": {
-					"path": "/cnab/app/outputs/port",
-					"definition": "portType"
-				}
-			}
+	{ 
+		"outputs":{ 
+		   "clientCert":{ 
+			  "contentEncoding":"base64",
+			  "contentMediaType":"application/x-x509-user-cert",
+			  "path":"/cnab/app/outputs/clientCert",
+			  "definition":"clientCert"
+		   },
+		   "hostName":{ 
+			  "applyTo":[ 
+				 "install"
+			  ],
+			  "description":"the hostname produced installing the bundle",
+			  "path":"/cnab/app/outputs/hostname",
+			  "definition":"hostType"
+		   },
+		   "port":{ 
+			  "path":"/cnab/app/outputs/port",
+			  "definition":"portType"
+		   }
 		}
-	}`
+	 }`
 
 	bundle, err := Unmarshal([]byte(bundleJSON))
 	assert.NoError(t, err, "should have unmarshalled the bundle")
 	require.NotNil(t, bundle.Outputs, "test must fail, not outputs found")
-	assert.Equal(t, 3, len(bundle.Outputs.Fields))
+	assert.Equal(t, 3, len(bundle.Outputs))
 
-	clientCert, ok := bundle.Outputs.Fields["clientCert"]
+	clientCert, ok := bundle.Outputs["clientCert"]
 	require.True(t, ok, "expected clientCert to exist as an output")
 	assert.Equal(t, "clientCert", clientCert.Definition)
 	assert.Equal(t, "/cnab/app/outputs/clientCert", clientCert.Path, "clientCert path was not the expected value")
 
-	hostName, ok := bundle.Outputs.Fields["hostName"]
+	hostName, ok := bundle.Outputs["hostName"]
 	require.True(t, ok, "expected hostname to exist as an output")
 	assert.Equal(t, "hostType", hostName.Definition)
 	assert.Equal(t, "/cnab/app/outputs/hostname", hostName.Path, "hostName path was not the expected value")
 
-	port, ok := bundle.Outputs.Fields["port"]
+	port, ok := bundle.Outputs["port"]
 	require.True(t, ok, "expected port to exist as an output")
 	assert.Equal(t, "portType", port.Definition)
 	assert.Equal(t, "/cnab/app/outputs/port", port.Path, "port path was not the expected value")
@@ -517,12 +515,10 @@ func TestBundleMarshallAllThings(t *testing.T) {
 				},
 			},
 		},
-		Outputs: &OutputsDefinition{
-			Fields: map[string]OutputDefinition{
-				"clientCert": {
-					Path:       "/cnab/app/outputs/blah",
-					Definition: "clientCert",
-				},
+		Outputs: map[string]Output{
+			"clientCert": {
+				Path:       "/cnab/app/outputs/blah",
+				Definition: "clientCert",
 			},
 		},
 	}
