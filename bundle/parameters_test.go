@@ -79,7 +79,33 @@ func TestCanReadParameterDefinition(t *testing.T) {
 	if p.ApplyTo[1] != action1 {
 		t.Errorf("Expected action '%s' but got '%s'", action1, p.ApplyTo[1])
 	}
-	if p.Required != true {
+	if !p.Required {
 		t.Errorf("Expected parameter to be required")
+	}
+}
+
+func TestParameterAppliesTo(t *testing.T) {
+	p := Parameter{}
+
+	// By default, parameter will apply to any action
+	if !p.AppliesTo("install") {
+		t.Errorf("Expected parameter to apply to action: install")
+	}
+
+	if !p.AppliesTo("status") {
+		t.Errorf("Expected parameter to apply to action: status")
+	}
+
+	p.ApplyTo = []string{
+		"install",
+		"uninstall",
+	}
+
+	if !p.AppliesTo("install") {
+		t.Errorf("Expected parameter to apply to action: install")
+	}
+
+	if p.AppliesTo("status") {
+		t.Errorf("Expected parameter to not apply to action: status")
 	}
 }

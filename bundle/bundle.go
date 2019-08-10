@@ -223,3 +223,9 @@ func validateDockerish(s string) error {
 	}
 	return nil
 }
+
+// ActionApplicable is an interface for objects that may apply to a subset of actions
+// e.g., Parameters and Outputs
+type ActionApplicable interface {
+	AppliesTo(action string) bool
+}
