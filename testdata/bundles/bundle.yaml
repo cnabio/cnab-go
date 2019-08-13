@@ -5,14 +5,12 @@ description: something
 invocationImages:
 - imageType: docker
   image: deislabs/invocation-image:1.0
-  contentDigest: ""
   labels:
     os: Linux
 images:
   server:
     imageType: docker
     image: nginx:1.0
-    contentDigest: ""
     description: complicated
 parameters:
   enabled:
