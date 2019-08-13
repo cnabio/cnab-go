@@ -117,7 +117,26 @@ func TestCredentialSet_Merge(t *testing.T) {
 
 }
 
-func TestCredentialSetMissingCred(t *testing.T) {
+func TestCredentialSetMissingRequiredCred(t *testing.T) {
+	b := &bundle.Bundle{
+		Name: "knapsack",
+		Credentials: map[string]bundle.Credential{
+			"first": {
+				Location: bundle.Location{
+					EnvironmentVariable: "FIRST_VAR",
+				},
+				Required: true,
+			},
+		},
+	}
+	cs := Set{}
+	_, _, err := cs.Expand(b, false)
+	assert.EqualError(t, err, `credential "first" is missing from the user-supplied credentials`)
+	_, _, err = cs.Expand(b, true)
+	assert.NoError(t, err)
+}
+
+func TestCredentialSetMissingOptionalCred(t *testing.T) {
 	b := &bundle.Bundle{
 		Name: "knapsack",
 		Credentials: map[string]bundle.Credential{
@@ -130,7 +149,7 @@ func TestCredentialSetMissingCred(t *testing.T) {
 	}
 	cs := Set{}
 	_, _, err := cs.Expand(b, false)
-	assert.EqualError(t, err, `credential "first" is missing from the user-supplied credentials`)
+	assert.NoError(t, err)
 	_, _, err = cs.Expand(b, true)
 	assert.NoError(t, err)
 }
