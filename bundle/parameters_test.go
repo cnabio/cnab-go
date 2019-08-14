@@ -79,7 +79,7 @@ func TestCanReadParameterDefinition(t *testing.T) {
 	if p.ApplyTo[1] != action1 {
 		t.Errorf("Expected action '%s' but got '%s'", action1, p.ApplyTo[1])
 	}
-	if p.Required != true {
+	if !p.Required {
 		t.Errorf("Expected parameter to be required")
 	}
 }

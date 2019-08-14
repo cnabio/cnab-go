@@ -19,9 +19,6 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	claim, err := New("foo")
 	is.NoError(err)
 	claim.Bundle = &bundle.Bundle{Name: "foobundle", Version: "0.1.2"}
-	claim.RelocationMap = bundle.ImageRelocationMap{
-		"some.registry/image1": "some.other.registry/image1",
-	}
 
 	tempDir, err := ioutil.TempDir("", "duffletest")
 	if err != nil {
@@ -37,7 +34,6 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	c, err := store.Read("foo")
 	is.NoError(err, "Failed to read: %s", err)
 	is.Equal(c.Bundle, claim.Bundle, "Expected to read back bundle %s, got %s", claim.Bundle.Name, c.Bundle.Name)
-	is.Equal("some.other.registry/image1", c.RelocationMap["some.registry/image1"])
 
 	claims, err := store.List()
 	is.NoError(err, "Failed to list: %s", err)
