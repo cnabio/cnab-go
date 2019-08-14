@@ -82,7 +82,7 @@ func Load(path string) (*CredentialSet, error) {
 // - the credential is required
 //
 // It is allowed for spec to specify both an env var and a file. In such case, if
-// the givesn set provides either, it will be considered valid.
+// the given set provides either, it will be considered valid.
 func Validate(given Set, spec map[string]bundle.Credential) error {
 	for name, cred := range spec {
 		if !isValidCred(given, name) && cred.Required {
