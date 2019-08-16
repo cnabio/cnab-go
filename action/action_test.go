@@ -20,6 +20,7 @@ import (
 
 type mockDriver struct {
 	shouldHandle bool
+	Operation    *driver.Operation
 	Result       driver.OperationResult
 	Error        error
 }
@@ -28,6 +29,7 @@ func (d *mockDriver) Handles(imageType string) bool {
 	return d.shouldHandle
 }
 func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
+	d.Operation = op
 	return d.Result, d.Error
 }
 

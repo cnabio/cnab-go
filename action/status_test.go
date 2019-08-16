@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/deislabs/cnab-go/driver"
-
 	"github.com/stretchr/testify/assert"
 )
 

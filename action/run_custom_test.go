@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"testing"
 
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
-
-	"github.com/deislabs/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
 )
 

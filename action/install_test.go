@@ -7,8 +7,8 @@ import (
 
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // makes sure Install implements Action interface
@@ -78,5 +78,25 @@ func TestInstall_Run(t *testing.T) {
 		assert.Equal(t, claim.StatusFailure, c.Result.Status)
 		assert.Equal(t, claim.ActionInstall, c.Result.Action)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
+
+	t.Run("configure-operation", func(t *testing.T) {
+		c := newClaim()
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		}
+		inst := &Install{Driver: d}
+
+		inst.OperationConfig = func(op *driver.Operation) {
+			op.Files["/tmp/another/path"] = "ANOTHER FILE"
+		}
+		require.NoError(t, inst.Run(c, mockSet, out))
+		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
 	})
 }
