@@ -9,6 +9,7 @@ import (
 	"github.com/deislabs/cnab-go/claim"
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // makes sure RunCustom implements Action interface
@@ -36,6 +37,44 @@ func TestRunCustom(t *testing.T) {
 		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
 		assert.Equal(t, "test", c.Result.Action)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
+	})
+
+	t.Run("configure operation", func(t *testing.T) {
+		c := newClaim()
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		}
+		inst := &RunCustom{Driver: d, Action: "test"}
+		inst.OperationConfig = func(op *driver.Operation) error {
+			op.Files["/tmp/another/path"] = "ANOTHER FILE"
+			return nil
+		}
+		require.NoError(t, inst.Run(c, mockSet, out))
+		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
+	})
+
+	t.Run("error case: configure operation", func(t *testing.T) {
+		c := newClaim()
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		}
+		inst := &RunCustom{Driver: d, Action: "test"}
+		inst.OperationConfig = func(op *driver.Operation) error {
+			return errors.New("oops")
+		}
+		require.EqualError(t, inst.Run(c, mockSet, out), "oops")
 	})
 
 	t.Run("when there are no outputs in the bundle", func(t *testing.T) {

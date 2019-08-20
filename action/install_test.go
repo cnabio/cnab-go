@@ -34,6 +34,45 @@ func TestInstall_Run(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 
+	t.Run("configure operation", func(t *testing.T) {
+		c := newClaim()
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		}
+		inst := &Install{Driver: d}
+
+		inst.OperationConfig = func(op *driver.Operation) error {
+			op.Files["/tmp/another/path"] = "ANOTHER FILE"
+			return nil
+		}
+		require.NoError(t, inst.Run(c, mockSet, out))
+		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
+	})
+
+	t.Run("error case: configure operation", func(t *testing.T) {
+		c := newClaim()
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"/tmp/some/path": "SOME CONTENT",
+				},
+			},
+			Error: nil,
+		}
+		inst := &Install{Driver: d}
+		inst.OperationConfig = func(op *driver.Operation) error {
+			return errors.New("oops")
+		}
+		require.EqualError(t, inst.Run(c, mockSet, out), "oops")
+	})
+
 	t.Run("when the bundle has no outputs", func(t *testing.T) {
 		c := newClaim()
 		c.Bundle.Outputs = nil
@@ -80,23 +119,4 @@ func TestInstall_Run(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 
-	t.Run("configure-operation", func(t *testing.T) {
-		c := newClaim()
-		d := &mockDriver{
-			shouldHandle: true,
-			Result: driver.OperationResult{
-				Outputs: map[string]string{
-					"/tmp/some/path": "SOME CONTENT",
-				},
-			},
-			Error: nil,
-		}
-		inst := &Install{Driver: d}
-
-		inst.OperationConfig = func(op *driver.Operation) {
-			op.Files["/tmp/another/path"] = "ANOTHER FILE"
-		}
-		require.NoError(t, inst.Run(c, mockSet, out))
-		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
-	})
 }
