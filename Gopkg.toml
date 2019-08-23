@@ -19,6 +19,10 @@
   name = "github.com/docker/cli"
   revision = "f95ca8e1ba6c22c9abcdbf65e8dcc39c53958bba"
 
+[[constraint]]
+  name = "github.com/pivotal/image-relocation"
+  version = "v0.2"
+
 [[override]]
   name = "github.com/docker/docker"
   revision = "f76d6a078d881f410c00e8d900dcdfc2e026c841"

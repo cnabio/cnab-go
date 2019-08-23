@@ -443,6 +443,30 @@
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:e28d2af83f2a3d11795fead0d5842edbacf97b756d06ddb1da2c3aee73c5c118"
+  name = "github.com/google/go-containerregistry"
+  packages = [
+    "pkg/authn",
+    "pkg/internal/retry",
+    "pkg/logs",
+    "pkg/name",
+    "pkg/v1",
+    "pkg/v1/daemon",
+    "pkg/v1/empty",
+    "pkg/v1/layout",
+    "pkg/v1/partial",
+    "pkg/v1/random",
+    "pkg/v1/remote",
+    "pkg/v1/remote/transport",
+    "pkg/v1/tarball",
+    "pkg/v1/types",
+    "pkg/v1/v1util",
+  ]
+  pruneopts = "NUT"
+  revision = "31e00cede111067bae48bfc2cbfc522b0b36207f"
+
+[[projects]]
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
   name = "github.com/google/gofuzz"
   packages = ["."]
@@ -631,6 +655,17 @@
   pruneopts = "NUT"
   revision = "0be1b92a6df0e4f5cb0a5d15fb7f643d0ad93ce6"
   version = "v3.0.0"
+
+[[projects]]
+  digest = "1:c059b65022f1dc90449dd08389f1bc5f78cd48e0bed682bc7e9ae96cda591694"
+  name = "github.com/pivotal/image-relocation"
+  packages = [
+    "pkg/image",
+    "pkg/registry",
+  ]
+  pruneopts = "NUT"
+  revision = "ea07ec0b5a8a8e6fb53e33d479fa557bd5faa023"
+  version = "v0.2"
 
 [[projects]]
   digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
@@ -1169,6 +1204,8 @@
     "github.com/docker/go/canonical/json",
     "github.com/globalsign/mgo",
     "github.com/oklog/ulid",
+    "github.com/pivotal/image-relocation/pkg/image",
+    "github.com/pivotal/image-relocation/pkg/registry",
     "github.com/pkg/errors",
     "github.com/qri-io/jsonschema",
     "github.com/stretchr/testify/assert",
