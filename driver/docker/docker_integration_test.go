@@ -7,14 +7,28 @@ import (
 	"os"
 	"testing"
 
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestDriver_Run(t *testing.T) {
-	image := os.Getenv("DOCKER_INTEGRATION_TEST_IMAGE")
-	if image == "" {
-		image = "pvtlmc/example-outputs@sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e"
+	imageFromEnv, ok := os.LookupEnv("DOCKER_INTEGRATION_TEST_IMAGE")
+	var image bundle.InvocationImage
+
+	if ok {
+		image = bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image: imageFromEnv,
+			},
+		}
+	} else {
+		image = bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:  "pvtlmc/example-outputs",
+				Digest: "sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e",
+			},
+		}
 	}
 
 	op := &driver.Operation{

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,9 +28,13 @@ func TestDebugDriver_Run(t *testing.T) {
 
 	op := &Operation{
 		Installation: "test",
-		Image:        "test:1.2.3",
-		ImageType:    "oci",
-		Out:          ioutil.Discard,
+		Image: bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:     "test:1.2.3",
+				ImageType: "oci",
+			},
+		},
+		Out: ioutil.Discard,
 	}
 
 	_, err := d.Run(op)
@@ -44,9 +49,13 @@ func TestOperation_Unmarshall(t *testing.T) {
 			"param1": "value1",
 			"param2": "value2",
 		},
-		Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
-		ImageType: "docker",
-		Revision:  "01DDY0MT808KX0GGZ6SMXN4TW",
+		Image: bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+				ImageType: "docker",
+			},
+		},
+		Revision: "01DDY0MT808KX0GGZ6SMXN4TW",
 		Environment: map[string]string{
 			"ENV1": "value1",
 			"ENV2": "value2",
@@ -72,9 +81,13 @@ func TestOperation_Marshall(t *testing.T) {
 			"param1": "value1",
 			"param2": "value2",
 		},
-		Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
-		ImageType: "docker",
-		Revision:  "01DDY0MT808KX0GGZ6SMXN4TW",
+		Image: bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+				ImageType: "docker",
+			},
+		},
+		Revision: "01DDY0MT808KX0GGZ6SMXN4TW",
 		Environment: map[string]string{
 			"ENV1": "value1",
 			"ENV2": "value2",

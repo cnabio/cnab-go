@@ -199,8 +199,8 @@ func TestOpFromClaim(t *testing.T) {
 
 	is.Equal(c.Name, op.Installation)
 	is.Equal(c.Revision, op.Revision)
-	is.Equal(invocImage.Image, op.Image)
-	is.Equal(driver.ImageTypeDocker, op.ImageType)
+	is.Equal(invocImage.Image, op.Image.Image)
+	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
 	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
 	is.Equal(op.Environment["PARAM_TWO"], "twoval")
 	is.Equal(op.Environment["CNAB_P_PARAM_ONE"], "oneval")
@@ -234,8 +234,8 @@ func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
 
 	is.Equal(c.Name, op.Installation)
 	is.Equal(c.Revision, op.Revision)
-	is.Equal(invocImage.Image, op.Image)
-	is.Equal(driver.ImageTypeDocker, op.ImageType)
+	is.Equal(invocImage.Image, op.Image.Image)
+	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
 	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
 	is.Equal(op.Files["/secret/two"], "I'm also a secret")
 	is.Contains(op.Files, "/cnab/app/image-map.json")
@@ -261,8 +261,8 @@ func TestOpFromClaim_NoParameter(t *testing.T) {
 
 	is.Equal(c.Name, op.Installation)
 	is.Equal(c.Revision, op.Revision)
-	is.Equal(invocImage.Image, op.Image)
-	is.Equal(driver.ImageTypeDocker, op.ImageType)
+	is.Equal(invocImage.Image, op.Image.Image)
+	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
 	is.Equal(op.Environment["SECRET_ONE"], "I'm a secret")
 	is.Equal(op.Files["/secret/two"], "I'm also a secret")
 	is.Contains(op.Files, "/cnab/app/image-map.json")
