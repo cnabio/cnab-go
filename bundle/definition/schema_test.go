@@ -310,13 +310,13 @@ func TestConvertValue(t *testing.T) {
 	is.Error(err)
 
 	pd.Type = "number"
-	out, err = pd.ConvertValue("123")
-	is.NoError(err)
-	is.Equal(float64(123), out.(float64))
+	_, err = pd.ConvertValue("123")
+	is.Error(err)
+	is.Contains(err.Error(), "invalid definition")
 
-	out, err = pd.ConvertValue("5.5")
-	is.NoError(err)
-	is.Equal(5.5, out.(float64))
+	_, err = pd.ConvertValue("5.5")
+	is.Error(err)
+	is.Contains(err.Error(), "invalid definition")
 
 	_, err = pd.ConvertValue("nope")
 	is.Error(err)
