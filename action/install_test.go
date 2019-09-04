@@ -15,7 +15,10 @@ import (
 var _ Action = &Install{}
 
 func TestInstall_Run(t *testing.T) {
-	out := ioutil.Discard
+	out := func(op *driver.Operation) error {
+		op.Out = ioutil.Discard
+		return nil
+	}
 
 	t.Run("happy-path", func(t *testing.T) {
 		c := newClaim()
@@ -47,11 +50,11 @@ func TestInstall_Run(t *testing.T) {
 		}
 		inst := &Install{Driver: d}
 
-		inst.OperationConfig = func(op *driver.Operation) error {
+		addFile := func(op *driver.Operation) error {
 			op.Files["/tmp/another/path"] = "ANOTHER FILE"
 			return nil
 		}
-		require.NoError(t, inst.Run(c, mockSet, out))
+		require.NoError(t, inst.Run(c, mockSet, out, addFile))
 		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
 	})
 
@@ -67,10 +70,10 @@ func TestInstall_Run(t *testing.T) {
 			Error: nil,
 		}
 		inst := &Install{Driver: d}
-		inst.OperationConfig = func(op *driver.Operation) error {
+		sabotage := func(op *driver.Operation) error {
 			return errors.New("oops")
 		}
-		require.EqualError(t, inst.Run(c, mockSet, out), "oops")
+		require.EqualError(t, inst.Run(c, mockSet, out, sabotage), "oops")
 	})
 
 	t.Run("when the bundle has no outputs", func(t *testing.T) {

@@ -3,7 +3,6 @@ package action
 import (
 	"encoding/json"
 	"errors"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -192,7 +191,7 @@ func TestOpFromClaim(t *testing.T) {
 	}
 	invocImage := c.Bundle.InvocationImages[0]
 
-	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,7 +217,7 @@ func TestOpFromClaim(t *testing.T) {
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
 	is.Len(op.Parameters, 7)
-	is.Equal(os.Stdout, op.Out)
+	is.Nil(op.Out)
 }
 
 func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
@@ -227,7 +226,7 @@ func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
 	c.Bundle.Outputs = nil
 	invocImage := c.Bundle.InvocationImages[0]
 
-	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +244,7 @@ func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
 	is.Len(op.Parameters, 0)
-	is.Equal(os.Stdout, op.Out)
+	is.Nil(op.Out)
 }
 
 func TestOpFromClaim_NoParameter(t *testing.T) {
@@ -254,7 +253,7 @@ func TestOpFromClaim_NoParameter(t *testing.T) {
 	c.Bundle.Parameters = nil
 	invocImage := c.Bundle.InvocationImages[0]
 
-	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+	op, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +271,7 @@ func TestOpFromClaim_NoParameter(t *testing.T) {
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
 	is.Len(op.Parameters, 0)
-	is.Equal(os.Stdout, op.Out)
+	is.Nil(op.Out)
 }
 
 func TestOpFromClaim_UndefinedParams(t *testing.T) {
@@ -285,7 +284,7 @@ func TestOpFromClaim_UndefinedParams(t *testing.T) {
 	}
 	invocImage := c.Bundle.InvocationImages[0]
 
-	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+	_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 	assert.Error(t, err)
 }
 
@@ -300,13 +299,13 @@ func TestOpFromClaim_MissingRequiredParameter(t *testing.T) {
 	invocImage := c.Bundle.InvocationImages[0]
 
 	t.Run("missing required parameter fails", func(t *testing.T) {
-		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 		assert.EqualError(t, err, `missing required parameter "param_one" for action "install"`)
 	})
 
 	t.Run("fill the missing parameter", func(t *testing.T) {
 		c.Parameters["param_one"] = "oneval"
-		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 		assert.Nil(t, err)
 	})
 }
@@ -328,18 +327,18 @@ func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
 	invocImage := c.Bundle.InvocationImages[0]
 
 	t.Run("if param is not required for this action, succeed", func(t *testing.T) {
-		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet, os.Stdout)
+		_, err := opFromClaim(claim.ActionInstall, stateful, c, invocImage, mockSet)
 		assert.Nil(t, err)
 	})
 
 	t.Run("if param is required for this action and is missing, error", func(t *testing.T) {
-		_, err := opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+		_, err := opFromClaim("test", stateful, c, invocImage, mockSet)
 		assert.EqualError(t, err, `missing required parameter "param_test" for action "test"`)
 	})
 
 	t.Run("if param is required for this action and is set, succeed", func(t *testing.T) {
 		c.Parameters["param_test"] = "only for test action"
-		_, err := opFromClaim("test", stateful, c, invocImage, mockSet, os.Stdout)
+		_, err := opFromClaim("test", stateful, c, invocImage, mockSet)
 		assert.Nil(t, err)
 	})
 }
