@@ -45,18 +45,23 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestValidName(t *testing.T) {
-	is := assert.New(t)
-
 	for name, expect := range map[string]bool{
 		"M4cb3th":               true,
-		"Lady MacBeth":          false, //spaces illegal
+		"Lady MacBeth":          false, // spaces illegal
 		"3_Witches":             true,
 		"Banquø":                false, // We could probably loosen this one up
 		"King-Duncan":           true,
 		"MacDuff@geocities.com": false,
 		"hecate":                true, // I wouldn't dare cross Hecate.
+		"foo bar baz":           false,
+		"foo.bar.baz":           true,
+		"foo-bar-baz":           true,
+		"foo_bar_baz":           true,
+		"":                      false,
 	} {
-		is.Equal(expect, ValidName.MatchString(name))
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, expect, ValidName.MatchString(name), "expected '%s' to be %t", name, expect)
+		})
 	}
 }
 
