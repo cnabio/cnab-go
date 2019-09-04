@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/deislabs/cnab-go/bundle"
@@ -51,8 +50,9 @@ func TestOperation_Unmarshall(t *testing.T) {
 		},
 		Image: bundle.InvocationImage{
 			BaseImage: bundle.BaseImage{
-				Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+				Image:     "cnab/helloworld:latest",
 				ImageType: "docker",
+				Digest:    "sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
 			},
 		},
 		Revision: "01DDY0MT808KX0GGZ6SMXN4TW",
@@ -70,7 +70,7 @@ func TestOperation_Unmarshall(t *testing.T) {
 	is.NoError(err, "Error reading from testdata/operations/valid-operation.json")
 	is.NoError(json.Unmarshal(bytes, &op), "Error unmarshalling operation")
 	is.NotNil(op, "Expected Operation not to be nil")
-	is.True(reflect.DeepEqual(expectedOp, op), "Validating value of unmarshalled operation failed")
+	is.Equal(expectedOp, op, "Validating value of unmarshalled operation failed")
 }
 
 func TestOperation_Marshall(t *testing.T) {
@@ -83,8 +83,9 @@ func TestOperation_Marshall(t *testing.T) {
 		},
 		Image: bundle.InvocationImage{
 			BaseImage: bundle.BaseImage{
-				Image:     "testing.azurecr.io/duffle/test:e8966c3c153a525775cbcddd46f778bed25650b4",
+				Image:     "cnab/helloworld:latest",
 				ImageType: "docker",
+				Digest:    "sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
 			},
 		},
 		Revision: "01DDY0MT808KX0GGZ6SMXN4TW",
@@ -110,5 +111,5 @@ func TestOperation_Marshall(t *testing.T) {
 	is.NoError(err, "Error Marshalling expected operation to json")
 	is.NotNil(bytes, "Expected marshalled json not to be nil")
 	expectedJSON := string(bytes)
-	is.True(actualJSON == expectedJSON)
+	is.Equal(expectedJSON, actualJSON)
 }
