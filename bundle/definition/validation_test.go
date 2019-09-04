@@ -42,6 +42,39 @@ func TestObjectValidationValid(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestObjectValidationValid_CustomValidator(t *testing.T) {
+	s := `{
+		"type": "object",
+		"properties" : {
+			"file" : {
+				"type": "string",
+				"contentEncoding": "base64"
+			}
+		},
+		"required" : ["file"]
+	}`
+	definition := new(Schema)
+	err := json.Unmarshal([]byte(s), definition)
+	require.NoError(t, err, "should have been able to marshal definition")
+	assert.Equal(t, "object", definition.Type, "type should have been an object")
+	props := definition.Properties
+	assert.NotNil(t, props, "should have found properties")
+	assert.Equal(t, 1, len(props), "should have had a single property")
+	propSchema, ok := props["file"]
+	assert.True(t, ok, "should have found file property")
+	assert.Equal(t, "string", propSchema.Type, "file type should have been a string")
+	assert.Equal(t, "base64", propSchema.ContentEncoding, "file contentEncoding should have been base64")
+
+	val := struct {
+		File string `json:"file"`
+	}{
+		File: "SGVsbG8gV29ybGQhCg==",
+	}
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 0, "expected no validation errors")
+	assert.NoError(t, err)
+}
+
 func TestObjectValidationInValidMinimum(t *testing.T) {
 	s := `{
 		"type": "object",
