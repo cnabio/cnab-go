@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +30,12 @@ func TestDriver_Run_Integration(t *testing.T) {
 			op: &driver.Operation{
 				Installation: "example",
 				Action:       "install",
-				Image:        "cnab/helloworld@sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
+				Image: bundle.InvocationImage{
+					BaseImage: bundle.BaseImage{
+						Image:  "cnab/helloworld",
+						Digest: "sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
+					},
+				},
 				Environment: map[string]string{
 					"PORT": "3000",
 				},
