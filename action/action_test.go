@@ -212,10 +212,17 @@ func TestOpFromClaim(t *testing.T) {
 	is.Equal(op.Files["/param/param_escaped_quotes"], `\"escaped value\"`)
 	is.Equal(op.Files["/param/param_quoted_string"], `"quoted value"`)
 	is.Contains(op.Files, "/cnab/app/image-map.json")
+	is.Contains(op.Files, "/cnab/bundle.json")
 	is.Contains(op.Outputs, "/tmp/some/path")
+
 	var imgMap map[string]bundle.Image
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
 	is.Equal(c.Bundle.Images, imgMap)
+
+	var bundle *bundle.Bundle
+	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/bundle.json"]), &bundle))
+	is.Equal(c.Bundle, bundle)
+
 	is.Len(op.Parameters, 7)
 	is.Nil(op.Out)
 }

@@ -204,6 +204,13 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 		return nil, err
 	}
 
+	bundleBytes, err := json.Marshal(c.Bundle)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal bundle contents: %s", err)
+	}
+
+	files["/cnab/bundle.json"] = string(bundleBytes)
+
 	imgMap, err := getImageMap(c.Bundle)
 	if err != nil {
 		return nil, fmt.Errorf("unable to generate image map: %s", err)
