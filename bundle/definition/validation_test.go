@@ -42,7 +42,7 @@ func TestObjectValidationValid(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestObjectValidationValid_CustomValidator(t *testing.T) {
+func TestObjectValidationValid_CustomValidator_ContentEncoding_base64(t *testing.T) {
 	s := `{
 		"type": "object",
 		"properties" : {
@@ -71,8 +71,44 @@ func TestObjectValidationValid_CustomValidator(t *testing.T) {
 		File: "SGVsbG8gV29ybGQhCg==",
 	}
 	valErrors, err := definition.Validate(val)
-	assert.Len(t, valErrors, 0, "expected no validation errors")
 	assert.NoError(t, err)
+	assert.Len(t, valErrors, 0, "expected no validation errors")
+
+	invalidVal := struct {
+		File string `json:"file"`
+	}{
+		File: "SGVsbG8gV29ybGQhCg===",
+	}
+	valErrors, err = definition.Validate(invalidVal)
+	assert.NoError(t, err)
+	assert.Len(t, valErrors, 1, "expected 1 validation error")
+	assert.Equal(t, "invalid base64 value: SGVsbG8gV29ybGQhCg===", valErrors[0].Error)
+}
+
+func TestObjectValidationValid_CustomValidator_ContentEncoding_InvalidEncoding(t *testing.T) {
+	s := `{
+		"type": "object",
+		"properties" : {
+			"file" : {
+				"type": "string",
+				"contentEncoding": "base65"
+			}
+		},
+		"required" : ["file"]
+	}`
+	definition := new(Schema)
+	err := json.Unmarshal([]byte(s), definition)
+	require.NoError(t, err, "should have been able to marshal definition")
+
+	val := struct {
+		File string `json:"file"`
+	}{
+		File: "SGVsbG8gV29ybGQhCg==",
+	}
+	valErrors, err := definition.Validate(val)
+	assert.NoError(t, err)
+	assert.Len(t, valErrors, 1, "expected 1 validation error")
+	assert.Equal(t, "unsupported or invalid contentEncoding type of base65", valErrors[0].Error)
 }
 
 func TestObjectValidationInValidMinimum(t *testing.T) {
