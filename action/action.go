@@ -175,18 +175,6 @@ func getImageMap(b *bundle.Bundle) ([]byte, error) {
 	return json.Marshal(imgs)
 }
 
-func appliesToAction(action string, parameter bundle.Parameter) bool {
-	if len(parameter.ApplyTo) == 0 {
-		return true
-	}
-	for _, act := range parameter.ApplyTo {
-		if action == act {
-			return true
-		}
-	}
-	return false
-}
-
 func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.InvocationImage, creds credentials.Set) (*driver.Operation, error) {
 	env, files, err := creds.Expand(c.Bundle, stateless)
 	if err != nil {
@@ -238,6 +226,7 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 		Environment:  env,
 		Files:        files,
 		Outputs:      outputs,
+		Bundle:       c.Bundle,
 	}, nil
 }
 
@@ -245,7 +234,7 @@ func injectParameters(action string, c *claim.Claim, env, files map[string]strin
 	for k, param := range c.Bundle.Parameters {
 		rawval, ok := c.Parameters[k]
 		if !ok {
-			if param.Required && appliesToAction(action, param) {
+			if param.Required && param.AppliesTo(action) {
 				return fmt.Errorf("missing required parameter %q for action %q", k, action)
 			}
 			continue

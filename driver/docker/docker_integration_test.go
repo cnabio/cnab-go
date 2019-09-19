@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/deislabs/cnab-go/bundle"
+	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +36,44 @@ func TestDriver_Run(t *testing.T) {
 		Installation: "example",
 		Action:       "install",
 		Image:        image,
-		Outputs:      []string{"/cnab/app/outputs/output1", "/cnab/app/outputs/output2"},
+		Outputs:      []string{
+			"/cnab/app/outputs/output1",
+			"/cnab/app/outputs/output2",
+			"/cnab/app/outputs/missingApplicableOutputSansDefault",
+			"/cnab/app/outputs/missingApplicableOutputWithDefault",
+			"/cnab/app/outputs/missingNonApplicableOutputWithDefault",
+		},
+		Bundle: &bundle.Bundle{
+			Definitions: definition.Definitions{
+				"output1": &definition.Schema{},
+				"output2": &definition.Schema{},
+				"missingApplicableOutputSansDefault": &definition.Schema{},
+				"missingApplicableOutputWithDefault": &definition.Schema{
+					Default: "foo",
+				},
+				"missingNonApplicableOutputWithDefault": &definition.Schema{
+					Default: "bar",
+				},
+			},
+			Outputs: map[string]bundle.Output{
+				"output1": {
+					Definition: "output1",
+				},
+				"output2": {
+					Definition: "output2",
+				},
+				"missingApplicableOutputSansDefault": {
+					Definition: "missingApplicableOutputSansDefault",
+				},
+				"missingApplicableOutputWithDefault": {
+					Definition: "missingApplicableOutputWithDefault",
+				},
+				"missingNonApplicableOutputWithDefault": {
+					Definition: "missingApplicableOutputWithDefault",
+					ApplyTo: []string{"upgrade"},
+				},
+			},
+		},
 	}
 
 	var output bytes.Buffer
@@ -51,9 +89,10 @@ func TestDriver_Run(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, "Install action\nAction install complete for example\n", output.String())
-	assert.Equal(t, 2, len(opResult.Outputs), "Expecting two output files")
+	assert.Equal(t, 3, len(opResult.Outputs), "Expecting three output files")
 	assert.Equal(t, map[string]string{
 		"/cnab/app/outputs/output1": "SOME INSTALL CONTENT 1\n",
 		"/cnab/app/outputs/output2": "SOME INSTALL CONTENT 2\n",
+		"/cnab/app/outputs/missingApplicableOutputWithDefault": "foo",
 	}, opResult.Outputs)
 }
