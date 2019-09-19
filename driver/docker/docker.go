@@ -313,6 +313,8 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 					filepath := unix_path.Join("/cnab", "app", "outputs", name)
 					contents := fmt.Sprintf("%v", outputDefault)
 					opResult.Outputs[filepath] = contents
+				} else {
+					return opResult, fmt.Errorf("required output %s is missing and has no default", name)
 				}
 			}
 		}
