@@ -10,9 +10,8 @@ import (
 
 	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/bundle/loader"
+	"github.com/deislabs/cnab-go/imagestore"
 	"github.com/docker/docker/pkg/archive"
-
-	"github.com/deislabs/duffle/pkg/imagestore"
 )
 
 type Exporter struct {

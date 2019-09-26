@@ -200,17 +200,6 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:5322d845714997eb15bc0f521bd40a53988337606798407ec99281b1554ead22"
-  name = "github.com/deislabs/duffle"
-  packages = [
-    "pkg/imagestore",
-    "pkg/imagestore/imagestoremocks",
-  ]
-  pruneopts = "NUT"
-  revision = "5de36ff2aa6005ac5e2c5cafbca5264475cc3a09"
-  version = "0.3.3-beta.1"
-
-[[projects]]
   digest = "1:7a6852b35eb5bbc184561443762d225116ae630c26a7c4d90546619f1e7d2ad2"
   name = "github.com/dgrijalva/jwt-go"
   packages = ["."]
@@ -1204,8 +1193,6 @@
   input-imports = [
     "github.com/Azure/go-autorest/autorest",
     "github.com/Masterminds/semver",
-    "github.com/deislabs/duffle/pkg/imagestore",
-    "github.com/deislabs/duffle/pkg/imagestore/imagestoremocks",
     "github.com/docker/cli/cli/command",
     "github.com/docker/cli/cli/flags",
     "github.com/docker/distribution/reference",
