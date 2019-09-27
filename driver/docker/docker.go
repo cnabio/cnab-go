@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	unix_path "path"
-	"strings"
 
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/docker/cli/cli/command"
@@ -306,11 +305,11 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 	// non-empty default value, create an entry in the map with the
 	// default value as its contents
 	for name, output := range op.Bundle.Outputs {
-		if !existsInOutputsMap(opResult.Outputs, name) && output.AppliesTo(op.Action) {
+		filepath := unix_path.Join("/cnab", "app", "outputs", name)
+		if !existsInOutputsMap(opResult.Outputs, filepath) && output.AppliesTo(op.Action) {
 			if outputDefinition, exists := op.Bundle.Definitions[output.Definition]; exists {
 				outputDefault := outputDefinition.Default
 				if outputDefault != nil {
-					filepath := unix_path.Join("/cnab", "app", "outputs", name)
 					contents := fmt.Sprintf("%v", outputDefault)
 					opResult.Outputs[filepath] = contents
 				} else {
@@ -323,14 +322,13 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 	return opResult, nil
 }
 
-func existsInOutputsMap(outputsMap map[string]string, output string) bool {
-	var exists bool
+func existsInOutputsMap(outputsMap map[string]string, path string) bool {
 	for outputPath := range outputsMap {
-		if strings.Contains(outputPath, output) {
-			exists = true
+		if outputPath == path {
+			return true
 		}
 	}
-	return exists
+	return false
 }
 
 func generateTar(files map[string]string) (io.Reader, error) {
