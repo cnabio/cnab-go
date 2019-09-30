@@ -276,7 +276,7 @@
   revision = "83389a148052d74ac602f5f1d62f86ff2f3c4aa5"
 
 [[projects]]
-  digest = "1:11ec5efc725d73a0dfc86df7272a9816a232c37c0a129599711104d3022e814a"
+  digest = "1:90471514021c12849b6f7d1b555cfc64a50ba51b43c3d11b12ee3891bf50e515"
   name = "github.com/docker/docker"
   packages = [
     "api",
@@ -297,12 +297,15 @@
     "api/types/volume",
     "client",
     "errdefs",
+    "pkg/archive",
+    "pkg/fileutils",
     "pkg/homedir",
     "pkg/idtools",
     "pkg/ioutils",
     "pkg/jsonmessage",
     "pkg/longpath",
     "pkg/mount",
+    "pkg/pools",
     "pkg/stdcopy",
     "pkg/stringid",
     "pkg/system",
@@ -441,6 +444,28 @@
   pruneopts = "NUT"
   revision = "4030bb1f1f0c35b30ca7009e9ebd06849dd45306"
   version = "v1.0.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:fc11fee3c9138f30aefddb216cfd590285c4bdf146a3fe496f6bc0871cc513d1"
+  name = "github.com/google/go-containerregistry"
+  packages = [
+    "pkg/authn",
+    "pkg/internal/retry",
+    "pkg/internal/retry/wait",
+    "pkg/logs",
+    "pkg/name",
+    "pkg/v1",
+    "pkg/v1/empty",
+    "pkg/v1/layout",
+    "pkg/v1/partial",
+    "pkg/v1/remote",
+    "pkg/v1/remote/transport",
+    "pkg/v1/types",
+    "pkg/v1/v1util",
+  ]
+  pruneopts = "NUT"
+  revision = "5340dbaba4cf3d6a62218976684c9cbfc1628d32"
 
 [[projects]]
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
@@ -631,6 +656,18 @@
   pruneopts = "NUT"
   revision = "0be1b92a6df0e4f5cb0a5d15fb7f643d0ad93ce6"
   version = "v3.0.0"
+
+[[projects]]
+  digest = "1:79a455f8a9010fb87f3bb73b71bbade92440a6b5b57f72b1571b949af0593b5a"
+  name = "github.com/pivotal/image-relocation"
+  packages = [
+    "pkg/image",
+    "pkg/registry",
+    "pkg/registry/ggcr",
+  ]
+  pruneopts = "NUT"
+  revision = "82d942d97499e63711ec1e8b94e4655364c0a53d"
+  version = "v0.4"
 
 [[projects]]
   digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
@@ -1163,12 +1200,16 @@
     "github.com/docker/docker/api/types/container",
     "github.com/docker/docker/api/types/strslice",
     "github.com/docker/docker/client",
+    "github.com/docker/docker/pkg/archive",
     "github.com/docker/docker/pkg/jsonmessage",
     "github.com/docker/docker/pkg/stdcopy",
     "github.com/docker/docker/registry",
     "github.com/docker/go/canonical/json",
     "github.com/globalsign/mgo",
     "github.com/oklog/ulid",
+    "github.com/pivotal/image-relocation/pkg/image",
+    "github.com/pivotal/image-relocation/pkg/registry",
+    "github.com/pivotal/image-relocation/pkg/registry/ggcr",
     "github.com/pkg/errors",
     "github.com/qri-io/jsonschema",
     "github.com/stretchr/testify/assert",
