@@ -36,6 +36,7 @@ type Driver struct {
 	ServiceAccountName    string
 	LimitCPU              resource.Quantity
 	LimitMemory           resource.Quantity
+	Tolerations           []v1.Toleration
 	ActiveDeadlineSeconds int64
 	BackoffLimit          int32
 	SkipCleanup           bool
@@ -147,6 +148,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 					ServiceAccountName:           k.ServiceAccountName,
 					AutomountServiceAccountToken: &mountServiceAccountToken,
 					RestartPolicy:                v1.RestartPolicyNever,
+					Tolerations:                  k.Tolerations,
 				},
 			},
 		},
