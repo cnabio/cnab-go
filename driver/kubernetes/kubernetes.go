@@ -34,6 +34,7 @@ const (
 type Driver struct {
 	Namespace             string
 	ServiceAccountName    string
+	Annotations           map[string]string
 	LimitCPU              resource.Quantity
 	LimitMemory           resource.Quantity
 	Tolerations           []v1.Toleration
@@ -142,7 +143,8 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			BackoffLimit:          &k.BackoffLimit,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: labelMap,
+					Labels:      labelMap,
+					Annotations: k.Annotations,
 				},
 				Spec: v1.PodSpec{
 					ServiceAccountName:           k.ServiceAccountName,
