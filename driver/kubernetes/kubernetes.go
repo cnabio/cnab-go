@@ -3,11 +3,10 @@ package kubernetes
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
+	"time"
 
 	// load credential helpers
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -30,6 +29,7 @@ import (
 const (
 	k8sContainerName    = "invocation"
 	k8sFileSecretVolume = "files"
+	numBackoffLoops     = 6
 )
 
 // Driver runs an invocation image in a Kubernetes cluster.
@@ -232,22 +232,29 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, nil
 	}
 
-	selector := metav1.ListOptions{
+	// Create a selector to detect the job just created
+	jobSelector := metav1.ListOptions{
 		LabelSelector: labels.Set(job.ObjectMeta.Labels).String(),
+		FieldSelector: newSingleFieldSelector("metadata.name", job.ObjectMeta.Name),
 	}
 
-	return driver.OperationResult{}, k.watchJobStatusAndLogs(selector, op.Out)
+	// Prevent detecting pods from prior jobs by adding the job name to the labels
+	podSelector := metav1.ListOptions{
+		LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
+	}
+
+	return driver.OperationResult{}, k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
 }
 
-func (k *Driver) watchJobStatusAndLogs(selector metav1.ListOptions, out io.Writer) error {
+func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelector metav1.ListOptions, out io.Writer) error {
 	// Stream Pod logs in the background
 	logsStreamingComplete := make(chan bool)
-	err := k.streamPodLogs(selector, out, logsStreamingComplete)
+	err := k.streamPodLogs(podSelector, out, logsStreamingComplete)
 	if err != nil {
 		return err
 	}
 	// Watch job events and exit on failure/success
-	watch, err := k.jobs.Watch(selector)
+	watch, err := k.jobs.Watch(jobSelector)
 	if err != nil {
 		return err
 	}
@@ -280,11 +287,11 @@ func (k *Driver) watchJobStatusAndLogs(selector metav1.ListOptions, out io.Write
 	for i := 0; i < int(k.requiredCompletions); i++ {
 		<-logsStreamingComplete
 	}
+
 	return nil
 }
 
 func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done chan bool) error {
-	numBackoffLoops := 5
 	watcher, err := k.pods.Watch(options)
 	if err != nil {
 		return err
@@ -293,54 +300,48 @@ func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done c
 	go func() {
 		// Track pods whose logs have been streamed by pod name. We need to know when we've already
 		// processed logs for a given pod, since multiple lifecycle events are received per pod.
-		streamedLogs := map[string]int{}
+		streamedLogs := map[string]bool{}
 		for event := range watcher.ResultChan() {
 			pod, ok := event.Object.(*v1.Pod)
 			if !ok {
 				continue
 			}
 			podName := pod.GetName()
-
-			// The event was for a pod whose logs have already been streamed, so do nothing.
-			if streamedLogs[podName] >= numBackoffLoops {
+			if streamedLogs[podName] {
+				// The event was for a pod whose logs have already been streamed, so do nothing.
 				continue
 			}
 
-			timeout := 0
-			for (streamedLogs[podName] < numBackoffLoops) && (timeout < numBackoffLoops) {
+			for i := 0; i < numBackoffLoops; i++ {
+				time.Sleep(time.Duration(i*i/2) * time.Second)
 				req := k.pods.GetLogs(podName, &v1.PodLogOptions{
 					Container: k8sContainerName,
 					Follow:    true,
 				})
 				reader, err := req.Stream()
-				// There was an error connecting to the pod, so continue the loop and attempt streaming
-				// logs again next time there is an event for the same pod.
 				if err != nil {
-					timeout = timeout + 1
+					// There was an error connecting to the pod, so continue the loop and attempt streaming
+					// the logs again.
 					continue
 				}
-				// We successfully connected to the pod, so increment it as having streamed logs once.
-				streamedLogs[podName] = streamedLogs[podName] + 1
 
 				// Block the loop until all logs from the pod have been processed.
-				n, err := io.Copy(out, reader)
+				bytesRead, err := io.Copy(out, reader)
 				reader.Close()
 				if err != nil {
 					continue
 				}
-				// There is a chance where we have connected to the pod, but it has yet to write something.
-				// In that case, we continue to to keep streaming until it does.
-				if n == 0 {
+				if bytesRead == 0 {
+					// There is a chance where we have connected to the pod, but it has yet to write something.
+					// In that case, we continue to to keep streaming until it does.
 					continue
 				}
 				// Set the pod to have successfully streamed data.
-				streamedLogs[podName] = numBackoffLoops
+				streamedLogs[podName] = true
+				break
 			}
 
-			// Only signal done when we reach the specified amount of numBackoffLoop
-			if streamedLogs[podName] == numBackoffLoops {
-				done <- true
-			}
+			done <- true
 		}
 	}()
 
@@ -368,7 +369,6 @@ func generateLabels(op *driver.Operation) map[string]string {
 		"cnab.io/installation": op.Installation,
 		"cnab.io/action":       op.Action,
 		"cnab.io/revision":     op.Revision,
-		"random_string":        strconv.Itoa(rand.Intn(1000)),
 	}
 }
 
@@ -394,6 +394,12 @@ func generateFileSecret(files map[string]string) (*v1.Secret, []v1.VolumeMount) 
 	}
 
 	return secret, mounts
+}
+
+func newSingleFieldSelector(k, v string) string {
+	return labels.Set(map[string]string{
+		k: v,
+	}).String()
 }
 
 func homeDir() string {
