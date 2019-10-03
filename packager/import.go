@@ -23,12 +23,12 @@ type Importer struct {
 // source is the filesystem path to the archive.
 // destination is the directory to unpack the contents.
 // load is a loader.BundleLoader preconfigured for loading bundles.
-func NewImporter(source, destination string, load loader.BundleLoader, verbose bool) (*Importer, error) {
+func NewImporter(source, destination string, load loader.BundleLoader) *Importer {
 	return &Importer{
 		Source:      source,
 		Destination: destination,
 		Loader:      load,
-	}, nil
+	}
 }
 
 // Import decompresses a bundle from Source (location of the compressed bundle) and properly places artifacts in the correct location(s)
