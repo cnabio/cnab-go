@@ -1,7 +1,6 @@
 package packager
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,11 +9,6 @@ import (
 	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/bundle/loader"
 	"github.com/docker/docker/pkg/archive"
-)
-
-var (
-	// ErrNoArtifactsDirectory indicates a missing artifacts/ directory
-	ErrNoArtifactsDirectory = errors.New("No artifacts/ directory found")
 )
 
 // Importer is responsible for importing a file
@@ -43,7 +37,7 @@ func NewImporter(source, destination string, load loader.BundleLoader, verbose b
 func (im *Importer) Import() error {
 	_, _, err := im.Unzip()
 
-	// TODO: https://github.com/deislabs/duffle/issues/758
+	// TODO: https://github.com/deislabs/cnab-go/issues/136
 
 	return err
 }
@@ -66,8 +60,7 @@ func (im *Importer) Unzip() (string, *bundle.Bundle, error) {
 		Compression:      archive.Gzip,
 		IncludeFiles:     []string{"."},
 		IncludeSourceDir: true,
-		// Issue #416
-		NoLchown: true,
+		NoLchown:         true,
 	}
 	if err := archive.Untar(reader, dest, tarOptions); err != nil {
 		return "", nil, fmt.Errorf("untar failed: %s", err)
