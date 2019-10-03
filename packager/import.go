@@ -16,7 +16,6 @@ type Importer struct {
 	Source      string
 	Destination string
 	Loader      loader.BundleLoader
-	Verbose     bool
 }
 
 // NewImporter creates a new secure *Importer
@@ -29,7 +28,6 @@ func NewImporter(source, destination string, load loader.BundleLoader, verbose b
 		Source:      source,
 		Destination: destination,
 		Loader:      load,
-		Verbose:     verbose,
 	}, nil
 }
 
