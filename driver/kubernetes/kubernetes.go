@@ -13,8 +13,6 @@ import (
 	// Convert transitive deps to direct deps so that we can use constraints in our Gopkg.toml
 	_ "github.com/Azure/go-autorest/autorest"
 
-	"github.com/deislabs/cnab-go/bundle"
-	"github.com/deislabs/cnab-go/driver"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -24,6 +22,9 @@ import (
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+
+	"github.com/deislabs/cnab-go/bundle"
+	"github.com/deislabs/cnab-go/driver"
 )
 
 const (
@@ -72,7 +73,7 @@ func (k *Driver) Config() map[string]string {
 	return map[string]string{
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
-		"KUBE_CONFIG":     "Absolute path to the kubeconfig file",
+		"KUBECONFIG":      "Absolute path to the kubeconfig file",
 		"MASTER_URL":      "Kubernetes master endpoint",
 	}
 }
@@ -84,7 +85,7 @@ func (k *Driver) SetConfig(settings map[string]string) {
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
 
 	var kubeconfig string
-	if kpath := settings["KUBE_CONFIG"]; kpath != "" {
+	if kpath := settings["KUBECONFIG"]; kpath != "" {
 		kubeconfig = kpath
 	} else if home := homeDir(); home != "" {
 		kubeconfig = filepath.Join(home, ".kube", "config")
