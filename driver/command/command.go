@@ -130,26 +130,11 @@ func (d *Driver) getOperationResult(op *driver.Operation) (driver.OperationResul
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
 	}
-	if len(op.Outputs) == 0 {
-		return opResult, nil
-	}
-
 	for _, item := range op.Outputs {
-		// Check if a value is required for this output and get the default value if available
-		valueRequired, defaultValue, err := checkIfOutputValueRequired(item, op, opResult)
-		if err != nil {
-			return opResult, fmt.Errorf("Command driver (%s) failed checking if output value required for item: %s Error: %v", d.Name, item, err)
-		}
-
 		fileName := path.Join(d.outputDirName, item)
-		_, err = os.Stat(fileName)
+		_, err := os.Stat(fileName)
 		if err != nil {
 			if os.IsNotExist(err) {
-				// Set a default value if available and required otherwise fail
-				if valueRequired {
-					return opResult, fmt.Errorf("Command driver (%s) failed for item: %s no output value found and no default value set", d.Name, item)
-				}
-				opResult.Outputs[item] = defaultValue
 				continue
 			}
 			return opResult, fmt.Errorf("Command driver (%s) failed checking for output file: %s Error: %v", d.Name, item, err)
@@ -162,13 +147,17 @@ func (d *Driver) getOperationResult(op *driver.Operation) (driver.OperationResul
 
 		opResult.Outputs[item] = string(contents)
 	}
+	// Check if there are missing outputs and get default values if any
+	for name, output := range op.Bundle.Outputs {
+		if output.AppliesTo(op.Action) {
+			if _, exists := opResult.Outputs[output.Path]; !exists {
+				if outputDefinition, exists := op.Bundle.Definitions[output.Definition]; exists && outputDefinition.Default != nil {
+					opResult.Outputs[output.Path] = fmt.Sprintf("%v", outputDefinition.Default)
+				} else {
+					return opResult, fmt.Errorf("Command driver (%s) failed - required output %s for action %s is missing and has no default is defined", d.Name, name, op.Action)
+				}
+			}
+		}
+	}
 	return opResult, nil
-}
-func checkIfOutputValueRequired(item string, op *driver.Operation, opResult driver.OperationResult) (bool, string, error) {
-	// TODO Check if the output is required by the action and write test to validate (requires update to op definition in https://github.com/deislabs/cnab-go/pull/129 to be merged )
-	// Until this check is inmplemented then all values are required for all bundles and actions
-	// Output default values and applies to are ignored by this driver until this function is implemented
-	// Function should return false if a output does not apply to an action or there is a default value (which it should return as the second return value)
-	return true, "", nil
-
 }
