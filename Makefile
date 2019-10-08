@@ -63,3 +63,7 @@ coverage:
 	go test -v -coverprofile=coverage.txt -covermode count ./... 2>&1 | go-junit-report > report.xml
 	gocov convert coverage.txt > coverage.json
 	gocov-xml < coverage.json > coverage.xml
+
+.PHONY: goimports
+goimports:
+	find . -name "*.go" | fgrep -v vendor/ | xargs goimports -w -local github.com/$(ORG)/$(PROJECT)

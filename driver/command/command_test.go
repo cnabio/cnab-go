@@ -20,7 +20,16 @@ func TestCheckDriverExists(t *testing.T) {
 	}
 
 	name = "existing-driver"
-	cmddriver = &Driver{Name: name}
+	testfunc := func(t *testing.T, cmddriver *Driver) {
+		if !cmddriver.CheckDriverExists() {
+			t.Fatalf("Expected driver %s to exist", cmddriver.Name)
+		}
+
+	}
+	CreateAndRunTestCommandDriver(t, name, "", testfunc)
+}
+func CreateAndRunTestCommandDriver(t *testing.T, name string, content string, testfunc func(t *testing.T, d *Driver)) {
+	cmddriver := &Driver{Name: name}
 	dirname, err := ioutil.TempDir("", "cnab")
 	if err != nil {
 		t.Fatal(err)
@@ -33,14 +42,16 @@ func TestCheckDriverExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if len(content) > 0 {
+		newfile.WriteString(content)
+	}
+
 	newfile.Chmod(0755)
+	newfile.Close()
 	path := os.Getenv("PATH")
 	pathlist := []string{dirname, path}
 	newpath := strings.Join(pathlist, string(os.PathListSeparator))
 	defer os.Setenv("PATH", path)
 	os.Setenv("PATH", newpath)
-	if !cmddriver.CheckDriverExists() {
-		t.Fatalf("Expected driver %s to exist", name)
-	}
-
+	testfunc(t, cmddriver)
 }

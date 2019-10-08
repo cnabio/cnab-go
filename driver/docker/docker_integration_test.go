@@ -36,7 +36,7 @@ func TestDriver_Run(t *testing.T) {
 		Installation: "example",
 		Action:       "install",
 		Image:        image,
-		Outputs:      []string{
+		Outputs: []string{
 			"/cnab/app/outputs/output1",
 			"/cnab/app/outputs/output2",
 			"/cnab/app/outputs/missingApplicableOutputWithDefault",
@@ -65,7 +65,7 @@ func TestDriver_Run(t *testing.T) {
 				},
 				"missingNonApplicableOutputWithDefault": {
 					Definition: "missingApplicableOutputWithDefault",
-					ApplyTo: []string{"upgrade"},
+					ApplyTo:    []string{"upgrade"},
 				},
 			},
 		},
@@ -86,8 +86,8 @@ func TestDriver_Run(t *testing.T) {
 	assert.Equal(t, "Install action\nAction install complete for example\n", output.String())
 	assert.Equal(t, 3, len(opResult.Outputs), "Expecting three output files")
 	assert.Equal(t, map[string]string{
-		"/cnab/app/outputs/output1": "SOME INSTALL CONTENT 1\n",
-		"/cnab/app/outputs/output2": "SOME INSTALL CONTENT 2\n",
+		"/cnab/app/outputs/output1":                            "SOME INSTALL CONTENT 1\n",
+		"/cnab/app/outputs/output2":                            "SOME INSTALL CONTENT 2\n",
 		"/cnab/app/outputs/missingApplicableOutputWithDefault": "foo",
 	}, opResult.Outputs)
 }
@@ -115,7 +115,7 @@ func TestDriver_Run_MissingRequiredOutput(t *testing.T) {
 		Installation: "example",
 		Action:       "install",
 		Image:        image,
-		Outputs:      []string{
+		Outputs: []string{
 			"/cnab/app/outputs/missingApplicableOutputSansDefault",
 		},
 		Bundle: &bundle.Bundle{
