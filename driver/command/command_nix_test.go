@@ -3,13 +3,13 @@
 package command
 
 import (
+	"os"
+	"testing"
+
 	"github.com/deislabs/cnab-go/bundle"
 	"github.com/deislabs/cnab-go/bundle/definition"
 	"github.com/deislabs/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
-
-	"os"
-	"testing"
 )
 
 func TestCommandDriverOutputs(t *testing.T) {
