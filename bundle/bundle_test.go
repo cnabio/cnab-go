@@ -648,3 +648,35 @@ func TestDigestPresent(t *testing.T) {
 		image.Digest,
 	)
 }
+
+func TestImageDeepCopy(t *testing.T) {
+	origImg := Image{
+		Description: "my image",
+		BaseImage: BaseImage{
+			Image:     "alpine",
+			ImageType: "docker",
+			Labels: map[string]string{
+				"origLabel": "origLabelValue",
+			},
+			Digest: "abc1234",
+			Size:   2,
+		},
+	}
+
+	newImg := origImg.DeepCopy()
+
+	newImg.Description = "my new image"
+	newImg.Image = "debian"
+	newImg.Labels["origLabel"] = "newLabelValue"
+	newImg.Digest = "123abcd"
+
+	assert.Equal(t, "my image", origImg.Description)
+	assert.Equal(t, "alpine", origImg.Image)
+	assert.Equal(t, map[string]string{"origLabel": "origLabelValue"}, origImg.Labels)
+	assert.Equal(t, "abc1234", origImg.Digest)
+
+	assert.Equal(t, "my new image", newImg.Description)
+	assert.Equal(t, "debian", newImg.Image)
+	assert.Equal(t, map[string]string{"origLabel": "newLabelValue"}, newImg.Labels)
+	assert.Equal(t, "123abcd", newImg.Digest)
+}
