@@ -1,3 +1,5 @@
+GOBUILDTAGS     := osusergo
+
 ifeq ($(OS),Windows_NT)
 	TARGET = $(PROJECT).exe
 	SHELL  = cmd.exe
@@ -10,11 +12,11 @@ endif
 
 .PHONY: build
 build:
-	go build ./...
+	go build -tags '$(GOBUILDTAGS)' ./...
 
 .PHONY: test
 test:
-	go test ./...
+	go test  ./...
 
 .PHONY: integration-test
 integration-test:
