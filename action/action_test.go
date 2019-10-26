@@ -350,6 +350,33 @@ func TestOpFromClaim_MissingRequiredParamSpecificToAction(t *testing.T) {
 	})
 }
 
+func TestOpFromClaim_NotApplicableToAction(t *testing.T) {
+	c := newClaim()
+	c.Bundle = mockBundle()
+	invocImage := c.Bundle.InvocationImages[0]
+
+	c.Bundle.Outputs = map[string]bundle.Output{
+		"some-output": {
+			Path:    "/path/to/some-output",
+			ApplyTo: []string{"install"},
+		},
+	}
+
+	t.Run("output is added to the operation when it applies to the action", func(t *testing.T) {
+		op, err := opFromClaim("install", stateful, c, invocImage, mockSet)
+		assert.NoError(t, err)
+		gotOutputs := op.Outputs
+		assert.Contains(t, gotOutputs, "/path/to/some-output", "some-output should be listed in op.Outputs")
+	})
+
+	t.Run("output not added to the operation when it doesn't apply to the action", func(t *testing.T) {
+		op, err := opFromClaim("uninstall", stateful, c, invocImage, mockSet)
+		assert.NoError(t, err)
+		gotOutputs := op.Outputs
+		assert.NotContains(t, gotOutputs, "/path/to/some-output", "some-output should not be listed in op.Outputs")
+	})
+}
+
 func TestSetOutputsOnClaim(t *testing.T) {
 	c := newClaim()
 	c.Bundle = mockBundle()

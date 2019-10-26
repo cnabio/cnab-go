@@ -213,7 +213,10 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	var outputs []string
 	if c.Bundle.Outputs != nil {
 		for _, v := range c.Bundle.Outputs {
-			outputs = append(outputs, v.Path)
+			// Only add to list if output applies to the provided action
+			if v.AppliesTo(action) {
+				outputs = append(outputs, v.Path)
+			}
 		}
 	}
 
