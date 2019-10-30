@@ -283,16 +283,13 @@ func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelect
 			break
 		}
 	}
-	if err != nil {
-		return err
-	}
 
 	// Wait for pod logs to finish printing
 	for i := 0; i < int(k.requiredCompletions); i++ {
 		<-logsStreamingComplete
 	}
 
-	return nil
+	return err
 }
 
 func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done chan bool) error {
