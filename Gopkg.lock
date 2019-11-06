@@ -208,19 +208,19 @@
   version = "v3.2.0"
 
 [[projects]]
-  digest = "1:4fc9beef384b8f57f5bb5fa8d5b00efa350c21b8ef85d93f4d24ef9c18be812d"
+  digest = "1:53c2173b1fe2039e40eac73316e0b544e2e8519653a60e4e25a174694e347d6f"
   name = "github.com/docker/cli"
   packages = [
-    "cli",
     "cli/command",
     "cli/config",
     "cli/config/configfile",
     "cli/config/credentials",
+    "cli/config/types",
     "cli/connhelper",
+    "cli/connhelper/commandconn",
     "cli/connhelper/ssh",
     "cli/context",
     "cli/context/docker",
-    "cli/context/kubernetes",
     "cli/context/store",
     "cli/debug",
     "cli/flags",
@@ -229,27 +229,14 @@
     "cli/registry/client",
     "cli/streams",
     "cli/trust",
+    "cli/version",
     "internal/containerizedengine",
     "internal/versions",
-    "kubernetes",
     "opts",
     "types",
   ]
   pruneopts = "NUT"
-  revision = "f95ca8e1ba6c22c9abcdbf65e8dcc39c53958bba"
-
-[[projects]]
-  digest = "1:a828cce5747a0ac32a41fd9644660a815cbc3c61caa85c03b0a651d62320aa0b"
-  name = "github.com/docker/compose-on-kubernetes"
-  packages = [
-    "api",
-    "api/compose/clone",
-    "api/compose/impersonation",
-    "api/compose/v1beta1",
-    "api/compose/v1beta2",
-  ]
-  pruneopts = "NUT"
-  revision = "a6086e2369e39c2058a003a7eb42e567ecfd1f03"
+  revision = "a8ff7f821017ae3d5347392c82718d6cba221681"
 
 [[projects]]
   digest = "1:c2fd3505322eed56c220992927a13029d32b7fea0e9cc1ece7a2217369d76914"
@@ -446,8 +433,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:fc11fee3c9138f30aefddb216cfd590285c4bdf146a3fe496f6bc0871cc513d1"
+  digest = "1:664de5a6bcec9fcfb8f03f792a37cdf616e1327164cd273eb60f0f75e801f35e"
   name = "github.com/google/go-containerregistry"
   packages = [
     "pkg/authn",
@@ -465,7 +451,7 @@
     "pkg/v1/v1util",
   ]
   pruneopts = "NUT"
-  revision = "5340dbaba4cf3d6a62218976684c9cbfc1628d32"
+  revision = "71da34e4d9b3b67878449570720ad1d66466345b"
 
 [[projects]]
   digest = "1:52c5834e2bebac9030c97cc0798ac11c3aa8a39f098aeb419f142533da6cd3cc"
@@ -658,16 +644,17 @@
   version = "v3.0.0"
 
 [[projects]]
-  digest = "1:79a455f8a9010fb87f3bb73b71bbade92440a6b5b57f72b1571b949af0593b5a"
+  digest = "1:0d98efc9111a57afe126596319170bab408167849096ff6b08752d33e41fb677"
   name = "github.com/pivotal/image-relocation"
   packages = [
     "pkg/image",
     "pkg/registry",
     "pkg/registry/ggcr",
+    "pkg/registry/ggcr/path",
   ]
   pruneopts = "NUT"
-  revision = "82d942d97499e63711ec1e8b94e4655364c0a53d"
-  version = "v0.4"
+  revision = "03c983ad4d2321ec560136c756865dd2bb84138f"
+  version = "v0.7"
 
 [[projects]]
   digest = "1:14715f705ff5dfe0ffd6571d7d201dd8e921030f8070321a79380d8ca4ec1a24"
