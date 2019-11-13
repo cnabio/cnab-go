@@ -9,12 +9,12 @@ import (
 )
 
 // MongoClaimsCollection is the name of the claims collection.
-const MongoClaimsCollection = "cnab_claims"
+const MongoCollectionPrefix = "cnab_"
 
 type mongoDBStore struct {
-	session    *mgo.Session
-	collection *mgo.Collection
-	dbName     string
+	session     *mgo.Session
+	collections map[string]*mgo.Collection
+	dbName      string
 }
 
 type doc struct {
@@ -37,15 +37,26 @@ func NewMongoDBStore(url string) (Store, error) {
 	}
 
 	return &mongoDBStore{
-		session:    session,
-		collection: session.DB(dbn).C(MongoClaimsCollection),
-		dbName:     dbn,
+		session:     session,
+		collections: map[string]*mgo.Collection{},
+		dbName:      dbn,
 	}, nil
 }
 
-func (s *mongoDBStore) List() ([]string, error) {
+func (s *mongoDBStore) getCollection(itemType string) *mgo.Collection {
+	c := s.collections[itemType]
+	if c == nil {
+		c = s.session.DB(s.dbName).C(MongoCollectionPrefix + itemType)
+		s.collections[itemType] = c
+	}
+	return c
+}
+
+func (s *mongoDBStore) List(itemType string) ([]string, error) {
+	collection := s.getCollection(itemType)
+
 	var res []doc
-	if err := s.collection.Find(nil).All(&res); err != nil {
+	if err := collection.Find(nil).All(&res); err != nil {
 		return []string{}, wrapErr(err)
 	}
 	buf := []string{}
@@ -55,12 +66,16 @@ func (s *mongoDBStore) List() ([]string, error) {
 	return buf, nil
 }
 
-func (s *mongoDBStore) Save(name string, data []byte) error {
-	return wrapErr(s.collection.Insert(doc{name, data}))
+func (s *mongoDBStore) Save(itemType string, name string, data []byte) error {
+	collection := s.getCollection(itemType)
+
+	return wrapErr(collection.Insert(doc{name, data}))
 }
-func (s *mongoDBStore) Read(name string) ([]byte, error) {
+func (s *mongoDBStore) Read(itemType string, name string) ([]byte, error) {
+	collection := s.getCollection(itemType)
+
 	res := doc{}
-	if err := s.collection.Find(map[string]string{"name": name}).One(&res); err != nil {
+	if err := collection.Find(map[string]string{"name": name}).One(&res); err != nil {
 		if err == mgo.ErrNotFound {
 			return nil, ErrRecordDoesNotExist
 		}
@@ -68,8 +83,10 @@ func (s *mongoDBStore) Read(name string) ([]byte, error) {
 	}
 	return res.Data, nil
 }
-func (s *mongoDBStore) Delete(name string) error {
-	return wrapErr(s.collection.Remove(map[string]string{"name": name}))
+func (s *mongoDBStore) Delete(itemType string, name string) error {
+	collection := s.getCollection(itemType)
+
+	return wrapErr(collection.Remove(map[string]string{"name": name}))
 }
 
 func wrapErr(err error) error {
