@@ -29,7 +29,8 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	storeDir := filepath.Join(tempDir, "claimstore")
 	store := NewClaimStore(crud.NewFileSystemStore(storeDir, "json"))
 
-	is.NoError(store.Store(*claim), "Failed to store: %s", err)
+	err = store.Save(*claim)
+	is.NoError(err, "Failed to store: %s", err)
 
 	c, err := store.Read("foo")
 	is.NoError(err, "Failed to read: %s", err)
@@ -60,13 +61,13 @@ func TestCanUpdate(t *testing.T) {
 	storeDir := filepath.Join(tempDir, "claimstore")
 	store := NewClaimStore(crud.NewFileSystemStore(storeDir, "json"))
 
-	err = store.Store(*claim)
+	err = store.Save(*claim)
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond)
 	claim.Update(ActionInstall, StatusSuccess)
 
-	err = store.Store(*claim)
+	err = store.Save(*claim)
 	is.NoError(err, "Failed to update")
 
 	c, err := store.Read("foo")
@@ -92,19 +93,19 @@ func TestReadAll(t *testing.T) {
 	is.NoError(err)
 	claim.Bundle = &bundle.Bundle{Name: "foobundle", Version: "0.1.0"}
 
-	is.NoError(store.Store(*claim), "Failed to store: %s", err)
+	is.NoError(store.Save(*claim), "Failed to store: %s", err)
 
 	claim2, err := New("bar")
 	is.NoError(err)
 	claim2.Bundle = &bundle.Bundle{Name: "barbundle", Version: "0.1.0"}
 
-	is.NoError(store.Store(*claim2), "Failed to store: %s", err)
+	is.NoError(store.Save(*claim2), "Failed to store: %s", err)
 
 	claim3, err := New("baz")
 	is.NoError(err)
 	claim3.Bundle = &bundle.Bundle{Name: "bazbundle", Version: "0.1.0"}
 
-	is.NoError(store.Store(*claim3), "Failed to store: %s", err)
+	is.NoError(store.Save(*claim3), "Failed to store: %s", err)
 
 	claims, err := store.ReadAll()
 	is.NoError(err, "Failed to read claims: %s", err)
@@ -133,7 +134,7 @@ func TestCanUpdateOutputs(t *testing.T) {
 		"bar-output": "bar",
 	}
 
-	err = store.Store(*claim)
+	err = store.Save(*claim)
 	is.NoError(err, "Failed to store claim")
 
 	c, err := store.Read("foo")
@@ -147,7 +148,7 @@ func TestCanUpdateOutputs(t *testing.T) {
 
 	claim.Outputs["bar-output"] = "baz"
 
-	err = store.Store(*claim)
+	err = store.Save(*claim)
 	is.NoError(err, "Failed to store claim")
 
 	c, err = store.Read("foo")

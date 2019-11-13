@@ -55,7 +55,7 @@ func (s *mongoDBStore) List() ([]string, error) {
 	return buf, nil
 }
 
-func (s *mongoDBStore) Store(name string, data []byte) error {
+func (s *mongoDBStore) Save(name string, data []byte) error {
 	return wrapErr(s.collection.Insert(doc{name, data}))
 }
 func (s *mongoDBStore) Read(name string) ([]byte, error) {

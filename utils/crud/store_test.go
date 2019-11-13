@@ -13,7 +13,7 @@ var _ Store = &MockStore{}
 func TestMockStore(t *testing.T) {
 	s := NewMockStore()
 	is := assert.New(t)
-	is.NoError(s.Store("test", []byte("data")))
+	is.NoError(s.Save("test", []byte("data")))
 	list, err := s.List()
 	is.NoError(err)
 	is.Len(list, 1)
@@ -40,6 +40,6 @@ func (s *MockStore) List() ([]string, error) {
 	}
 	return buf, nil
 }
-func (s *MockStore) Store(name string, data []byte) error { s.data[name] = data; return nil }
-func (s *MockStore) Read(name string) ([]byte, error)     { return s.data[name], nil }
-func (s *MockStore) Delete(name string) error             { delete(s.data, name); return nil }
+func (s *MockStore) Save(name string, data []byte) error { s.data[name] = data; return nil }
+func (s *MockStore) Read(name string) ([]byte, error)    { return s.data[name], nil }
+func (s *MockStore) Delete(name string) error            { delete(s.data, name); return nil }

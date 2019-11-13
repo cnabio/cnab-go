@@ -39,7 +39,7 @@ func (s fileSystemStore) List() ([]string, error) {
 	return names(s.storageFiles(files)), nil
 }
 
-func (s fileSystemStore) Store(name string, data []byte) error {
+func (s fileSystemStore) Save(name string, data []byte) error {
 	filename, err := s.fullyQualifiedName(name)
 	if err != nil {
 		return err
