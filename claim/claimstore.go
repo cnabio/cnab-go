@@ -3,6 +3,7 @@ package claim
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/cnabio/cnab-go/utils/crud"
 )
@@ -14,14 +15,14 @@ var ErrClaimNotFound = errors.New("Claim does not exist")
 
 // Store is a persistent store for claims.
 type Store struct {
-	backingStore crud.Store
+	backingStore *crud.BackingStore
 }
 
 // NewClaimStore creates a persistent store for claims using the specified
 // backing key-blob store.
-func NewClaimStore(backingStore crud.Store) Store {
+func NewClaimStore(store crud.Store) Store {
 	return Store{
-		backingStore: backingStore,
+		backingStore: crud.NewBackingStore(store),
 	}
 }
 
@@ -54,22 +55,24 @@ func (s Store) Read(name string) (Claim, error) {
 	return claim, err
 }
 
-// ReadAll retrieves all the claims
+// ReadAll retrieves all of the claims.
 func (s Store) ReadAll() ([]Claim, error) {
-	claims := make([]Claim, 0)
-
-	list, err := s.backingStore.List(ItemType)
+	results, err := s.backingStore.ReadAll(ItemType)
 	if err != nil {
-		return claims, err
+		return nil, err
 	}
 
-	for _, c := range list {
-		cl, err := s.Read(c)
+	claims := make([]Claim, len(results))
+	for i, bytes := range claims {
+		var claim Claim
+		bytes := results[i]
+		err = json.Unmarshal(bytes, &claim)
 		if err != nil {
-			return claims, err
+			return nil, fmt.Errorf("error unmarshaling claim: %v", err)
 		}
-		claims = append(claims, cl)
+		claims[i] = claim
 	}
+
 	return claims, nil
 }
 

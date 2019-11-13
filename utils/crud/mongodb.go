@@ -11,7 +11,10 @@ import (
 // MongoCollectionPrefix is applied to every collection.
 const MongoCollectionPrefix = "cnab_"
 
+var _ Store = &mongoDBStore{}
+
 type mongoDBStore struct {
+	url         string
 	session     *mgo.Session
 	collections map[string]*mgo.Collection
 	dbName      string
@@ -25,22 +28,35 @@ type doc struct {
 // NewMongoDBStore creates a new storage engine that uses MongoDB
 //
 // The URL provided must point to a MongoDB server and database.
-func NewMongoDBStore(url string) (Store, error) {
-	session, err := mgo.Dial(url)
-	if err != nil {
-		return nil, err
-	}
-
-	dbn, err := parseDBName(url)
-	if err != nil {
-		return nil, err
-	}
-
-	return &mongoDBStore{
-		session:     session,
+func NewMongoDBStore(url string) Store {
+	db := &mongoDBStore{
+		url:         url,
 		collections: map[string]*mgo.Collection{},
-		dbName:      dbn,
-	}, nil
+	}
+	return NewBackingStore(db)
+}
+
+func (s *mongoDBStore) Connect() error {
+	dbn, err := parseDBName(s.url)
+	if err != nil {
+		return err
+	}
+	s.dbName = dbn
+
+	session, err := mgo.Dial(s.url)
+	if err != nil {
+		return err
+	}
+	s.session = session
+	return nil
+}
+
+func (s *mongoDBStore) Close() error {
+	if s.session != nil {
+		s.session.Close()
+		s.session = nil
+	}
+	return nil
 }
 
 func (s *mongoDBStore) getCollection(itemType string) *mgo.Collection {
@@ -71,6 +87,7 @@ func (s *mongoDBStore) Save(itemType string, name string, data []byte) error {
 
 	return wrapErr(collection.Insert(doc{name, data}))
 }
+
 func (s *mongoDBStore) Read(itemType string, name string) ([]byte, error) {
 	collection := s.getCollection(itemType)
 
@@ -83,6 +100,7 @@ func (s *mongoDBStore) Read(itemType string, name string) ([]byte, error) {
 	}
 	return res.Data, nil
 }
+
 func (s *mongoDBStore) Delete(itemType string, name string) error {
 	collection := s.getCollection(itemType)
 
