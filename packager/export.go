@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/deislabs/cnab-go/bundle"
-	"github.com/deislabs/cnab-go/bundle/loader"
-	"github.com/deislabs/cnab-go/imagestore"
+	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/bundle/loader"
+	"github.com/cnabio/cnab-go/imagestore"
 	"github.com/docker/docker/pkg/archive"
 )
 

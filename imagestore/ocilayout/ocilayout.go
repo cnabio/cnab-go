@@ -10,7 +10,7 @@ import (
 	"github.com/pivotal/image-relocation/pkg/registry"
 	"github.com/pivotal/image-relocation/pkg/registry/ggcr"
 
-	"github.com/deislabs/cnab-go/imagestore"
+	"github.com/cnabio/cnab-go/imagestore"
 )
 
 // ociLayout is an image store which stores images as an OCI image layout.

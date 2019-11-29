@@ -11,7 +11,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/deislabs/cnab-go/driver"
+	"github.com/cnabio/cnab-go/driver"
 )
 
 // Driver relies upon a system command to provide a driver implementation

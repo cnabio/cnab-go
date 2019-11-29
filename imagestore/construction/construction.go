@@ -4,9 +4,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/deislabs/cnab-go/imagestore"
-	"github.com/deislabs/cnab-go/imagestore/ocilayout"
-	"github.com/deislabs/cnab-go/imagestore/remote"
+	"github.com/cnabio/cnab-go/imagestore"
+	"github.com/cnabio/cnab-go/imagestore/ocilayout"
+	"github.com/cnabio/cnab-go/imagestore/remote"
 )
 
 // NewConstructor creates an image store constructor which will, if necessary, create archive contents.

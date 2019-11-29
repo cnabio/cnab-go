@@ -8,24 +8,25 @@ cnab-go is currently being used by [Docker App](https://github.com/docker/app), 
 
 ### Community
 
-cnab-go is [maintained](GOVERNANCE.md) by the CNAB community. We sometimes discuss cnab-go issues during the [bi-weekly CNAB community  meeting](https://hackmd.io/s/SyGcBcwQ4), but we encourage open communication via our [issue](https://github.com/deislabs/cnab-go/issues) queue and via [PRs](https://github.com/deislabs/cnab-go/pulls). If you are interested in contributing to cnab-go, please refer to our [contributing](CONTRIBUTING.md) guidelines.
+cnab-go is [maintained](GOVERNANCE.md) by the CNAB community. We sometimes discuss cnab-go issues during the [bi-weekly CNAB community meeting](https://hackmd.io/s/SyGcBcwQ4), but we encourage open communication via our [issue](https://github.com/cnabio/cnab-go/issues) queue and via [PRs](https://github.com/cnabio/cnab-go/pulls). If you are interested in contributing to cnab-go, please refer to our [contributing](CONTRIBUTING.md) guidelines.
 
 ### Development
 
 #### Getting the code
 
 Cloning this repository and change directory to it:
+
 ```bash
-$ go get -d github.com/deislabs/cnab-go/...
-$ cd $(go env GOPATH)/src/github.com/deislabs/cnab-go
+$ go get -d github.com/cnabio/cnab-go/...
+$ cd $(go env GOPATH)/src/github.com/cnabio/cnab-go
 ```
 
 #### Prerequisites
 
 You need:
 
-* make
-* Go
+- make
+- Go
 
 #### Get dependencies
 
@@ -60,7 +61,7 @@ $ make integration-test
 ```
 
 This will only run the linter to ensure the code meet the standard.
-*It does not format the code*
+_It does not format the code_
 
 ```bash
 $ make lint

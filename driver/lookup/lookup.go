@@ -3,10 +3,10 @@ package lookup
 import (
 	"fmt"
 
-	"github.com/deislabs/cnab-go/driver"
-	"github.com/deislabs/cnab-go/driver/command"
-	"github.com/deislabs/cnab-go/driver/docker"
-	"github.com/deislabs/cnab-go/driver/kubernetes"
+	"github.com/cnabio/cnab-go/driver"
+	"github.com/cnabio/cnab-go/driver/command"
+	"github.com/cnabio/cnab-go/driver/docker"
+	"github.com/cnabio/cnab-go/driver/kubernetes"
 )
 
 // Lookup takes a driver name and tries to resolve the most pertinent driver.

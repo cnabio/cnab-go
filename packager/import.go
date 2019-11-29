@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/deislabs/cnab-go/bundle"
-	"github.com/deislabs/cnab-go/bundle/loader"
+	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/bundle/loader"
 	"github.com/docker/docker/pkg/archive"
 )
 
@@ -35,7 +35,7 @@ func NewImporter(source, destination string, load loader.BundleLoader) *Importer
 func (im *Importer) Import() error {
 	_, _, err := im.Unzip()
 
-	// TODO: https://github.com/deislabs/cnab-go/issues/136
+	// TODO: https://github.com/cnabio/cnab-go/issues/136
 
 	return err
 }

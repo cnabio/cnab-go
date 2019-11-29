@@ -7,7 +7,7 @@ import (
 	"github.com/pivotal/image-relocation/pkg/registry"
 	"github.com/pivotal/image-relocation/pkg/registry/ggcr"
 
-	"github.com/deislabs/cnab-go/imagestore"
+	"github.com/cnabio/cnab-go/imagestore"
 )
 
 // remote is an image store which does not actually store images. It is used to represent thin bundles.
