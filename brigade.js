@@ -3,7 +3,7 @@ const { events, Job } = require("brigadier");
 const projectOrg = "cnabio";
 const projectName = "cnab-go";
 
-const goImg = "golang:1.11";
+const goImg = "golang:1.13";
 const gopath = "/go";
 const localPath = gopath + `/src/github.com/${projectOrg}/${projectName}`;
 
