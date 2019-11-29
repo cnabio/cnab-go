@@ -369,18 +369,27 @@ func (k *Driver) deleteJob(name string) error {
 	})
 }
 
+const maxNameTemplateLength = 50
+
+// generateNameTemplate returns a value suitable for the Kubernetes metav1.ObjectMeta.GenerateName
+// field, that includes the operation action and installation names for debugging purposes.
+//
+// Note that the value returned may be truncated to conform to Kubernetes maximum resource name
+// length constraints.
 func generateNameTemplate(op *driver.Operation) string {
+	const maxLength = maxNameTemplateLength - 1
 	name := fmt.Sprintf("%s-%s", op.Action, op.Installation)
-	if len(name) > 50 {
-		name = name[0:39]
+	if len(name) > maxLength {
+		name = name[0:maxLength]
 	}
 
 	var result string
-	for _, match := range dns1123Reg.FindAllString(strings.ToLower(name), 10) {
-		result += match
+	for _, match := range dns1123Reg.FindAllString(strings.ToLower(name), maxLength) {
+		// It's safe to add one character because we've already removed at least one character not matching our regex.
+		result += match + "-"
 	}
 
-	return result + "-"
+	return result
 }
 
 func generateMergedAnnotations(op *driver.Operation, mergeWith map[string]string) map[string]string {
