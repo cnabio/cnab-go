@@ -30,8 +30,10 @@ steps:
     testRunner: JUnit
     testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
     failTaskOnFailedTests: true
+  condition: always()
 
 - task: PublishCodeCoverageResults@1
   inputs:
     codeCoverageTool: Cobertura 
     summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml
+  condition: always()
