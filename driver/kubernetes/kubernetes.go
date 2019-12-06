@@ -3,8 +3,10 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -31,6 +33,11 @@ const (
 	k8sContainerName    = "invocation"
 	k8sFileSecretVolume = "files"
 	numBackoffLoops     = 6
+	cnabPrefix          = "cnab.io/"
+)
+
+var (
+	dns1123Reg = regexp.MustCompile(`[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*`)
 )
 
 // Driver runs an invocation image in a Kubernetes cluster.
@@ -130,11 +137,14 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	if k.Namespace == "" {
 		return driver.OperationResult{}, fmt.Errorf("KUBE_NAMESPACE is required")
 	}
-	labelMap := generateLabels(op)
+
 	meta := metav1.ObjectMeta{
 		Namespace:    k.Namespace,
 		GenerateName: generateNameTemplate(op),
-		Labels:       labelMap,
+		Labels: map[string]string{
+			"cnab.io/driver": "kubernetes",
+		},
+		Annotations: generateMergedAnnotations(op, k.Annotations),
 	}
 	// Mount SA token if a non-zero value for ServiceAccountName has been specified
 	mountServiceAccountToken := k.ServiceAccountName != ""
@@ -146,8 +156,8 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			BackoffLimit:          &k.BackoffLimit,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labelMap,
-					Annotations: k.Annotations,
+					Labels:      meta.Labels,
+					Annotations: meta.Annotations,
 				},
 				Spec: v1.PodSpec{
 					ServiceAccountName:           k.ServiceAccountName,
@@ -177,19 +187,19 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			StringData: op.Environment,
 		}
 		secret.ObjectMeta.GenerateName += "env-"
-		envsecret, err := k.secrets.Create(secret)
+		secret, err := k.secrets.Create(secret)
 		if err != nil {
 			return driver.OperationResult{}, err
 		}
 		if !k.SkipCleanup {
-			defer k.deleteSecret(envsecret.ObjectMeta.Name)
+			defer k.deleteSecret(secret.ObjectMeta.Name)
 		}
 
 		container.EnvFrom = []v1.EnvFromSource{
 			{
 				SecretRef: &v1.SecretEnvSource{
 					LocalObjectReference: v1.LocalObjectReference{
-						Name: envsecret.ObjectMeta.Name,
+						Name: secret.ObjectMeta.Name,
 					},
 				},
 			},
@@ -198,11 +208,8 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 
 	if len(op.Files) > 0 {
 		secret, mounts := generateFileSecret(op.Files)
-		secret.ObjectMeta = metav1.ObjectMeta{
-			Namespace:    k.Namespace,
-			GenerateName: generateNameTemplate(op) + "files-",
-			Labels:       labelMap,
-		}
+		secret.ObjectMeta = meta
+		secret.ObjectMeta.GenerateName += "files-"
 		secret, err := k.secrets.Create(secret)
 		if err != nil {
 			return driver.OperationResult{}, err
@@ -362,16 +369,47 @@ func (k *Driver) deleteJob(name string) error {
 	})
 }
 
+const maxNameTemplateLength = 50
+
+// generateNameTemplate returns a value suitable for the Kubernetes metav1.ObjectMeta.GenerateName
+// field, that includes the operation action and installation names for debugging purposes.
+//
+// Note that the value returned may be truncated to conform to Kubernetes maximum resource name
+// length constraints.
 func generateNameTemplate(op *driver.Operation) string {
-	return fmt.Sprintf("%s-%s-", op.Installation, op.Action)
+	const maxLength = maxNameTemplateLength - 1
+	name := fmt.Sprintf("%s-%s", op.Action, op.Installation)
+	if len(name) > maxLength {
+		name = name[0:maxLength]
+	}
+
+	var result string
+	for _, match := range dns1123Reg.FindAllString(strings.ToLower(name), maxLength) {
+		// It's safe to add one character because we've already removed at least one character not matching our regex.
+		result += match + "-"
+	}
+
+	return result
 }
 
-func generateLabels(op *driver.Operation) map[string]string {
-	return map[string]string{
+func generateMergedAnnotations(op *driver.Operation, mergeWith map[string]string) map[string]string {
+	anno := map[string]string{
 		"cnab.io/installation": op.Installation,
 		"cnab.io/action":       op.Action,
 		"cnab.io/revision":     op.Revision,
 	}
+
+	if mergeWith != nil {
+		for k, v := range mergeWith {
+			if strings.HasPrefix(k, cnabPrefix) {
+				log.Printf("Annotations with prefix '%s' are reserved. Annotation '%s: %s' will not be applied.\n", cnabPrefix, k, v)
+				continue
+			}
+			anno[k] = v
+		}
+	}
+
+	return anno
 }
 
 func generateFileSecret(files map[string]string) (*v1.Secret, []v1.VolumeMount) {

@@ -77,3 +77,47 @@ func TestImageWithDigest(t *testing.T) {
 		})
 	}
 }
+
+func TestGenerateNameTemplate(t *testing.T) {
+	testCases := map[string]struct {
+		op       *driver.Operation
+		expected string
+	}{
+		"short name": {
+			op: &driver.Operation{
+				Action:       "install",
+				Installation: "foo",
+			},
+			expected: "install-foo-",
+		},
+		"special chars": {
+			op: &driver.Operation{
+				Action:       "example.com/liftoff",
+				Installation: "🚀 me to the 🌙",
+			},
+			expected: "example.com-liftoff-me-to-the-",
+		},
+		"long installation name": {
+			op: &driver.Operation{
+				Action:       "install",
+				Installation: "this-should-be-truncated-qcUYSfR9MS3BqR0kRDHe2K5EHJa8BJGrcoiDVvsDpATjIkr",
+			},
+			expected: "install-this-should-be-truncated-qcuysfr9ms3bqr0k-",
+		},
+		"maximum matching segments": {
+			op: &driver.Operation{
+				Action:       "a",
+				Installation: "b c d e f g h i j k l m n o p q r s t u v w x y z",
+			},
+			expected: "a-b-c-d-e-f-g-h-i-j-k-l-m-n-o-p-q-r-s-t-u-v-w-x-y-",
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			actual := generateNameTemplate(tc.op)
+			assert.Equal(t, tc.expected, actual)
+			assert.True(t, len(actual) <= maxNameTemplateLength)
+		})
+	}
+}
