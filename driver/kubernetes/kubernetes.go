@@ -397,14 +397,12 @@ func generateMergedAnnotations(op *driver.Operation, mergeWith map[string]string
 		"cnab.io/revision":     op.Revision,
 	}
 
-	if mergeWith != nil {
-		for k, v := range mergeWith {
-			if strings.HasPrefix(k, cnabPrefix) {
-				log.Printf("Annotations with prefix '%s' are reserved. Annotation '%s: %s' will not be applied.\n", cnabPrefix, k, v)
-				continue
-			}
-			anno[k] = v
+	for k, v := range mergeWith {
+		if strings.HasPrefix(k, cnabPrefix) {
+			log.Printf("Annotations with prefix '%s' are reserved. Annotation '%s: %s' will not be applied.\n", cnabPrefix, k, v)
+			continue
 		}
+		anno[k] = v
 	}
 
 	return anno

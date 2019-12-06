@@ -25,7 +25,7 @@ lint:
 	golangci-lint run --config ./golangci.yml
 
 HAS_GOLANGCI     := $(shell $(CHECK) golangci-lint)
-GOLANGCI_VERSION := v1.16.0
+GOLANGCI_VERSION := v1.21.0
 
 HAS_GOCOV_XML := $(shell command -v gocov-xml;)
 HAS_GOCOV := $(shell command -v gocov;)
