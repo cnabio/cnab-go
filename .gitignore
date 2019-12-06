@@ -6,3 +6,9 @@ vendor/
 __pycache__/
 /duffle
 .vscode/settings.json
+
+# Test Output
+kind-kubeconfig.yaml
+coverage.*
+report.xml
+go_test.log
