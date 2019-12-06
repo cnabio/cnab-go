@@ -9,7 +9,7 @@ import (
 	"os"
 	unix_path "path"
 
-	"github.com/deislabs/cnab-go/driver"
+	"github.com/cnabio/cnab-go/driver"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"

@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/deislabs/cnab-go/bundle"
-	"github.com/deislabs/cnab-go/bundle/definition"
-	"github.com/deislabs/cnab-go/driver"
+	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
 )
 

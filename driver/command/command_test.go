@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/deislabs/cnab-go/driver"
+	"github.com/cnabio/cnab-go/driver"
 )
 
 var _ driver.Driver = &Driver{}

@@ -11,7 +11,7 @@ import (
 
 	"github.com/qri-io/jsonschema"
 
-	"github.com/deislabs/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/bundle"
 )
 
 func TestNew(t *testing.T) {
