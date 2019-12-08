@@ -15,7 +15,7 @@ readonly K8S_VERSION
 KIND_KUBECONFIG="$PWD/kind-kubeconfig.yaml"
 readonly KIND_KUBECONFIG
 
-GO_TEST_COMMAND="go test -tags=integration -v -coverprofile=coverage.txt -covermode count ./..."
+GO_TEST_COMMAND="go test -tags=integration -v -coverprofile=coverage.txt -covermode atomic ./..."
 readonly GO_TEST_COMMAND
 
 GO_TEST_LOG="go_test.log"
