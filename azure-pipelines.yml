@@ -20,7 +20,8 @@ steps:
 
 - script: |
     go version
-    make bootstrap build test lint coverage
+    go get sigs.k8s.io/kind@v0.6.0
+    make bootstrap build lint coverage
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies, build, test'
 
@@ -28,8 +29,11 @@ steps:
   inputs:
     testRunner: JUnit
     testResultsFiles: $(System.DefaultWorkingDirectory)/**/report.xml
+    failTaskOnFailedTests: true
+  condition: always()
 
 - task: PublishCodeCoverageResults@1
   inputs:
     codeCoverageTool: Cobertura 
     summaryFileLocation: $(System.DefaultWorkingDirectory)/**/coverage.xml
+  condition: always()

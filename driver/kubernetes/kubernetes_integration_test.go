@@ -4,6 +4,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/cnabio/cnab-go/bundle"
@@ -12,10 +13,10 @@ import (
 )
 
 func TestDriver_Run_Integration(t *testing.T) {
-	namespace := "default"
 	k := &Driver{}
 	k.SetConfig(map[string]string{
-		"KUBE_NAMESPACE": namespace,
+		"KUBE_NAMESPACE": "default",
+		"KUBECONFIG":     os.Getenv("KUBECONFIG"),
 	})
 	k.ActiveDeadlineSeconds = 60
 
