@@ -145,18 +145,21 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	if d.Simulate {
 		return driver.OperationResult{}, nil
 	}
-	if d.config["PULL_ALWAYS"] == "1" {
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
+
+	imageRef, ok := op.Image.DigestedRef()
+	if !ok && d.config["PULL_ALWAYS"] == "1" {
+		if err := pullImage(ctx, cli, imageRef); err != nil {
 			return driver.OperationResult{}, err
 		}
 	}
+
 	var env []string
 	for k, v := range op.Environment {
 		env = append(env, fmt.Sprintf("%s=%v", k, v))
 	}
 
 	cfg := &container.Config{
-		Image:        op.Image.Image,
+		Image:        imageRef,
 		Env:          env,
 		Entrypoint:   strslice.StrSlice{"/cnab/app/run"},
 		AttachStderr: true,
@@ -173,8 +176,8 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	resp, err := cli.Client().ContainerCreate(ctx, cfg, hostCfg, nil, "")
 	switch {
 	case client.IsErrNotFound(err):
-		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", op.Image.Image)
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
+		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", cfg.Image)
+		if err := pullImage(ctx, cli, cfg.Image); err != nil {
 			return driver.OperationResult{}, err
 		}
 		if resp, err = cli.Client().ContainerCreate(ctx, cfg, hostCfg, nil, ""); err != nil {

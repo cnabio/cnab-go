@@ -2,6 +2,7 @@ package bundle
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"testing"
 
@@ -679,4 +680,64 @@ func TestImageDeepCopy(t *testing.T) {
 	assert.Equal(t, "debian", newImg.Image)
 	assert.Equal(t, map[string]string{"origLabel": "newLabelValue"}, newImg.Labels)
 	assert.Equal(t, "123abcd", newImg.Digest)
+}
+
+func ExampleBaseImage_DigestedRef() {
+	image := BaseImage{
+		Image:  "foo/bar:latest",
+		Digest: "sha256:7ea254518cab82f53938523eab0dc6601a3dd1edf700f1f6235e66e27cbc7986",
+	}
+
+	imageRef, ok := image.DigestedRef()
+	if !ok {
+		fmt.Println("no digest")
+	}
+
+	fmt.Println(imageRef)
+	// Output: foo/bar:latest@sha256:7ea254518cab82f53938523eab0dc6601a3dd1edf700f1f6235e66e27cbc7986
+}
+
+func TestBaseImage_DigestedRef(t *testing.T) {
+	cases := map[string]struct {
+		expected  string
+		hasDigest bool
+		image     BaseImage
+	}{
+		"no tag": {
+			expected: "foo",
+			image: BaseImage{
+				Image: "foo",
+			},
+		},
+		"tag only": {
+			expected: "foo:bar",
+			image: BaseImage{
+				Image: "foo:bar",
+			},
+		},
+		"digest only": {
+			expected:  "foo@sha256:7ea254518",
+			hasDigest: true,
+			image: BaseImage{
+				Image:  "foo",
+				Digest: "sha256:7ea254518",
+			},
+		},
+		"digest and tag": {
+			expected:  "foo:bar@sha256:7ea254518",
+			hasDigest: true,
+			image: BaseImage{
+				Image:  "foo:bar",
+				Digest: "sha256:7ea254518",
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			ref, ok := tc.image.DigestedRef()
+			assert.Equal(t, tc.hasDigest, ok)
+			assert.Equal(t, tc.expected, ref)
+		})
+	}
 }

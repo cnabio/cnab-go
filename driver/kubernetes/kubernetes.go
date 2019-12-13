@@ -23,7 +23,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
 )
 
@@ -166,9 +165,10 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			},
 		},
 	}
+	digestedRef, _ := op.Image.DigestedRef()
 	container := v1.Container{
 		Name:    k8sContainerName,
-		Image:   imageWithDigest(op.Image),
+		Image:   digestedRef,
 		Command: []string{"/cnab/app/run"},
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
@@ -443,11 +443,4 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
-}
-
-func imageWithDigest(img bundle.InvocationImage) string {
-	if img.Digest == "" {
-		return img.Image
-	}
-	return img.Image + "@" + img.Digest
 }

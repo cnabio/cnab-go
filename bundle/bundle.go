@@ -96,6 +96,15 @@ func (i *BaseImage) DeepCopy() *BaseImage {
 	return &i2
 }
 
+// DigestedRef returns an image reference which can be used to pull by digest using Docker or Kubernetes.
+// If no digest is available, only the image will be returned and the boolean value will be false.
+func (i *BaseImage) DigestedRef() (string, bool) {
+	if i.Digest == "" {
+		return i.Image, false
+	}
+	return fmt.Sprintf("%s@%s", i.Image, i.Digest), true
+}
+
 // Image describes a container image in the bundle
 type Image struct {
 	BaseImage   `yaml:",inline"`
