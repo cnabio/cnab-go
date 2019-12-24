@@ -451,7 +451,7 @@ var exampleBundle = &Bundle{
 	InvocationImages: []InvocationImage{
 		{
 			BaseImage: BaseImage{
-				Image:     "deislabs/invocation-image:1.0",
+				Image:     "cnabio/invocation-image:1.0",
 				ImageType: "docker",
 				Labels: map[string]string{
 					"os": "Linux",
