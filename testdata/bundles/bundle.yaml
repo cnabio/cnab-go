@@ -4,7 +4,7 @@ version: "1.0"
 description: something
 invocationImages:
 - imageType: docker
-  image: deislabs/invocation-image:1.0
+  image: cnabio/invocation-image:1.0
   labels:
     os: Linux
 images:

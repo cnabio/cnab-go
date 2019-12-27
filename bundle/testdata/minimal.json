@@ -1,1 +1,1 @@
-{"description":"My First Bundle","images":{"mybund":{"description":"my bun daemon","image":"deislabs/mybund:abc123","imageType":"docker"}},"invocationImages":[{"image":"deislabs/mybunii:def456","imageType":"docker"}],"name":"mybun","schemaVersion":"v99.98","version":"v1.0.0"}
+{"description":"My First Bundle","images":{"mybund":{"description":"my bun daemon","image":"cnabio/mybund:abc123","imageType":"docker"}},"invocationImages":[{"image":"cnabio/mybunii:def456","imageType":"docker"}],"name":"mybun","schemaVersion":"v99.98","version":"v1.0.0"}
