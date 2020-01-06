@@ -50,6 +50,8 @@ endif
 ifndef HAS_GO_JUNIT_REPORT
 	go get github.com/jstemmer/go-junit-report
 endif
+	@# go get to install global tools with modules modify our dependencies. Reset them back
+	git checkout go.mod go.sum
 
 .PHONY: coverage
 coverage:

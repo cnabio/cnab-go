@@ -58,6 +58,9 @@ function test(e, project) {
     `cd ${localPath}`,
     "make bootstrap",
     "make build",
+    // Ensure that it compiles on the three main OS's
+    "GOOS=windows make build",
+    "GOOS=darwin make build",
     "make test",
     "make lint",
   ];
