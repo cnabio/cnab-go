@@ -6,9 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/cnabio/cnab-go/bundle"
-
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -59,7 +59,11 @@ func (s Set) Merge(s2 Set) error {
 type CredentialSet struct {
 	// Name is the name of the credentialset.
 	Name string `json:"name" yaml:"name"`
-	// Creadentials is a list of credential specs.
+	// Created timestamp of the credentialset.
+	Created time.Time `json:"created" yaml:"created"`
+	// Modified timestamp of the credentialset.
+	Modified time.Time `json:"modified" yaml:"modified"`
+	// Credentials is a list of credential specs.
 	Credentials []CredentialStrategy `json:"credentials" yaml:"credentials"`
 }
 
