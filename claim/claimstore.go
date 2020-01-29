@@ -28,14 +28,14 @@ func (s Store) List() ([]string, error) {
 	return s.backingStore.List()
 }
 
-// Store saves a claim. Any previous version of the claim (that is, with the same
+// Save a claim. Any previous version of the claim (that is, with the same
 // name) is overwritten.
-func (s Store) Store(claim Claim) error {
+func (s Store) Save(claim Claim) error {
 	bytes, err := json.MarshalIndent(claim, "", "  ")
 	if err != nil {
 		return err
 	}
-	return s.backingStore.Store(claim.Name, bytes)
+	return s.backingStore.Save(claim.Name, bytes)
 }
 
 // Read loads the claim with the given name from the store.

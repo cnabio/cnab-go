@@ -18,7 +18,7 @@ func TestFilesystemStore(t *testing.T) {
 	s := NewFileSystemStore(tmdir, "data")
 	key := "testkey"
 	val := []byte("testval")
-	is.NoError(s.Store(key, val))
+	is.NoError(s.Save(key, val))
 	list, err := s.List()
 	is.NoError(err)
 	is.Len(list, 1)
