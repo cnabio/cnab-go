@@ -8,7 +8,7 @@ import (
 	"github.com/globalsign/mgo"
 )
 
-// MongoClaimsCollection is the name of the claims collection.
+// MongoCollectionPrefix is applied to every collection.
 const MongoCollectionPrefix = "cnab_"
 
 type mongoDBStore struct {
