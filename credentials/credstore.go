@@ -13,7 +13,7 @@ const ItemType = "credentials"
 // ErrNotFound represents a credential set not found in storage
 var ErrNotFound = errors.New("Credential set does not exist")
 
-// Store is a persistent store for
+// Store is a persistent store for credential sets.
 type Store struct {
 	backingStore *crud.BackingStore
 }
