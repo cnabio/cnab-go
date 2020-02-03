@@ -8,8 +8,6 @@ import (
 	"github.com/cnabio/cnab-go/utils/crud"
 )
 
-const ItemType = "credentials"
-
 // ErrNotFound represents a credential set not found in storage
 var ErrNotFound = errors.New("Credential set does not exist")
 
@@ -61,18 +59,17 @@ func (s Store) ReadAll() ([]CredentialSet, error) {
 		return nil, err
 	}
 
-	claims := make([]CredentialSet, len(results))
-	for i := range claims {
-		cs := CredentialSet{}
-		bytes := results[i]
+	creds := make([]CredentialSet, len(results))
+	for i, bytes := range results {
+		var cs CredentialSet
 		err = json.Unmarshal(bytes, &cs)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling credential set: %v", err)
 		}
-		claims[i] = cs
+		creds[i] = cs
 	}
 
-	return claims, nil
+	return creds, nil
 }
 
 // Delete deletes a credential set from the store.

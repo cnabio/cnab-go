@@ -63,9 +63,8 @@ func (s Store) ReadAll() ([]Claim, error) {
 	}
 
 	claims := make([]Claim, len(results))
-	for i, bytes := range claims {
+	for i, bytes := range results {
 		var claim Claim
-		bytes := results[i]
 		err = json.Unmarshal(bytes, &claim)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling claim: %v", err)

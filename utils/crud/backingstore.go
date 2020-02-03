@@ -8,24 +8,23 @@ var _ Store = &BackingStore{}
 // - Close is called after each method when AutoClose is true (default).
 type BackingStore struct {
 	AutoClose    bool
-	closed       bool
+	opened       bool
 	backingStore Store
 }
 
 func NewBackingStore(store Store) *BackingStore {
 	return &BackingStore{
 		AutoClose:    true,
-		closed:       true,
 		backingStore: store,
 	}
 }
 
 func (s *BackingStore) Connect() error {
-	if !s.closed {
+	if s.opened {
 		return nil
 	}
 	if connectable, ok := s.backingStore.(HasConnect); ok {
-		s.closed = false
+		s.opened = true
 		return connectable.Connect()
 	}
 	return nil
@@ -33,8 +32,15 @@ func (s *BackingStore) Connect() error {
 
 func (s *BackingStore) Close() error {
 	if closable, ok := s.backingStore.(HasClose); ok {
-		s.closed = true
+		s.opened = false
 		return closable.Close()
+	}
+	return nil
+}
+
+func (s *BackingStore) autoClose() error {
+	if s.opened && s.AutoClose {
+		return s.Close()
 	}
 	return nil
 }
@@ -45,9 +51,7 @@ func (s *BackingStore) List() ([]string, error) {
 		return nil, err
 	}
 
-	if s.AutoClose {
-		defer s.Close()
-	}
+	defer s.autoClose()
 
 	return s.backingStore.List()
 }
@@ -58,9 +62,7 @@ func (s *BackingStore) Save(name string, data []byte) error {
 		return err
 	}
 
-	if s.AutoClose {
-		defer s.Close()
-	}
+	defer s.autoClose()
 
 	return s.backingStore.Save(name, data)
 }
@@ -71,21 +73,18 @@ func (s *BackingStore) Read(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	if s.AutoClose {
-		defer s.Close()
-	}
+	defer s.autoClose()
 
 	return s.backingStore.Read(name)
 }
 
 // ReadAll retrieves all the items.
 func (s *BackingStore) ReadAll() ([][]byte, error) {
-	if s.AutoClose {
-		defer s.Close()
-	}
+	defer s.autoClose()
 
 	autoClose := s.AutoClose
 	s.AutoClose = false
+	defer func() { s.AutoClose = autoClose }()
 
 	results := make([][]byte, 0)
 	list, err := s.List()
@@ -100,7 +99,6 @@ func (s *BackingStore) ReadAll() ([][]byte, error) {
 		}
 		results = append(results, result)
 	}
-	s.AutoClose = autoClose
 
 	return results, nil
 }
@@ -111,9 +109,7 @@ func (s *BackingStore) Delete(name string) error {
 		return err
 	}
 
-	if s.AutoClose {
-		defer s.Close()
-	}
+	defer s.autoClose()
 
 	return s.backingStore.Delete(name)
 }
