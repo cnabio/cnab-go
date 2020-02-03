@@ -26,12 +26,12 @@ type fileSystemStore struct {
 	fileExtension string
 }
 
-func (s fileSystemStore) List() ([]string, error) {
-	if err := s.ensure(); err != nil {
+func (s fileSystemStore) List(itemType string) ([]string, error) {
+	if err := s.ensure(itemType); err != nil {
 		return nil, err
 	}
 
-	files, err := ioutil.ReadDir(s.baseDirectory)
+	files, err := ioutil.ReadDir(filepath.Join(s.baseDirectory, itemType))
 	if err != nil {
 		return []string{}, err
 	}
@@ -39,8 +39,8 @@ func (s fileSystemStore) List() ([]string, error) {
 	return names(s.storageFiles(files)), nil
 }
 
-func (s fileSystemStore) Save(name string, data []byte) error {
-	filename, err := s.fullyQualifiedName(name)
+func (s fileSystemStore) Save(itemType string, name string, data []byte) error {
+	filename, err := s.fullyQualifiedName(itemType, name)
 	if err != nil {
 		return err
 	}
@@ -48,8 +48,8 @@ func (s fileSystemStore) Save(name string, data []byte) error {
 	return ioutil.WriteFile(filename, data, os.ModePerm)
 }
 
-func (s fileSystemStore) Read(name string) ([]byte, error) {
-	filename, err := s.fullyQualifiedName(name)
+func (s fileSystemStore) Read(itemType string, name string) ([]byte, error) {
+	filename, err := s.fullyQualifiedName(itemType, name)
 	if err != nil {
 		return nil, err
 	}
@@ -61,34 +61,35 @@ func (s fileSystemStore) Read(name string) ([]byte, error) {
 	return ioutil.ReadFile(filename)
 }
 
-func (s fileSystemStore) Delete(name string) error {
-	filename, err := s.fullyQualifiedName(name)
+func (s fileSystemStore) Delete(itemType string, name string) error {
+	filename, err := s.fullyQualifiedName(itemType, name)
 	if err != nil {
 		return err
 	}
 	return os.Remove(filename)
 }
 
-func (s fileSystemStore) fileNameOf(name string) string {
-	return filepath.Join(s.baseDirectory, fmt.Sprintf("%s.%s", name, s.fileExtension))
+func (s fileSystemStore) fileNameOf(itemType string, name string) string {
+	return filepath.Join(s.baseDirectory, itemType, fmt.Sprintf("%s.%s", name, s.fileExtension))
 }
 
-func (s fileSystemStore) fullyQualifiedName(name string) (string, error) {
-	if err := s.ensure(); err != nil {
+func (s fileSystemStore) fullyQualifiedName(itemType string, name string) (string, error) {
+	if err := s.ensure(itemType); err != nil {
 		return "", err
 	}
-	return s.fileNameOf(name), nil
+	return s.fileNameOf(itemType, name), nil
 }
 
-func (s fileSystemStore) ensure() error {
-	fi, err := os.Stat(s.baseDirectory)
+func (s fileSystemStore) ensure(itemType string) error {
+	target := filepath.Join(s.baseDirectory, itemType)
+	fi, err := os.Stat(target)
 	if err == nil {
 		if fi.IsDir() {
 			return nil
 		}
-		return errors.New("Storage directory name exists, but is not a directory")
+		return fmt.Errorf("storage path %s exists, but is not a directory", target)
 	}
-	return os.MkdirAll(s.baseDirectory, os.ModePerm)
+	return os.MkdirAll(target, os.ModePerm)
 }
 
 func (s fileSystemStore) storageFiles(files []os.FileInfo) []os.FileInfo {
