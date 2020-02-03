@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/cnabio/cnab-go/bundle"
-
+	"github.com/cnabio/cnab-go/secrets/host"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCredentialSet(t *testing.T) {
+func TestCredentialSet_ResolveCredentials(t *testing.T) {
 	is := assert.New(t)
 	if err := os.Setenv("TEST_USE_VAR", "kakapu"); err != nil {
 		t.Fatal("could not setup env")
@@ -26,11 +26,12 @@ func TestCredentialSet(t *testing.T) {
 	credset, err := Load(fmt.Sprintf("testdata/staging-%s.yaml", goos))
 	is.NoError(err)
 
-	results, err := credset.Resolve()
+	h := &host.SecretStore{}
+	results, err := credset.ResolveCredentials(h)
 	if err != nil {
 		t.Fatal(err)
 	}
-	count := 5
+	count := 4
 	is.Len(results, count, "Expected %d credentials", count)
 
 	for _, tt := range []struct {
@@ -42,7 +43,6 @@ func TestCredentialSet(t *testing.T) {
 		{name: "run_program", key: "TEST_RUN_PROGRAM", expect: "wildebeest"},
 		{name: "use_var", key: "TEST_USE_VAR", expect: "kakapu"},
 		{name: "read_file", key: "TEST_READ_FILE", expect: "serval"},
-		{name: "fallthrough", key: "TEST_FALLTHROUGH", expect: "quokka", path: "/animals/quokka.txt"},
 		{name: "plain_value", key: "TEST_PLAIN_VALUE", expect: "cassowary"},
 	} {
 		dest, ok := results[tt.name]

@@ -1,15 +1,15 @@
 package credentials
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/cnabio/cnab-go/bundle"
-	yaml "gopkg.in/yaml.v2"
+	"github.com/cnabio/cnab-go/secrets"
+	"gopkg.in/yaml.v2"
 )
 
 // Set is an actual set of resolved credentials.
@@ -114,48 +114,19 @@ func isValidCred(haystack Set, needle string) bool {
 //	- Validate the credentials against a spec
 //	- Resolve the credentials
 //	- Expand them into bundle values
-func (c *CredentialSet) Resolve() (Set, error) {
+func (c *CredentialSet) ResolveCredentials(s secrets.Store) (Set, error) {
 	l := len(c.Credentials)
 	res := make(map[string]string, l)
 	for i := 0; i < l; i++ {
 		cred := c.Credentials[i]
-		src := cred.Source
-		// Precedence is Command, Path, EnvVar, Value
-		switch {
-		case src.Command != "":
-			data, err := execCmd(src.Command)
-			if err != nil {
-				return res, err
-			}
-			cred.Value = string(data)
-		case src.Path != "":
-			data, err := ioutil.ReadFile(os.ExpandEnv(src.Path))
-			if err != nil {
-				return res, fmt.Errorf("credential %q: %s", c.Credentials[i].Name, err)
-			}
-			cred.Value = string(data)
-		case src.EnvVar != "":
-			var ok bool
-			cred.Value, ok = os.LookupEnv(src.EnvVar)
-			if ok {
-				break
-			}
-			fallthrough
-		default:
-			cred.Value = src.Value
+		val, err := s.Resolve(cred.Source.Key, cred.Source.Value)
+		if err != nil {
+			return nil, fmt.Errorf("credential %q: %v", c.Credentials[i].Name, err)
 		}
+		cred.Value = val
 		res[c.Credentials[i].Name] = cred.Value
 	}
 	return res, nil
-}
-
-func execCmd(cmd string) ([]byte, error) {
-	parts := strings.Split(cmd, " ")
-	c := parts[0]
-	args := parts[1:]
-	run := exec.Command(c, args...)
-
-	return run.CombinedOutput()
 }
 
 // CredentialStrategy represents a source credential and the destination to which it should be sent.
@@ -175,13 +146,63 @@ type CredentialStrategy struct {
 
 // Source represents a strategy for loading a credential from local host.
 type Source struct {
-	Path    string `json:"path,omitempty" yaml:"path,omitempty"`
-	Command string `json:"command,omitempty" yaml:"command,omitempty"`
-	Value   string `json:"value,omitempty" yaml:"value,omitempty"`
-	EnvVar  string `json:"env,omitempty" yaml:"env,omitempty"`
+	Key   string
+	Value string
 }
 
-// Destination reprents a strategy for injecting a credential into an image.
+func (s *Source) marshalRaw() interface{} {
+	if s.Key == "" {
+		return nil
+	}
+	return map[string]string{s.Key: s.Value}
+}
+
+func (s *Source) unmarshalRaw(raw map[string]string) error {
+	switch len(raw) {
+	case 0:
+		s.Key = ""
+		s.Value = ""
+		return nil
+	case 1:
+		for k, v := range raw {
+			s.Key = k
+			s.Value = v
+		}
+		return nil
+	default:
+		return errors.New("multiple key/value pairs specified for source but only one may be defined")
+	}
+}
+
+func (s Source) MarshalJSON() ([]byte, error) {
+	raw := s.marshalRaw()
+	return json.Marshal(raw)
+}
+
+func (s *Source) UnmarshalJSON(data []byte) error {
+	var raw map[string]string
+	err := json.Unmarshal(data, &raw)
+	if err != nil {
+		return err
+	}
+	return s.unmarshalRaw(raw)
+}
+
+func (s Source) MarshalYAML() (interface{}, error) {
+	// TODO: use https://github.com/ghodss/yaml so that we don't need json and yaml defined
+	return s.marshalRaw(), nil
+}
+
+func (s *Source) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var raw map[string]string
+	err := unmarshal(&raw)
+	if err != nil {
+		return err
+	}
+	return s.unmarshalRaw(raw)
+}
+
+// Destination represents a strategy for injecting a credential into an image.
 type Destination struct {
 	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 }
