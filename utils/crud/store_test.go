@@ -13,9 +13,10 @@ import (
 var _ Store = &MockStore{}
 
 const (
-	ConnectCount = "connect-count"
-	CloseCount   = "close-count"
-	TestItemType = "test-items"
+	ConnectCount  = "connect-count"
+	CloseCount    = "close-count"
+	TestItemType  = "test-items"
+	MockStoreType = "mock-store"
 )
 
 func TestMockStore(t *testing.T) {
@@ -35,28 +36,40 @@ type MockStore struct {
 }
 
 func NewMockStore() *MockStore {
-	return &MockStore{data: map[string][]byte{}}
+	return &MockStore{data: map[string]map[string][]byte{}}
 }
 
 func (s *MockStore) Connect() error {
+	_, ok := s.data[MockStoreType]
+	if !ok {
+		s.data[MockStoreType] = make(map[string][]byte, 1)
+	}
+
 	// Keep track of Connect calls for test asserts later
 	count, err := s.GetConnectCount()
 	if err != nil {
 		return err
 	}
 
-	s.data[ConnectCount] = []byte(strconv.Itoa(count + 1))
+	s.data[MockStoreType][ConnectCount] = []byte(strconv.Itoa(count + 1))
+
 	return nil
 }
 
 func (s *MockStore) Close() error {
+	_, ok := s.data[MockStoreType]
+	if !ok {
+		s.data[MockStoreType] = make(map[string][]byte, 1)
+	}
+
 	// Keep track of Close calls for test asserts later
 	count, err := s.GetCloseCount()
 	if err != nil {
 		return err
 	}
 
-	s.data[CloseCount] = []byte(strconv.Itoa(count + 1))
+	s.data[MockStoreType][CloseCount] = []byte(strconv.Itoa(count + 1))
+
 	return nil
 }
 
@@ -105,7 +118,7 @@ func (s *MockStore) Delete(itemType string, name string) error {
 // GetConnectCount is for tests to safely read the Connect call count
 // without accidentally triggering it by using Read.
 func (s *MockStore) GetConnectCount() (int, error) {
-	countB, ok := s.data[ConnectCount]
+	countB, ok := s.data[MockStoreType][ConnectCount]
 	if !ok {
 		countB = []byte("0")
 	}
@@ -121,7 +134,7 @@ func (s *MockStore) GetConnectCount() (int, error) {
 // GetCloseCount is for tests to safely read the Close call count
 // without accidentally triggering it by using Read.
 func (s *MockStore) GetCloseCount() (int, error) {
-	countB, ok := s.data[CloseCount]
+	countB, ok := s.data[MockStoreType][CloseCount]
 	if !ok {
 		countB = []byte("0")
 	}

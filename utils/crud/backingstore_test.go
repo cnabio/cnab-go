@@ -19,11 +19,11 @@ func TestBackingStore_Read(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.data["key1"] = []byte("value1")
+			s.data[TestItemType] = map[string][]byte{"key1": []byte("value1")}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			val, err := bs.Read("key1")
+			val, err := bs.Read(TestItemType, "key1")
 			require.NoError(t, err, "expected Read to succeed")
 			assert.Equal(t, "value1", string(val), "Read returned the wrong data")
 
@@ -57,7 +57,7 @@ func TestBackingStore_Store(t *testing.T) {
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			err := bs.Save("key1", []byte("value1"))
+			err := bs.Save(TestItemType, "key1", []byte("value1"))
 			require.NoError(t, err, "expected Store to succeed")
 
 			connectCount, err := s.GetConnectCount()
@@ -72,7 +72,7 @@ func TestBackingStore_Store(t *testing.T) {
 				assert.Equal(t, 0, closeCount, "Close should not be automatically called")
 			}
 
-			val, err := bs.Read("key1")
+			val, err := bs.Read(TestItemType, "key1")
 			require.NoError(t, err, "expected Read to succeed")
 			assert.Equal(t, "value1", string(val), "stored value did not survive the round trip")
 
@@ -107,12 +107,14 @@ func TestBackingStore_List(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.data["key1"] = []byte("value1")
-			s.data["key2"] = []byte("value2")
+			s.data[TestItemType] = map[string][]byte{
+				"key1": []byte("value1"),
+				"key2": []byte("value2"),
+			}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			results, err := bs.List()
+			results, err := bs.List(TestItemType)
 			require.NoError(t, err, "expected List to succeed")
 			require.Contains(t, results, "key1")
 			require.Contains(t, results, "key2")
@@ -144,11 +146,11 @@ func TestBackingStore_Delete(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.data["key1"] = []byte("value1")
+			s.data[TestItemType] = map[string][]byte{"key1": []byte("value1")}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			err := bs.Delete("key1")
+			err := bs.Delete(TestItemType, "key1")
 			require.NoError(t, err, "expected Delete to succeed")
 
 			connectCount, err := s.GetConnectCount()
@@ -163,7 +165,7 @@ func TestBackingStore_Delete(t *testing.T) {
 				assert.Equal(t, 0, closeCount, "Close should not be automatically called")
 			}
 
-			val, _ := bs.Read("key1")
+			val, _ := bs.Read(TestItemType, "key1")
 			assert.Empty(t, val, "Delete should have removed the entry")
 		})
 	}
@@ -181,12 +183,14 @@ func TestBackingStore_ReadAll(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.data["key1"] = []byte("value1")
-			s.data["key2"] = []byte("value2")
+			s.data[TestItemType] = map[string][]byte{
+				"key1": []byte("value1"),
+				"key2": []byte("value2"),
+			}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			results, err := bs.ReadAll()
+			results, err := bs.ReadAll(TestItemType)
 			require.NoError(t, err, "expected ReadAll to succeed")
 			assert.Contains(t, results, []byte("value1"))
 			assert.Contains(t, results, []byte("value2"))

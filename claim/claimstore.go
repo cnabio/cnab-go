@@ -8,6 +8,7 @@ import (
 	"github.com/cnabio/cnab-go/utils/crud"
 )
 
+// ItemType is the location in the backing store where claims are persisted.
 const ItemType = "claims"
 
 // ErrClaimNotFound represents a claim not found in claim storage
