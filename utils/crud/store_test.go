@@ -1,6 +1,8 @@
 package crud
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,7 +12,12 @@ import (
 // changes. But we also provide a mock for testing.
 var _ Store = &MockStore{}
 
-const TestItemType = "test-items"
+const (
+	ConnectCount  = "connect-count"
+	CloseCount    = "close-count"
+	TestItemType  = "test-items"
+	MockStoreType = "mock-store"
+)
 
 func TestMockStore(t *testing.T) {
 	s := NewMockStore()
@@ -22,7 +29,6 @@ func TestMockStore(t *testing.T) {
 	data, err := s.Read(TestItemType, "test")
 	is.NoError(err)
 	is.Equal(data, []byte("data"))
-
 }
 
 type MockStore struct {
@@ -30,9 +36,41 @@ type MockStore struct {
 }
 
 func NewMockStore() *MockStore {
-	return &MockStore{
-		data: make(map[string]map[string][]byte),
+	return &MockStore{data: map[string]map[string][]byte{}}
+}
+
+func (s *MockStore) Connect() error {
+	_, ok := s.data[MockStoreType]
+	if !ok {
+		s.data[MockStoreType] = make(map[string][]byte, 1)
 	}
+
+	// Keep track of Connect calls for test asserts later
+	count, err := s.GetConnectCount()
+	if err != nil {
+		return err
+	}
+
+	s.data[MockStoreType][ConnectCount] = []byte(strconv.Itoa(count + 1))
+
+	return nil
+}
+
+func (s *MockStore) Close() error {
+	_, ok := s.data[MockStoreType]
+	if !ok {
+		s.data[MockStoreType] = make(map[string][]byte, 1)
+	}
+
+	// Keep track of Close calls for test asserts later
+	count, err := s.GetCloseCount()
+	if err != nil {
+		return err
+	}
+
+	s.data[MockStoreType][CloseCount] = []byte(strconv.Itoa(count + 1))
+
+	return nil
 }
 
 func (s *MockStore) List(itemType string) ([]string, error) {
@@ -74,6 +112,37 @@ func (s *MockStore) Delete(itemType string, name string) error {
 		delete(itemData, name)
 		return nil
 	}
-
 	return nil
+}
+
+// GetConnectCount is for tests to safely read the Connect call count
+// without accidentally triggering it by using Read.
+func (s *MockStore) GetConnectCount() (int, error) {
+	countB, ok := s.data[MockStoreType][ConnectCount]
+	if !ok {
+		countB = []byte("0")
+	}
+
+	count, err := strconv.Atoi(string(countB))
+	if err != nil {
+		return 0, fmt.Errorf("could not convert connect-count %s to int: %v", string(countB), err)
+	}
+
+	return count, nil
+}
+
+// GetCloseCount is for tests to safely read the Close call count
+// without accidentally triggering it by using Read.
+func (s *MockStore) GetCloseCount() (int, error) {
+	countB, ok := s.data[MockStoreType][CloseCount]
+	if !ok {
+		countB = []byte("0")
+	}
+
+	count, err := strconv.Atoi(string(countB))
+	if err != nil {
+		return 0, fmt.Errorf("could not convert close-count %s to int: %v", string(countB), err)
+	}
+
+	return count, nil
 }
