@@ -205,7 +205,7 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	}
 	files["/cnab/app/image-map.json"] = string(imgMap)
 
-	env["CNAB_INSTALLATION_NAME"] = c.Name
+	env["CNAB_INSTALLATION_NAME"] = c.Installation
 	env["CNAB_ACTION"] = action
 	env["CNAB_BUNDLE_NAME"] = c.Bundle.Name
 	env["CNAB_BUNDLE_VERSION"] = c.Bundle.Version
@@ -222,7 +222,7 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 
 	return &driver.Operation{
 		Action:       action,
-		Installation: c.Name,
+		Installation: c.Installation,
 		Parameters:   c.Parameters,
 		Image:        ii,
 		Revision:     c.Revision,

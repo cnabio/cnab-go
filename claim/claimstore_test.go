@@ -39,7 +39,7 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	claims, err := store.List()
 	is.NoError(err, "Failed to list: %s", err)
 	is.Len(claims, 1)
-	is.Equal(claims[0], claim.Name)
+	is.Equal(claims[0], claim.Installation)
 
 	is.NoError(store.Delete("foo"))
 
@@ -111,9 +111,9 @@ func TestReadAll(t *testing.T) {
 	is.NoError(err, "Failed to read claims: %s", err)
 
 	is.Len(claims, 3)
-	is.Equal("foo", claim.Name)
-	is.Equal("bar", claim2.Name)
-	is.Equal("baz", claim3.Name)
+	is.Equal("foo", claim.Installation)
+	is.Equal("bar", claim2.Installation)
+	is.Equal("baz", claim3.Installation)
 }
 
 func TestCanUpdateOutputs(t *testing.T) {

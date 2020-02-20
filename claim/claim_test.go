@@ -22,7 +22,7 @@ func TestNew(t *testing.T) {
 	err = claim.Validate()
 	assert.NoError(t, err)
 
-	assert.Equal(t, "my_claim", claim.Name, "Name is set")
+	assert.Equal(t, "my_claim", claim.Installation, "Installation name is set")
 	assert.Equal(t, "unknown", claim.Result.Status)
 	assert.Equal(t, "unknown", claim.Result.Action)
 
@@ -99,7 +99,7 @@ func TestMarshal_New(t *testing.T) {
 
 var exampleClaim = Claim{
 	SchemaVersion: DefaultSchemaVersion,
-	Name:          "my_claim",
+	Installation:  "my_claim",
 	Revision:      staticRevision,
 	Created:       staticDate,
 	Modified:      staticDate,
@@ -149,7 +149,7 @@ func TestClaimSchema(t *testing.T) {
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
-	url := "https://raw.githubusercontent.com/cnabio/cnab-spec/master/schema/claim.schema.json"
+	url := "https://cnab.io/v1/claim.schema.json"
 	req, err := http.NewRequest("GET", url, nil)
 	assert.NoError(t, err, "failed to construct GET request for fetching claim schema")
 	res, err := http.DefaultClient.Do(req)
@@ -160,14 +160,10 @@ func TestClaimSchema(t *testing.T) {
 	assert.NoError(t, err, "failed to read claim schema")
 
 	rs := &jsonschema.RootSchema{}
-	// This currently fails; needs https://github.com/cnabio/cnab-spec/pull/243
+	// This currently fails; needs https://github.com/cnabio/cnab-spec/pull/330
 	err = json.Unmarshal(schemaData, rs)
 	assert.NoError(t, err, "failed to json.Unmarshal root claim schema")
 
-	// This currently fails due to https://github.com/cnabio/cnab-spec/issues/241
-	// Thus, since the referenced bundle schema can't be fetched, schema validation is impaired
-	// Alternatively, we could read the qri-o/jsonschema docs to see how we might 'seed' our Validator
-	// with a fetched version of the bundle schema (from GitHub, as above for the claim schema)
 	err = rs.FetchRemoteReferences()
 	assert.NoError(t, err, "failed to fetch remote references declared by claim schema")
 

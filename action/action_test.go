@@ -40,12 +40,12 @@ var mockSet = credentials.Set{
 func newClaim() *claim.Claim {
 	now := time.Now()
 	return &claim.Claim{
-		Created:    now,
-		Modified:   now,
-		Name:       "name",
-		Revision:   "revision",
-		Bundle:     mockBundle(),
-		Parameters: map[string]interface{}{},
+		Created:      now,
+		Modified:     now,
+		Installation: "name",
+		Revision:     "revision",
+		Bundle:       mockBundle(),
+		Parameters:   map[string]interface{}{},
 	}
 }
 
@@ -198,7 +198,7 @@ func TestOpFromClaim(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(c.Name, op.Installation)
+	is.Equal(c.Installation, op.Installation)
 	is.Equal(c.Revision, op.Revision)
 	is.Equal(invocImage.Image, op.Image.Image)
 	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
@@ -240,7 +240,7 @@ func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(c.Name, op.Installation)
+	is.Equal(c.Installation, op.Installation)
 	is.Equal(c.Revision, op.Revision)
 	is.Equal(invocImage.Image, op.Image.Image)
 	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
@@ -267,7 +267,7 @@ func TestOpFromClaim_NoParameter(t *testing.T) {
 
 	is := assert.New(t)
 
-	is.Equal(c.Name, op.Installation)
+	is.Equal(c.Installation, op.Installation)
 	is.Equal(c.Revision, op.Revision)
 	is.Equal(invocImage.Image, op.Image.Image)
 	is.Equal(driver.ImageTypeDocker, op.Image.ImageType)
