@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/utils/schemaversion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +26,7 @@ func TestReadTopLevelProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, "v1.0.0-WD", bundle.SchemaVersion)
+	assert.Equal(t, schemaversion.SchemaVersion("v1.0.0-WD"), bundle.SchemaVersion)
 	if bundle.Name != "foo" {
 		t.Errorf("Expected name 'foo', got '%s'", bundle.Name)
 	}
@@ -264,7 +265,7 @@ func TestValidateMissingSchemaVersion(t *testing.T) {
 	}
 
 	err := b.Validate()
-	is.EqualError(err, "invalid bundle schema version \"\": Invalid Semantic Version")
+	is.EqualError(err, "bundle validation failed: invalid schema version \"\": Invalid Semantic Version")
 }
 
 func TestValidateInvalidSchemaVersion(t *testing.T) {
@@ -278,7 +279,7 @@ func TestValidateInvalidSchemaVersion(t *testing.T) {
 	}
 
 	err := b.Validate()
-	is.EqualError(err, "invalid bundle schema version \".1\": Invalid Semantic Version")
+	is.EqualError(err, "bundle validation failed: invalid schema version \".1\": Invalid Semantic Version")
 }
 
 func TestValidateBundle_RequiresInvocationImage(t *testing.T) {

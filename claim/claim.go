@@ -7,9 +7,15 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/utils/schemaversion"
 )
+
+// DefaultSchemaVersion represents the schema version of the Claim
+// that this library returns by default
+const DefaultSchemaVersion = schemaversion.SchemaVersion("v1.0.0-WD")
 
 // Status constants define the CNAB status fields on a Result.
 const (
@@ -31,17 +37,18 @@ const (
 
 // Claim is an installation claim receipt.
 //
-// Claims reprsent information about a particular installation, and
+// Claims represent information about a particular installation, and
 // provide the necessary data to upgrade, uninstall, and downgrade
 // a CNAB package.
 type Claim struct {
-	Name       string                 `json:"name"`
-	Revision   string                 `json:"revision"`
-	Created    time.Time              `json:"created"`
-	Modified   time.Time              `json:"modified"`
-	Bundle     *bundle.Bundle         `json:"bundle"`
-	Result     Result                 `json:"result,omitempty"`
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	SchemaVersion schemaversion.SchemaVersion `json:"schemaVersion"`
+	Name          string                      `json:"name"`
+	Revision      string                      `json:"revision"`
+	Created       time.Time                   `json:"created"`
+	Modified      time.Time                   `json:"modified"`
+	Bundle        *bundle.Bundle              `json:"bundle"`
+	Result        Result                      `json:"result,omitempty"`
+	Parameters    map[string]interface{}      `json:"parameters,omitempty"`
 	// Outputs is a map from the names of outputs (defined in the bundle) to the contents of the files.
 	Outputs map[string]interface{} `json:"outputs,omitempty"`
 	Custom  interface{}            `json:"custom,omitempty"`
@@ -59,10 +66,11 @@ func New(name string) (*Claim, error) {
 
 	now := time.Now()
 	return &Claim{
-		Name:     name,
-		Revision: ULID(),
-		Created:  now,
-		Modified: now,
+		SchemaVersion: DefaultSchemaVersion,
+		Name:          name,
+		Revision:      ULID(),
+		Created:       now,
+		Modified:      now,
 		Result: Result{
 			Action: ActionUnknown,
 			Status: StatusUnknown,
@@ -95,4 +103,13 @@ func ULID() string {
 	now := time.Now()
 	entropy := rand.New(rand.NewSource(now.UnixNano()))
 	return ulid.MustNew(ulid.Timestamp(now), entropy).String()
+}
+
+// Validate the Claim
+func (c Claim) Validate() error {
+	err := c.SchemaVersion.Validate()
+	if err != nil {
+		return errors.Wrapf(err, "claim validation failed")
+	}
+	return nil
 }

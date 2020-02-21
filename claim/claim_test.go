@@ -19,6 +19,9 @@ func TestNew(t *testing.T) {
 	claim, err := New("my_claim")
 	assert.NoError(t, err)
 
+	err = claim.Validate()
+	assert.NoError(t, err)
+
 	assert.Equal(t, "my_claim", claim.Name, "Name is set")
 	assert.Equal(t, "unknown", claim.Result.Status)
 	assert.Equal(t, "unknown", claim.Result.Action)
@@ -95,11 +98,12 @@ func TestMarshal_New(t *testing.T) {
 }
 
 var exampleClaim = Claim{
-	Name:     "my_claim",
-	Revision: staticRevision,
-	Created:  staticDate,
-	Modified: staticDate,
-	Bundle:   &exampleBundle,
+	SchemaVersion: DefaultSchemaVersion,
+	Name:          "my_claim",
+	Revision:      staticRevision,
+	Created:       staticDate,
+	Modified:      staticDate,
+	Bundle:        &exampleBundle,
 	Result: Result{
 		Action:  ActionInstall,
 		Message: "result message",
@@ -114,6 +118,19 @@ var exampleClaim = Claim{
 	Custom: []string{
 		"anything goes",
 	},
+}
+
+func TestValidateExampleClaim(t *testing.T) {
+	claim := exampleClaim
+
+	err := claim.Validate()
+	assert.NoError(t, err)
+
+	// change the SchemaVersion to an invalid value
+	claim.SchemaVersion = "not-semver"
+	err = claim.Validate()
+	assert.EqualError(t, err,
+		`claim validation failed: invalid schema version "not-semver": Invalid Semantic Version`)
 }
 
 func TestMarshal_AllFields(t *testing.T) {
