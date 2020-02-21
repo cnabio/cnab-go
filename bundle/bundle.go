@@ -8,29 +8,29 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Masterminds/semver"
 	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/utils/schemaversion"
 	"github.com/docker/go/canonical/json"
 	pkgErrors "github.com/pkg/errors"
 )
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
-	SchemaVersion      string                 `json:"schemaVersion" yaml:"schemaVersion"`
-	Name               string                 `json:"name" yaml:"name"`
-	Version            string                 `json:"version" yaml:"version"`
-	Description        string                 `json:"description" yaml:"description"`
-	Keywords           []string               `json:"keywords,omitempty" yaml:"keywords,omitempty"`
-	Maintainers        []Maintainer           `json:"maintainers,omitempty" yaml:"maintainers,omitempty"`
-	InvocationImages   []InvocationImage      `json:"invocationImages" yaml:"invocationImages"`
-	Images             map[string]Image       `json:"images,omitempty" yaml:"images,omitempty"`
-	Actions            map[string]Action      `json:"actions,omitempty" yaml:"actions,omitempty"`
-	Parameters         map[string]Parameter   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Credentials        map[string]Credential  `json:"credentials,omitempty" yaml:"credentials,omitempty"`
-	Outputs            map[string]Output      `json:"outputs,omitempty" yaml:"outputs,omitempty"`
-	Definitions        definition.Definitions `json:"definitions,omitempty" yaml:"definitions,omitempty"`
-	License            string                 `json:"license,omitempty" yaml:"license,omitempty"`
-	RequiredExtensions []string               `json:"requiredExtensions,omitempty" yaml:"requiredExtensions,omitempty"`
+	SchemaVersion      schemaversion.SchemaVersion `json:"schemaVersion" yaml:"schemaVersion"`
+	Name               string                      `json:"name" yaml:"name"`
+	Version            string                      `json:"version" yaml:"version"`
+	Description        string                      `json:"description" yaml:"description"`
+	Keywords           []string                    `json:"keywords,omitempty" yaml:"keywords,omitempty"`
+	Maintainers        []Maintainer                `json:"maintainers,omitempty" yaml:"maintainers,omitempty"`
+	InvocationImages   []InvocationImage           `json:"invocationImages" yaml:"invocationImages"`
+	Images             map[string]Image            `json:"images,omitempty" yaml:"images,omitempty"`
+	Actions            map[string]Action           `json:"actions,omitempty" yaml:"actions,omitempty"`
+	Parameters         map[string]Parameter        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Credentials        map[string]Credential       `json:"credentials,omitempty" yaml:"credentials,omitempty"`
+	Outputs            map[string]Output           `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Definitions        definition.Definitions      `json:"definitions,omitempty" yaml:"definitions,omitempty"`
+	License            string                      `json:"license,omitempty" yaml:"license,omitempty"`
+	RequiredExtensions []string                    `json:"requiredExtensions,omitempty" yaml:"requiredExtensions,omitempty"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
@@ -184,9 +184,9 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interf
 
 // Validate the bundle contents.
 func (b Bundle) Validate() error {
-	_, err := semver.NewVersion(b.SchemaVersion)
+	err := b.SchemaVersion.Validate()
 	if err != nil {
-		return fmt.Errorf("invalid bundle schema version %q: %v", b.SchemaVersion, err)
+		return pkgErrors.Wrapf(err, "bundle validation failed")
 	}
 
 	if len(b.InvocationImages) == 0 {
