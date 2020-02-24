@@ -39,7 +39,7 @@ func (s Store) Save(claim Claim) error {
 	if err != nil {
 		return err
 	}
-	return s.backingStore.Save(ItemType, claim.Name, bytes)
+	return s.backingStore.Save(ItemType, claim.Installation, bytes)
 }
 
 // Read loads the claim with the given name from the store.

@@ -42,7 +42,7 @@ const (
 // a CNAB package.
 type Claim struct {
 	SchemaVersion schemaversion.SchemaVersion `json:"schemaVersion"`
-	Name          string                      `json:"name"`
+	Installation  string                      `json:"installation"`
 	Revision      string                      `json:"revision"`
 	Created       time.Time                   `json:"created"`
 	Modified      time.Time                   `json:"modified"`
@@ -61,13 +61,13 @@ var ValidName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 func New(name string) (*Claim, error) {
 
 	if !ValidName.MatchString(name) {
-		return nil, fmt.Errorf("invalid name %q. Names must be [a-zA-Z0-9-_]+", name)
+		return nil, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", name)
 	}
 
 	now := time.Now()
 	return &Claim{
 		SchemaVersion: DefaultSchemaVersion,
-		Name:          name,
+		Installation:  name,
 		Revision:      ULID(),
 		Created:       now,
 		Modified:      now,
