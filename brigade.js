@@ -219,19 +219,13 @@ async function notificationWrap(job, note, conclusion) {
     const logs = await job.logs();
     note.conclusion = conclusion;
     note.summary = `Task "${ job.name }" passed`;
-    // TODO: re-enable appending response/logs once Brigade issue fixed
-    // https://github.com/brigadecore/brigade-github-app/issues/36
-    //
-    // note.text = "```" + res.toString() + "```\nTest Complete";
-    note.text = `Task Complete: ${conclusion}`;
+    note.text = "```" + res.toString() + "```\nTest Complete";
     return await note.run();
   } catch (e) {
     const logs = await job.logs();
     note.conclusion = "failure";
     note.summary = `Task "${ job.name }" failed for ${ e.buildID }`;
-    // See TODO above
-    // note.text = "```" + logs + "```\nFailed with error: " + e.toString();
-    note.text = "Task failed with error: " + e.toString();
+    note.text = "```" + logs + "```\nFailed with error: " + e.toString();
     try {
       await note.run();
     } catch (e2) {
