@@ -108,7 +108,7 @@ var exampleClaim = Claim{
 	Result: Result{
 		Action:  ActionInstall,
 		Message: "result message",
-		Status:  StatusUnderway,
+		Status:  StatusPending,
 	},
 	Parameters: map[string]interface{}{
 		"myparam": "myparamvalue",
