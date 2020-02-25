@@ -72,10 +72,11 @@ var (
 	staticRevision = "revision"
 	staticDate     = time.Date(1983, time.April, 18, 1, 2, 3, 4, time.UTC)
 	exampleBundle  = bundle.Bundle{
-		SchemaVersion: "schemaVersion",
-		Name:          "mybun",
-		Version:       "v0.1.0",
-		Description:   "this is my bundle",
+		SchemaVersion:    "schemaVersion",
+		Name:             "mybun",
+		Version:          "v0.1.0",
+		Description:      "this is my bundle",
+		InvocationImages: []bundle.InvocationImage{},
 	}
 )
 
@@ -144,8 +145,6 @@ func TestMarshal_AllFields(t *testing.T) {
 }
 
 func TestClaimSchema(t *testing.T) {
-	t.Skip("this test is currently a work in progress; see issue comment below")
-
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
@@ -160,7 +159,6 @@ func TestClaimSchema(t *testing.T) {
 	assert.NoError(t, err, "failed to read claim schema")
 
 	rs := &jsonschema.RootSchema{}
-	// This currently fails; needs https://github.com/cnabio/cnab-spec/pull/330
 	err = json.Unmarshal(schemaData, rs)
 	assert.NoError(t, err, "failed to json.Unmarshal root claim schema")
 
