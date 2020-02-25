@@ -681,3 +681,33 @@ func TestImageDeepCopy(t *testing.T) {
 	assert.Equal(t, map[string]string{"origLabel": "newLabelValue"}, newImg.Labels)
 	assert.Equal(t, "123abcd", newImg.Digest)
 }
+
+func TestValidateLocation(t *testing.T) {
+	testCases := []struct {
+		name     string
+		location Location
+		err      string
+	}{{
+		name:     "no path",
+		location: Location{},
+	}, {
+		name:     "ok path",
+		location: Location{Path: "/path/to/thing"},
+	}, {
+		name:     "error path",
+		location: Location{Path: "/cnab/app/outputs/thing"},
+		err:      `Path must not be a subpath of "/cnab/app/outputs"`,
+	}}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.location.Validate()
+
+			if tc.err != "" {
+				assert.EqualError(t, err, tc.err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}

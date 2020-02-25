@@ -233,6 +233,15 @@ func (img InvocationImage) Validate() error {
 	}
 }
 
+// Validate the Location
+func (l Location) Validate() error {
+	forbiddenPath := "/cnab/app/outputs"
+	if strings.HasPrefix(l.Path, forbiddenPath) {
+		return fmt.Errorf("Path must not be a subpath of %q", forbiddenPath)
+	}
+	return nil
+}
+
 func validateDockerish(s string) error {
 	if !strings.Contains(s, ":") {
 		return errors.New("tag is required")
