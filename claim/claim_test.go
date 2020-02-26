@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -95,7 +96,7 @@ func TestMarshal_New(t *testing.T) {
 	wantClaim, err := ioutil.ReadFile("testdata/claim.default.json")
 	assert.NoError(t, err, "failed to read test claim")
 
-	assert.Equal(t, string(wantClaim), string(bytes), "marshaled claim does not match expected")
+	assert.Equal(t, string(wantClaim), strings.TrimSpace(string(bytes)), "marshaled claim does not match expected")
 }
 
 var exampleClaim = Claim{
@@ -108,7 +109,7 @@ var exampleClaim = Claim{
 	Result: Result{
 		Action:  ActionInstall,
 		Message: "result message",
-		Status:  StatusUnderway,
+		Status:  StatusPending,
 	},
 	Parameters: map[string]interface{}{
 		"myparam": "myparamvalue",
@@ -141,7 +142,7 @@ func TestMarshal_AllFields(t *testing.T) {
 	wantClaim, err := ioutil.ReadFile("testdata/claim.allfields.json")
 	assert.NoError(t, err, "failed to read test claim")
 
-	assert.Equal(t, string(wantClaim), string(bytes), "marshaled claim does not match expected")
+	assert.Equal(t, strings.TrimSpace(string(wantClaim)), string(bytes), "marshaled claim does not match expected")
 }
 
 func TestClaimSchema(t *testing.T) {

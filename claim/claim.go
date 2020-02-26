@@ -19,10 +19,10 @@ const DefaultSchemaVersion = schemaversion.SchemaVersion("v1.0.0-WD")
 
 // Status constants define the CNAB status fields on a Result.
 const (
-	StatusSuccess  = "success"
-	StatusFailure  = "failure"
-	StatusUnderway = "underway"
-	StatusUnknown  = "unknown"
+	StatusSuccess = "success"
+	StatusFailure = "failure"
+	StatusPending = "pending"
+	StatusUnknown = "unknown"
 )
 
 // Action constants define the CNAB action to be taken
