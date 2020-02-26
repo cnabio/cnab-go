@@ -29,16 +29,14 @@ const (
 const (
 	ActionInstall   = "install"
 	ActionUpgrade   = "upgrade"
-	ActionDowngrade = "downgrade"
 	ActionUninstall = "uninstall"
-	ActionStatus    = "status"
 	ActionUnknown   = "unknown"
 )
 
 // Claim is an installation claim receipt.
 //
 // Claims represent information about a particular installation, and
-// provide the necessary data to upgrade, uninstall, and downgrade
+// provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
 	SchemaVersion schemaversion.SchemaVersion `json:"schemaVersion"`
