@@ -34,11 +34,6 @@ type Status struct {
 	Driver driver.Driver
 }
 
-// StatusJSON runs a status+JSON action on a CNAB bundle.
-type StatusJSON struct {
-	Driver driver.Driver
-}
-
 // Run executes a dry-run action in an image
 func (i *DryRun) Run(c *claim.Claim, creds credentials.Set, opCfgs ...OperationConfigFunc) error {
 	return (&RunCustom{Driver: i.Driver, Action: ActionDryRun}).Run(c, creds, opCfgs...)
