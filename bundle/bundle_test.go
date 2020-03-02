@@ -2,10 +2,12 @@ package bundle
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"testing"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/utils/schemavalidation"
 	"github.com/cnabio/cnab-go/utils/schemaversion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,7 @@ import (
 
 func TestReadTopLevelProperties(t *testing.T) {
 	json := `{
-		"schemaVersion": "v1.0.0-WD",
+		"schemaVersion": "v1.0.0",
 		"name": "foo",
 		"version": "1.0",
 		"images": {},
@@ -26,7 +28,7 @@ func TestReadTopLevelProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, schemaversion.SchemaVersion("v1.0.0-WD"), bundle.SchemaVersion)
+	assert.Equal(t, schemaversion.SchemaVersion("v1.0.0"), bundle.SchemaVersion)
 	if bundle.Name != "foo" {
 		t.Errorf("Expected name 'foo', got '%s'", bundle.Name)
 	}
@@ -491,7 +493,7 @@ var exampleCred = Credential{
 }
 
 var exampleBundle = &Bundle{
-	SchemaVersion: "v1.0.0-WD",
+	SchemaVersion: "v1.0.0",
 	Name:          "testBundle",
 	Description:   "something",
 	Version:       "1.0",
@@ -773,5 +775,21 @@ func TestValidateLocation(t *testing.T) {
 				assert.NoError(t, err)
 			}
 		})
+	}
+}
+
+func TestBundleSchema(t *testing.T) {
+	bunBytes, err := json.Marshal(exampleBundle)
+	assert.NoError(t, err, "failed to json.Marshal the bundle")
+
+	valErrors, err := schemavalidation.Validate("bundle", bunBytes)
+	assert.NoError(t, err, "failed to validate bundle schema")
+
+	if len(valErrors) > 0 {
+		t.Log("bundle validation against the JSON schema failed:")
+		for _, error := range valErrors {
+			t.Log(error)
+		}
+		t.Fail()
 	}
 }

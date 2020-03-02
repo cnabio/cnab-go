@@ -1,7 +1,7 @@
 {
   "name": "outputs",
   "version": "0.1.1",
-  "schemaVersion": "1.0.0-WD",
+  "schemaVersion": "1.0.0",
   "description": "An example bundle for showing outputs",
   "invocationImages": [
     {

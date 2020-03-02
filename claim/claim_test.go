@@ -3,16 +3,14 @@ package claim
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/qri-io/jsonschema"
-
 	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/utils/schemavalidation"
 )
 
 func TestNew(t *testing.T) {
@@ -199,29 +197,12 @@ func TestClaimSchema(t *testing.T) {
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
-	url := "https://cnab.io/v1/claim.schema.json"
-	req, err := http.NewRequest("GET", url, nil)
-	assert.NoError(t, err, "failed to construct GET request for fetching claim schema")
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err, "failed to get claim schema")
+	valErrors, err := schemavalidation.Validate("claim", claimBytes)
+	assert.NoError(t, err, "failed to validate claim schema")
 
-	defer res.Body.Close()
-	schemaData, err := ioutil.ReadAll(res.Body)
-	assert.NoError(t, err, "failed to read claim schema")
-
-	rs := &jsonschema.RootSchema{}
-	err = json.Unmarshal(schemaData, rs)
-	assert.NoError(t, err, "failed to json.Unmarshal root claim schema")
-
-	err = rs.FetchRemoteReferences()
-	assert.NoError(t, err, "failed to fetch remote references declared by claim schema")
-
-	errors, err := rs.ValidateBytes(claimBytes)
-	assert.NoError(t, err, "failed to validate claim")
-
-	if len(errors) > 0 {
+	if len(valErrors) > 0 {
 		t.Log("claim validation against the JSON schema failed:")
-		for _, error := range errors {
+		for _, error := range valErrors {
 			t.Log(error)
 		}
 		t.Fail()
