@@ -136,6 +136,33 @@ func TestValidateExampleClaim(t *testing.T) {
 		`claim validation failed: invalid schema version "not-semver": Invalid Semantic Version`)
 }
 
+func TestValidate_InvalidResult(t *testing.T) {
+	claim := exampleClaim
+
+	t.Run("if result is empty, validation should fail", func(t *testing.T) {
+		claim.Result = Result{}
+		err := claim.Validate()
+		assert.EqualError(t, err, "claim validation failed: the action must be provided")
+	})
+
+	t.Run("if result has empty action, validation should fail", func(t *testing.T) {
+		claim.Result = Result{
+			Status: StatusSuccess,
+		}
+		err := claim.Validate()
+		assert.EqualError(t, err, "claim validation failed: the action must be provided")
+	})
+
+	t.Run("if result has invalid status, validation should fail", func(t *testing.T) {
+		claim.Result = Result{
+			Action: "install",
+			Status: "invalidStatus",
+		}
+		err := claim.Validate()
+		assert.EqualError(t, err, "claim validation failed: invalid status: invalidStatus")
+	})
+}
+
 func TestMarshal_AllFields(t *testing.T) {
 	bytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal claim")

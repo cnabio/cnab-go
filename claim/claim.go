@@ -48,9 +48,8 @@ type Claim struct {
 	BundleReference string                      `json:"bundleReference,omitempty"`
 	Result          Result                      `json:"result,omitempty"`
 	Parameters      map[string]interface{}      `json:"parameters,omitempty"`
-	// Outputs is a map from the names of outputs (defined in the bundle) to the contents of the files.
-	Outputs map[string]interface{} `json:"outputs,omitempty"`
-	Custom  interface{}            `json:"custom,omitempty"`
+	Outputs         map[string]interface{}      `json:"outputs,omitempty"`
+	Custom          interface{}                 `json:"custom,omitempty"`
 }
 
 // ValidName is a regular expression that indicates whether a name is a valid claim name.
@@ -90,11 +89,24 @@ func (c *Claim) Update(action, status string) {
 	c.Revision = ULID()
 }
 
-// Result tracks the result of a Duffle operation on a CNAB installation
+// Result tracks the result of an operation on a CNAB installation
 type Result struct {
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 	Action  string `json:"action"`
 	Status  string `json:"status"`
+}
+
+// Validate the Result
+func (r Result) Validate() error {
+	if r.Action == "" {
+		return errors.New("the action must be provided")
+	}
+
+	switch r.Status {
+	case StatusFailure, StatusPending, StatusSuccess, StatusUnknown:
+		return nil
+	}
+	return fmt.Errorf("invalid status: %s", r.Status)
 }
 
 // ULID generates a string representation of a ULID.
@@ -106,9 +118,12 @@ func ULID() string {
 
 // Validate the Claim
 func (c Claim) Validate() error {
+	// validate the schemaVersion
 	err := c.SchemaVersion.Validate()
 	if err != nil {
-		return errors.Wrapf(err, "claim validation failed")
+		return errors.Wrap(err, "claim validation failed")
 	}
-	return nil
+
+	// validate the Result
+	return errors.Wrap(c.Result.Validate(), "claim validation failed")
 }
