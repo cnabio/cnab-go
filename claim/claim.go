@@ -39,14 +39,15 @@ const (
 // provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
-	SchemaVersion schemaversion.SchemaVersion `json:"schemaVersion"`
-	Installation  string                      `json:"installation"`
-	Revision      string                      `json:"revision"`
-	Created       time.Time                   `json:"created"`
-	Modified      time.Time                   `json:"modified"`
-	Bundle        *bundle.Bundle              `json:"bundle"`
-	Result        Result                      `json:"result,omitempty"`
-	Parameters    map[string]interface{}      `json:"parameters,omitempty"`
+	SchemaVersion   schemaversion.SchemaVersion `json:"schemaVersion"`
+	Installation    string                      `json:"installation"`
+	Revision        string                      `json:"revision"`
+	Created         time.Time                   `json:"created"`
+	Modified        time.Time                   `json:"modified"`
+	Bundle          *bundle.Bundle              `json:"bundle"`
+	BundleReference string                      `json:"bundleReference,omitempty"`
+	Result          Result                      `json:"result,omitempty"`
+	Parameters      map[string]interface{}      `json:"parameters,omitempty"`
 	// Outputs is a map from the names of outputs (defined in the bundle) to the contents of the files.
 	Outputs map[string]interface{} `json:"outputs,omitempty"`
 	Custom  interface{}            `json:"custom,omitempty"`
