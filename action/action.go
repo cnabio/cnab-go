@@ -203,10 +203,12 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	}
 	files["/cnab/app/image-map.json"] = string(imgMap)
 
-	env["CNAB_INSTALLATION_NAME"] = c.Installation
 	env["CNAB_ACTION"] = action
 	env["CNAB_BUNDLE_NAME"] = c.Bundle.Name
 	env["CNAB_BUNDLE_VERSION"] = c.Bundle.Version
+	env["CNAB_CLAIMS_VERSION"] = string(c.SchemaVersion)
+	env["CNAB_INSTALLATION_NAME"] = c.Installation
+	env["CNAB_REVISION"] = c.Revision
 
 	var outputs []string
 	if c.Bundle.Outputs != nil {
