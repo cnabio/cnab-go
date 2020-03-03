@@ -102,3 +102,24 @@ func TestRequiredIsTrue(t *testing.T) {
 	assert.True(t, ok, "should have found the credential")
 	assert.True(t, something.Required, "required was set to `true` in the json")
 }
+
+func TestCredentialValidate(t *testing.T) {
+	c := Credential{}
+
+	t.Run("empty credential fails", func(t *testing.T) {
+		err := c.Validate()
+		assert.EqualError(t, err, "credential env or path must be supplied")
+	})
+
+	t.Run("empty path fails", func(t *testing.T) {
+		c.Location.Path = ""
+		err := c.Validate()
+		assert.EqualError(t, err, "credential env or path must be supplied")
+	})
+
+	t.Run("successful validation", func(t *testing.T) {
+		c.Location.Path = "/path/to/cred"
+		err := c.Validate()
+		assert.NoError(t, err)
+	})
+}

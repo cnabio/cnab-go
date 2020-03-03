@@ -119,6 +119,16 @@ func (img *InvocationImage) DeepCopy() *InvocationImage {
 	return &img2
 }
 
+// Validate the image contents.
+func (img InvocationImage) Validate() error {
+	switch img.ImageType {
+	case "docker", "oci":
+		return validateDockerish(img.Image)
+	default:
+		return nil
+	}
+}
+
 // Location provides the location where a value should be written in
 // the invocation image.
 //
@@ -126,6 +136,15 @@ func (img *InvocationImage) DeepCopy() *InvocationImage {
 type Location struct {
 	Path                string `json:"path,omitempty" yaml:"path,omitempty"`
 	EnvironmentVariable string `json:"env,omitempty" yaml:"env,omitempty"`
+}
+
+// Validate the Location
+func (l Location) Validate() error {
+	forbiddenPath := "/cnab/app/outputs"
+	if strings.HasPrefix(l.Path, forbiddenPath) {
+		return fmt.Errorf("Path must not be a subpath of %q", forbiddenPath)
+	}
+	return nil
 }
 
 // Maintainer describes a code maintainer of a bundle
@@ -213,6 +232,7 @@ func (b Bundle) Validate() error {
 		reqExt[requiredExtension] = true
 	}
 
+	// Validate the invocation images
 	for _, img := range b.InvocationImages {
 		err := img.Validate()
 		if err != nil {
@@ -220,25 +240,23 @@ func (b Bundle) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-// Validate the image contents.
-func (img InvocationImage) Validate() error {
-	switch img.ImageType {
-	case "docker", "oci":
-		return validateDockerish(img.Image)
-	default:
-		return nil
+	// Validate the parameters
+	for name, param := range b.Parameters {
+		err := param.Validate()
+		if err != nil {
+			return pkgErrors.Wrapf(err, "validation failed for parameter %q", name)
+		}
 	}
-}
 
-// Validate the Location
-func (l Location) Validate() error {
-	forbiddenPath := "/cnab/app/outputs"
-	if strings.HasPrefix(l.Path, forbiddenPath) {
-		return fmt.Errorf("Path must not be a subpath of %q", forbiddenPath)
+	// Validate the credentials
+	for name, cred := range b.Credentials {
+		err := cred.Validate()
+		if err != nil {
+			return pkgErrors.Wrapf(err, "validation failed for credential %q", name)
+
+		}
 	}
+
 	return nil
 }
 
