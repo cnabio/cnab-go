@@ -194,7 +194,6 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal bundle contents: %s", err)
 	}
-
 	files["/cnab/bundle.json"] = string(bundleBytes)
 
 	imgMap, err := getImageMap(c.Bundle)
@@ -202,6 +201,12 @@ func opFromClaim(action string, stateless bool, c *claim.Claim, ii bundle.Invoca
 		return nil, fmt.Errorf("unable to generate image map: %s", err)
 	}
 	files["/cnab/app/image-map.json"] = string(imgMap)
+
+	claimBytes, err := json.Marshal(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal claim: %s", err)
+	}
+	files["/cnab/claim.json"] = string(claimBytes)
 
 	env["CNAB_ACTION"] = action
 	env["CNAB_BUNDLE_NAME"] = c.Bundle.Name

@@ -178,12 +178,17 @@ func mockBundle() *bundle.Bundle {
 
 func TestOpFromClaim(t *testing.T) {
 	c := newClaim()
+	// the monotonic clock reading from time.Now() proves problematic
+	// (it is lost after json.Unmarshal), so just set to static date for testing
+	created := time.Date(2020, time.March, 3, 1, 2, 3, 4, time.UTC)
+	c.Created = created
+	c.Modified = created
 	c.Parameters = map[string]interface{}{
 		"param_one":   "oneval",
 		"param_two":   "twoval",
 		"param_three": "threeval",
-		"param_array": []string{"first-value", "second-value"},
-		"param_object": map[string]string{
+		"param_array": []interface{}{"first-value", "second-value"},
+		"param_object": map[string]interface{}{
 			"first-key":  "first-value",
 			"second-key": "second-value",
 		},
@@ -214,6 +219,7 @@ func TestOpFromClaim(t *testing.T) {
 	is.Equal(op.Files["/param/param_quoted_string"], `"quoted value"`)
 	is.Contains(op.Files, "/cnab/app/image-map.json")
 	is.Contains(op.Files, "/cnab/bundle.json")
+	is.Contains(op.Files, "/cnab/claim.json")
 	is.Contains(op.Outputs, "/tmp/some/path")
 
 	var imgMap map[string]bundle.Image
@@ -223,6 +229,10 @@ func TestOpFromClaim(t *testing.T) {
 	var bundle *bundle.Bundle
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/bundle.json"]), &bundle))
 	is.Equal(c.Bundle, bundle)
+
+	var claim *claim.Claim
+	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/claim.json"]), &claim))
+	is.Equal(c, claim)
 
 	is.Len(op.Parameters, 7)
 	is.Nil(op.Out)
