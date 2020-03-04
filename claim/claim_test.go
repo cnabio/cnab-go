@@ -100,12 +100,13 @@ func TestMarshal_New(t *testing.T) {
 }
 
 var exampleClaim = Claim{
-	SchemaVersion: DefaultSchemaVersion,
-	Installation:  "my_claim",
-	Revision:      staticRevision,
-	Created:       staticDate,
-	Modified:      staticDate,
-	Bundle:        &exampleBundle,
+	SchemaVersion:   DefaultSchemaVersion,
+	Installation:    "my_claim",
+	Revision:        staticRevision,
+	Created:         staticDate,
+	Modified:        staticDate,
+	Bundle:          &exampleBundle,
+	BundleReference: "example.com/mybundle@sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
 	Result: Result{
 		Action:  ActionInstall,
 		Message: "result message",
