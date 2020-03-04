@@ -174,6 +174,7 @@ func TestMarshal_AllFields(t *testing.T) {
 }
 
 func TestClaimSchema(t *testing.T) {
+	t.Skip("This test is pending an alternate, offline-friendly implementation; see https://github.com/cnabio/cnab-go/issues/194")
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
