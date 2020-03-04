@@ -40,12 +40,13 @@ var mockSet = credentials.Set{
 func newClaim() *claim.Claim {
 	now := time.Now()
 	return &claim.Claim{
-		Created:      now,
-		Modified:     now,
-		Installation: "name",
-		Revision:     "revision",
-		Bundle:       mockBundle(),
-		Parameters:   map[string]interface{}{},
+		SchemaVersion: claim.DefaultSchemaVersion,
+		Created:       now,
+		Modified:      now,
+		Installation:  "name",
+		Revision:      "revision",
+		Bundle:        mockBundle(),
+		Parameters:    map[string]interface{}{},
 	}
 }
 
@@ -375,6 +376,27 @@ func TestOpFromClaim_NotApplicableToAction(t *testing.T) {
 		gotOutputs := op.Outputs
 		assert.NotContains(t, gotOutputs, "/path/to/some-output", "some-output should not be listed in op.Outputs")
 	})
+}
+
+func TestOpFromClaim_Environment(t *testing.T) {
+	c := newClaim()
+	c.Bundle = mockBundle()
+	invocImage := c.Bundle.InvocationImages[0]
+
+	expectedEnv := map[string]string{
+		"CNAB_ACTION":            "install",
+		"CNAB_BUNDLE_NAME":       "bar",
+		"CNAB_BUNDLE_VERSION":    "0.1.0",
+		"CNAB_CLAIMS_VERSION":    "v1.0.0-WD",
+		"CNAB_INSTALLATION_NAME": "name",
+		"CNAB_REVISION":          "revision",
+		"SECRET_ONE":             "I'm a secret",
+		"SECRET_TWO":             "I'm also a secret",
+	}
+
+	op, err := opFromClaim("install", stateful, c, invocImage, mockSet)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedEnv, op.Environment, "operation env does not match expected")
 }
 
 func TestSetOutputsOnClaim(t *testing.T) {
