@@ -760,7 +760,7 @@ func TestValidateLocation(t *testing.T) {
 	}, {
 		name:     "error path",
 		location: Location{Path: "/cnab/app/outputs/thing"},
-		err:      `Path must not be a subpath of "/cnab/app/outputs"`,
+		err:      `Path "/cnab/app/outputs/thing" must not be a subpath of "/cnab/app/outputs"`,
 	}}
 
 	for _, tc := range testCases {

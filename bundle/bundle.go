@@ -142,7 +142,7 @@ type Location struct {
 func (l Location) Validate() error {
 	forbiddenPath := "/cnab/app/outputs"
 	if strings.HasPrefix(l.Path, forbiddenPath) {
-		return fmt.Errorf("Path must not be a subpath of %q", forbiddenPath)
+		return fmt.Errorf("Path %q must not be a subpath of %q", l.Path, forbiddenPath)
 	}
 	return nil
 }
