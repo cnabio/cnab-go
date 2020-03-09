@@ -3,6 +3,8 @@ package bundle
 import (
 	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCanReadParameterNames(t *testing.T) {
@@ -82,4 +84,26 @@ func TestCanReadParameterDefinition(t *testing.T) {
 	if !p.Required {
 		t.Errorf("Expected parameter to be required")
 	}
+}
+
+func TestParameterValidate(t *testing.T) {
+	p := Parameter{}
+
+	t.Run("empty parameter fails", func(t *testing.T) {
+		err := p.Validate()
+		assert.EqualError(t, err, "parameter definition must be provided")
+	})
+
+	t.Run("empty path fails", func(t *testing.T) {
+		p.Definition = "paramDef"
+		err := p.Validate()
+		assert.EqualError(t, err, "parameter destination must be provided")
+	})
+
+	t.Run("successful validation", func(t *testing.T) {
+		p.Definition = "paramDef"
+		p.Destination = &Location{Path: "/path/to/param"}
+		err := p.Validate()
+		assert.NoError(t, err)
+	})
 }

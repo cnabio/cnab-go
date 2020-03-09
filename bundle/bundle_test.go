@@ -334,6 +334,65 @@ func TestValidateRequiredExtensions(t *testing.T) {
 	is.EqualError(err, "required extension 'my.custom.extension' is already declared")
 }
 
+func TestValidateParameters(t *testing.T) {
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    "99.98",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	t.Run("bad parameter fails", func(t *testing.T) {
+		b.Parameters = map[string]Parameter{
+			"badParam": {},
+		}
+
+		err := b.Validate()
+		assert.EqualError(t, err, `validation failed for parameter "badParam": parameter definition must be provided`)
+	})
+
+	t.Run("successful validation", func(t *testing.T) {
+		b.Parameters = map[string]Parameter{
+			"param": {
+				Definition:  "param",
+				Destination: &Location{Path: "/path/to/param"},
+			},
+		}
+
+		err := b.Validate()
+		require.NoError(t, err, "bundle parameter validation should succeed")
+	})
+}
+
+func TestValidateCredentials(t *testing.T) {
+	img := InvocationImage{BaseImage{}}
+	b := Bundle{
+		Version:          "0.1.0",
+		SchemaVersion:    "99.98",
+		InvocationImages: []InvocationImage{img},
+	}
+
+	t.Run("bad credential fails", func(t *testing.T) {
+		b.Credentials = map[string]Credential{
+			"badCred": {},
+		}
+
+		err := b.Validate()
+		assert.EqualError(t, err, `validation failed for credential "badCred": credential env or path must be supplied`)
+	})
+
+	t.Run("successful validation", func(t *testing.T) {
+		b.Credentials = map[string]Credential{
+			"cred": {
+				Location: Location{Path: "/path/to/cred"},
+			},
+		}
+
+		err := b.Validate()
+		require.NoError(t, err, "bundle credential validation should succeed")
+	})
+}
+
 func TestReadCustomAndRequiredExtensions(t *testing.T) {
 	data, err := ioutil.ReadFile("../testdata/bundles/foo.json")
 	if err != nil {
@@ -528,6 +587,11 @@ var exampleBundle = &Bundle{
 	},
 }
 
+func TestValidateExampleBundle(t *testing.T) {
+	err := exampleBundle.Validate()
+	require.NoError(t, err, "example bundle validation should succeed")
+}
+
 func TestBundleMarshallAllThings(t *testing.T) {
 	expectedJSON, err := ioutil.ReadFile("../testdata/bundles/canonical-bundle.json")
 	require.NoError(t, err, "couldn't read test data")
@@ -696,7 +760,7 @@ func TestValidateLocation(t *testing.T) {
 	}, {
 		name:     "error path",
 		location: Location{Path: "/cnab/app/outputs/thing"},
-		err:      `Path must not be a subpath of "/cnab/app/outputs"`,
+		err:      `Path "/cnab/app/outputs/thing" must not be a subpath of "/cnab/app/outputs"`,
 	}}
 
 	for _, tc := range testCases {
