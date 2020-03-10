@@ -23,7 +23,6 @@ require (
 	github.com/containerd/fifo v0.0.0-20190816180239-bda0ff6ed73c // indirect
 	github.com/containerd/ttrpc v0.0.0-20191028202541-4f1b8fe65a5c // indirect
 	github.com/containerd/typeurl v0.0.0-20190911142611-5eb25027c9fd // indirect
-	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e // indirect
 	github.com/docker/cli v0.0.0-20191017083524-a8ff7f821017
 	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
 	github.com/docker/docker v1.4.2-0.20181229214054-f76d6a078d88
@@ -32,6 +31,7 @@ require (
 	github.com/docker/go-metrics v0.0.0-20181218153428-b84716841b82 // indirect
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
+	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/godbus/dbus v4.1.0+incompatible // indirect
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gogo/googleapis v1.3.0 // indirect
@@ -41,7 +41,6 @@ require (
 	github.com/hashicorp/go-version v1.1.0 // indirect
 	github.com/jinzhu/gorm v1.9.11 // indirect
 	github.com/kardianos/osext v0.0.0-20170510131534-ae77be60afb1 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lib/pq v1.2.0 // indirect
 	github.com/miekg/pkcs11 v1.0.3 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -55,15 +54,13 @@ require (
 	github.com/prometheus/common v0.7.0 // indirect
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/qri-io/jsonschema v0.1.1
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/urfave/cli v1.22.1 // indirect
 	github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
-	golang.org/x/crypto v0.0.0-20191028145041-f83a4685e152 // indirect
 	golang.org/x/sys v0.0.0-20190830141801-acfa387b8d69 // indirect
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect
 	gopkg.in/fatih/pool.v2 v2.0.0 // indirect
 	gopkg.in/gorethink/gorethink.v3 v3.0.5 // indirect

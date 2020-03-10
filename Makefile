@@ -9,7 +9,7 @@ else
 endif
 
 .PHONY: build
-build:
+build: fetch-schemas
 	go build ./...
 
 .PHONY: test
@@ -27,7 +27,7 @@ HAS_KUBECTL := $(shell $(CHECK) kubectl)
 HAS_GOCOV_XML := $(shell command -v gocov-xml;)
 HAS_GOCOV := $(shell command -v gocov;)
 HAS_GO_JUNIT_REPORT := $(shell command -v go-junit-report;)
-
+HAS_PACKR2 := $(shell command -v packr2)
 
 .PHONY: bootstrap
 bootstrap:
@@ -50,9 +50,23 @@ endif
 ifndef HAS_GO_JUNIT_REPORT
 	go get github.com/jstemmer/go-junit-report
 endif
+ifndef HAS_PACKR2
+	go get -u github.com/gobuffalo/packr/v2/packr2
+endif
 	@# go get to install global tools with modules modify our dependencies. Reset them back
 	git checkout go.mod go.sum
 
 .PHONY: coverage
 coverage:
 	./e2e-kind.sh
+
+SCHEMA_VERSION        ?= cnab-claim-1.0.0-DRAFT+d7ffba8
+SCHEMA_URL_PREFIX     := https://cdn.cnab.io/schema
+SCHEMA_DEST_PREFIX    := ./utils/schemavalidation/schema
+BUNDLE_SCHEMA_VERSION ?= ${SCHEMA_VERSION}
+CLAIM_SCHEMA_VERSION  ?= ${SCHEMA_VERSION}
+
+.PHONY: fetch-schemas
+fetch-schemas:
+	@curl -s ${SCHEMA_URL_PREFIX}/${BUNDLE_SCHEMA_VERSION}/bundle.schema.json > ${SCHEMA_DEST_PREFIX}/bundle.schema.json
+	@curl -s ${SCHEMA_URL_PREFIX}/${CLAIM_SCHEMA_VERSION}/claim.schema.json > ${SCHEMA_DEST_PREFIX}/claim.schema.json

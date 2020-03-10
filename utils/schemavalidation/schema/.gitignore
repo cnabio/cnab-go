@@ -1,0 +1,2 @@
+# Ignore the schema files fetched from a remote source (cdn.cnab.io)
+*.schema.json

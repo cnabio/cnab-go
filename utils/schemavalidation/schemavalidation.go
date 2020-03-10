@@ -1,32 +1,26 @@
+//go:generate packr2
+
 package schemavalidation
 
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 
+	"github.com/gobuffalo/packr/v2"
 	"github.com/pkg/errors"
 	"github.com/qri-io/jsonschema"
 )
 
-// Validate validates the provided objectBytes against the provided CNAB-Spec schemaType
-// The schemaType must be a valid schema currently hosted at https://cnab.io/v1/*.schema.json
-func Validate(schemaType string, objectBytes []byte) ([]jsonschema.ValError, error) {
-	url := fmt.Sprintf("https://cnab.io/v1/%s.schema.json", schemaType)
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to construct GET request for fetching %s schema", schemaType)
-	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get %s schema", schemaType)
-	}
+// NewSchemaBox returns a *packer.Box with the schema files from the schema sub-directory
+func NewSchemaBox() *packr.Box {
+	return packr.New("github.com/cnabio/cnab-go/utils/schemavalidation/schema", "./schema")
+}
 
-	defer res.Body.Close()
-	schemaData, err := ioutil.ReadAll(res.Body)
+// Validate validates the provided objectBytes against the provided CNAB-Spec schemaType
+func Validate(schemaType string, objectBytes []byte) ([]jsonschema.ValError, error) {
+	schemaData, err := NewSchemaBox().Find(fmt.Sprintf("%s.schema.json", schemaType))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read %s schema", schemaType)
+		return nil, errors.Wrapf(err, "failed to read the schema data for type %q", schemaType)
 	}
 
 	rs := &jsonschema.RootSchema{}
