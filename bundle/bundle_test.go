@@ -8,7 +8,6 @@ import (
 
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/utils/schemavalidation"
-	"github.com/cnabio/cnab-go/utils/schemaversion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,7 +16,7 @@ import (
 
 func TestReadTopLevelProperties(t *testing.T) {
 	json := `{
-		"schemaVersion": "v1.0.0",
+		"schemaVersion": "1.0.1",
 		"name": "foo",
 		"version": "1.0",
 		"images": {},
@@ -28,7 +27,7 @@ func TestReadTopLevelProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, schemaversion.SchemaVersion("v1.0.0"), bundle.SchemaVersion)
+	assert.Equal(t, CNABSchemaVersion, bundle.SchemaVersion)
 	if bundle.Name != "foo" {
 		t.Errorf("Expected name 'foo', got '%s'", bundle.Name)
 	}
@@ -493,7 +492,7 @@ var exampleCred = Credential{
 }
 
 var exampleBundle = &Bundle{
-	SchemaVersion: "v1.0.0",
+	SchemaVersion: CNABSchemaVersion,
 	Name:          "testBundle",
 	Description:   "something",
 	Version:       "1.0",

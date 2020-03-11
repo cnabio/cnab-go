@@ -2,6 +2,7 @@ package schemaversion
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/Masterminds/semver"
 )
@@ -19,4 +20,13 @@ func (v SchemaVersion) Validate() error {
 		return fmt.Errorf("invalid schema version %q: %v", version, err)
 	}
 	return nil
+}
+
+// GetSemverSchemaVersion returns a SchemaVersion from the provided string,
+// trimming the non-semver prefix according to schema versioning in the
+// cnabio/cnab-spec repo
+func GetSemverSchemaVersion(schemaVersion string) SchemaVersion {
+	r := regexp.MustCompile("^cnab-[a-z]+-(.*)")
+	match := r.FindStringSubmatch(schemaVersion)
+	return SchemaVersion(match[1])
 }

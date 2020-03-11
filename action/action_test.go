@@ -40,7 +40,7 @@ var mockSet = credentials.Set{
 func newClaim() *claim.Claim {
 	now := time.Now()
 	return &claim.Claim{
-		SchemaVersion: claim.DefaultSchemaVersion,
+		SchemaVersion: claim.CNABSchemaVersion,
 		Created:       now,
 		Modified:      now,
 		Installation:  "name",
@@ -397,7 +397,7 @@ func TestOpFromClaim_Environment(t *testing.T) {
 		"CNAB_ACTION":            "install",
 		"CNAB_BUNDLE_NAME":       "bar",
 		"CNAB_BUNDLE_VERSION":    "0.1.0",
-		"CNAB_CLAIMS_VERSION":    "v1.0.0-WD",
+		"CNAB_CLAIMS_VERSION":    string(claim.CNABSchemaVersion),
 		"CNAB_INSTALLATION_NAME": "name",
 		"CNAB_REVISION":          "revision",
 		"SECRET_ONE":             "I'm a secret",

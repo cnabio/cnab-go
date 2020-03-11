@@ -14,6 +14,15 @@ import (
 	pkgErrors "github.com/pkg/errors"
 )
 
+// CNABSpecVersion represents the CNAB Spec version of the Bundle
+// Schema injected at build-time.
+// This value is prefixed with e.g. `cnab-bundle-` so isn't itself valid semver.
+var CNABSpecVersion string
+
+// CNABSchemaVersion represents the semver CNAB schema version of the Bundle
+// that this library implements
+var CNABSchemaVersion = schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+
 // Bundle is a CNAB metadata document
 type Bundle struct {
 	SchemaVersion      schemaversion.SchemaVersion `json:"schemaVersion" yaml:"schemaVersion"`

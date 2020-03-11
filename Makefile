@@ -8,13 +8,28 @@ else
 	CHECK  ?= which
 endif
 
+# Schema versions currently implemented by this library
+BUNDLE_SCHEMA_VERSION ?= cnab-core-1.0.1
+CLAIM_SCHEMA_VERSION  ?= cnab-claim-1.0.0-DRAFT+d7ffba8
+
+SCHEMA_URL_PREFIX     := https://cdn.cnab.io/schema
+SCHEMA_DEST_PREFIX    := ./utils/schemavalidation/schema
+
+.PHONY: fetch-schemas
+fetch-schemas:
+	@curl -s ${SCHEMA_URL_PREFIX}/${BUNDLE_SCHEMA_VERSION}/bundle.schema.json > ${SCHEMA_DEST_PREFIX}/bundle.schema.json
+	@curl -s ${SCHEMA_URL_PREFIX}/${CLAIM_SCHEMA_VERSION}/claim.schema.json > ${SCHEMA_DEST_PREFIX}/claim.schema.json
+
+LDFLAGS := -X github.com/cnabio/cnab-go/bundle.CNABSpecVersion=${BUNDLE_SCHEMA_VERSION} \
+           -X github.com/cnabio/cnab-go/claim.CNABSpecVersion=${CLAIM_SCHEMA_VERSION}
+
 .PHONY: build
 build:
-	go build ./...
+	go build -ldflags '$(LDFLAGS)' ./...
 
 .PHONY: test
 test:
-	go test ./...
+	go test -ldflags '$(LDFLAGS)' ./...
 
 .PHONY: lint
 lint:
@@ -24,10 +39,10 @@ HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
 GOLANGCI_VERSION := v1.21.0
 HAS_KIND := $(shell $(CHECK) kind)
 HAS_KUBECTL := $(shell $(CHECK) kubectl)
-HAS_GOCOV_XML := $(shell $(CHECK) -v gocov-xml;)
-HAS_GOCOV := $(shell $(CHECK) -v gocov;)
-HAS_GO_JUNIT_REPORT := $(shell $(CHECK) -v go-junit-report;)
-HAS_PACKR2 := $(shell $(CHECK) -v packr2;)
+HAS_GOCOV_XML := $(shell $(CHECK) gocov-xml;)
+HAS_GOCOV := $(shell $(CHECK) gocov;)
+HAS_GO_JUNIT_REPORT := $(shell $(CHECK) go-junit-report;)
+HAS_PACKR2 := $(shell $(CHECK) packr2;)
 
 .PHONY: bootstrap
 bootstrap:
@@ -59,14 +74,3 @@ endif
 .PHONY: coverage
 coverage:
 	./e2e-kind.sh
-
-SCHEMA_VERSION        ?= cnab-claim-1.0.0-DRAFT+d7ffba8
-SCHEMA_URL_PREFIX     := https://cdn.cnab.io/schema
-SCHEMA_DEST_PREFIX    := ./utils/schemavalidation/schema
-BUNDLE_SCHEMA_VERSION ?= ${SCHEMA_VERSION}
-CLAIM_SCHEMA_VERSION  ?= ${SCHEMA_VERSION}
-
-.PHONY: fetch-schemas
-fetch-schemas:
-	@curl -s ${SCHEMA_URL_PREFIX}/${BUNDLE_SCHEMA_VERSION}/bundle.schema.json > ${SCHEMA_DEST_PREFIX}/bundle.schema.json
-	@curl -s ${SCHEMA_URL_PREFIX}/${CLAIM_SCHEMA_VERSION}/claim.schema.json > ${SCHEMA_DEST_PREFIX}/claim.schema.json

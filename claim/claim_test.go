@@ -98,7 +98,7 @@ func TestMarshal_New(t *testing.T) {
 }
 
 var exampleClaim = Claim{
-	SchemaVersion:   DefaultSchemaVersion,
+	SchemaVersion:   CNABSchemaVersion,
 	Installation:    "my_claim",
 	Revision:        staticRevision,
 	Created:         staticDate,

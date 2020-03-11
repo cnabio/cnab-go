@@ -13,9 +13,14 @@ import (
 	"github.com/cnabio/cnab-go/utils/schemaversion"
 )
 
-// DefaultSchemaVersion represents the schema version of the Claim
-// that this library returns by default
-const DefaultSchemaVersion = schemaversion.SchemaVersion("v1.0.0-WD")
+// CNABSpecVersion represents the CNAB Spec version of the Claim
+// Schema injected at build-time.
+// This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
+var CNABSpecVersion string
+
+// CNABSchemaVersion represents the semver CNAB schema version of the Claim
+// that this library implements
+var CNABSchemaVersion = schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
 
 // Status constants define the CNAB status fields on a Result.
 const (
@@ -72,7 +77,7 @@ func New(name string) (*Claim, error) {
 
 	now := time.Now()
 	return &Claim{
-		SchemaVersion: DefaultSchemaVersion,
+		SchemaVersion: CNABSchemaVersion,
 		Installation:  name,
 		Revision:      ULID(),
 		Created:       now,
