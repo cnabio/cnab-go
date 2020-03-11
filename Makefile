@@ -24,10 +24,10 @@ HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
 GOLANGCI_VERSION := v1.21.0
 HAS_KIND := $(shell $(CHECK) kind)
 HAS_KUBECTL := $(shell $(CHECK) kubectl)
-HAS_GOCOV_XML := $(shell command -v gocov-xml;)
-HAS_GOCOV := $(shell command -v gocov;)
-HAS_GO_JUNIT_REPORT := $(shell command -v go-junit-report;)
-HAS_PACKR2 := $(shell command -v packr2)
+HAS_GOCOV_XML := $(shell $(CHECK) -v gocov-xml;)
+HAS_GOCOV := $(shell $(CHECK) -v gocov;)
+HAS_GO_JUNIT_REPORT := $(shell $(CHECK) -v go-junit-report;)
+HAS_PACKR2 := $(shell $(CHECK) -v packr2;)
 
 .PHONY: bootstrap
 bootstrap:
