@@ -39,7 +39,7 @@ func TestUpdate(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond) // Force the Update to happen at a new time. For those of us who remembered to press the Turbo button.
 
-	claim.Update(ActionInstall, StatusSuccess)
+	claim.Update(ActionInstall, StatusSucceeded)
 
 	is := assert.New(t)
 	is.NotEqual(oldMod, claim.Modified)
@@ -140,9 +140,9 @@ func TestResult_Validate_ValidStatus(t *testing.T) {
 	validStatuses := []string{
 		StatusCanceled,
 		StatusRunning,
-		StatusFailure,
+		StatusFailed,
 		StatusPending,
-		StatusSuccess,
+		StatusSucceeded,
 		StatusUnknown,
 	}
 	for _, status := range validStatuses {
@@ -168,7 +168,7 @@ func TestValidate_InvalidResult(t *testing.T) {
 
 	t.Run("if result has empty action, validation should fail", func(t *testing.T) {
 		claim.Result = Result{
-			Status: StatusSuccess,
+			Status: StatusSucceeded,
 		}
 		err := claim.Validate()
 		assert.EqualError(t, err, "claim validation failed: the action must be provided")

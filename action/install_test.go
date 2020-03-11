@@ -32,7 +32,7 @@ func TestInstall_Run(t *testing.T) {
 			Error: nil,
 		}}
 		assert.NoError(t, inst.Run(c, mockSet, out))
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status)
 		assert.Equal(t, claim.ActionInstall, c.Result.Action)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
@@ -87,7 +87,7 @@ func TestInstall_Run(t *testing.T) {
 			},
 		}
 		assert.NoError(t, inst.Run(c, mockSet, out))
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status)
 		assert.Equal(t, claim.ActionInstall, c.Result.Action)
 		assert.Empty(t, c.Outputs)
 	})
@@ -117,7 +117,7 @@ func TestInstall_Run(t *testing.T) {
 			},
 		}
 		assert.Error(t, inst.Run(c, mockSet, out))
-		assert.Equal(t, claim.StatusFailure, c.Result.Status)
+		assert.Equal(t, claim.StatusFailed, c.Result.Status)
 		assert.Equal(t, claim.ActionInstall, c.Result.Action)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})

@@ -34,11 +34,11 @@ func (i *Install) Run(c *claim.Claim, creds credentials.Set, opCfgs ...Operation
 	outputErrors := setOutputsOnClaim(c, opResult.Outputs)
 
 	if err != nil {
-		c.Update(claim.ActionInstall, claim.StatusFailure)
+		c.Update(claim.ActionInstall, claim.StatusFailed)
 		c.Result.Message = err.Error()
 		return err
 	}
-	c.Update(claim.ActionInstall, claim.StatusSuccess)
+	c.Update(claim.ActionInstall, claim.StatusSucceeded)
 
 	return outputErrors
 }

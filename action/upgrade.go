@@ -32,11 +32,11 @@ func (u *Upgrade) Run(c *claim.Claim, creds credentials.Set, opCfgs ...Operation
 	outputErrors := setOutputsOnClaim(c, opResult.Outputs)
 
 	if err != nil {
-		c.Update(claim.ActionUpgrade, claim.StatusFailure)
+		c.Update(claim.ActionUpgrade, claim.StatusFailed)
 		c.Result.Message = err.Error()
 		return err
 	}
-	c.Update(claim.ActionUpgrade, claim.StatusSuccess)
+	c.Update(claim.ActionUpgrade, claim.StatusSucceeded)
 
 	return outputErrors
 }

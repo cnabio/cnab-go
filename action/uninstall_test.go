@@ -37,7 +37,7 @@ func TestUninstall_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during uninstall after uninstall action")
 		assert.Equal(t, claim.ActionUninstall, c.Result.Action, "Claim result action not successfully updated.")
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status, "Claim result status not successfully updated.")
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status, "Claim result status not successfully updated.")
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 
@@ -93,7 +93,7 @@ func TestUninstall_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during uninstall after uninstall action")
 		assert.Equal(t, claim.ActionUninstall, c.Result.Action, "Claim result action not successfully updated.")
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status, "Claim result status not successfully updated.")
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status, "Claim result status not successfully updated.")
 		assert.Empty(t, c.Outputs)
 	})
 
@@ -123,7 +123,7 @@ func TestUninstall_Run(t *testing.T) {
 		assert.Error(t, err)
 		assert.NotEqual(t, "", c.Result.Message, "Expected error message in claim result message")
 		assert.Equal(t, claim.ActionUninstall, c.Result.Action)
-		assert.Equal(t, claim.StatusFailure, c.Result.Status)
+		assert.Equal(t, claim.StatusFailed, c.Result.Status)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 }

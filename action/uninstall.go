@@ -32,11 +32,11 @@ func (u *Uninstall) Run(c *claim.Claim, creds credentials.Set, opCfgs ...Operati
 	outputErrors := setOutputsOnClaim(c, opResult.Outputs)
 
 	if err != nil {
-		c.Update(claim.ActionUninstall, claim.StatusFailure)
+		c.Update(claim.ActionUninstall, claim.StatusFailed)
 		c.Result.Message = err.Error()
 		return err
 	}
-	c.Update(claim.ActionUninstall, claim.StatusSuccess)
+	c.Update(claim.ActionUninstall, claim.StatusSucceeded)
 
 	return outputErrors
 }
