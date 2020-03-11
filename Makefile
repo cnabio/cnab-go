@@ -9,7 +9,7 @@ else
 endif
 
 .PHONY: build
-build: fetch-schemas
+build:
 	go build ./...
 
 .PHONY: test
