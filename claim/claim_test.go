@@ -39,13 +39,13 @@ func TestUpdate(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond) // Force the Update to happen at a new time. For those of us who remembered to press the Turbo button.
 
-	claim.Update(ActionInstall, StatusSuccess)
+	claim.Update(ActionInstall, StatusSucceeded)
 
 	is := assert.New(t)
 	is.NotEqual(oldMod, claim.Modified)
 	is.NotEqual(oldUlid, claim.Revision)
 	is.Equal("install", claim.Result.Action)
-	is.Equal("success", claim.Result.Status)
+	is.Equal("succeeded", claim.Result.Status)
 }
 
 func TestValidName(t *testing.T) {
@@ -136,6 +136,27 @@ func TestValidateExampleClaim(t *testing.T) {
 		`claim validation failed: invalid schema version "not-semver": Invalid Semantic Version`)
 }
 
+func TestResult_Validate_ValidStatus(t *testing.T) {
+	validStatuses := []string{
+		StatusCanceled,
+		StatusRunning,
+		StatusFailed,
+		StatusPending,
+		StatusSucceeded,
+		StatusUnknown,
+	}
+	for _, status := range validStatuses {
+		t.Run(status+" status", func(t *testing.T) {
+			result := Result{
+				Action: ActionInstall,
+				Status: status,
+			}
+			err := result.Validate()
+			assert.NoError(t, err, "%s is a valid claim status", status)
+		})
+	}
+}
+
 func TestValidate_InvalidResult(t *testing.T) {
 	claim := exampleClaim
 
@@ -147,7 +168,7 @@ func TestValidate_InvalidResult(t *testing.T) {
 
 	t.Run("if result has empty action, validation should fail", func(t *testing.T) {
 		claim.Result = Result{
-			Status: StatusSuccess,
+			Status: StatusSucceeded,
 		}
 		err := claim.Validate()
 		assert.EqualError(t, err, "claim validation failed: the action must be provided")

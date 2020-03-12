@@ -65,7 +65,7 @@ func TestCanUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	time.Sleep(1 * time.Millisecond)
-	claim.Update(ActionInstall, StatusSuccess)
+	claim.Update(ActionInstall, StatusSucceeded)
 
 	err = store.Save(*claim)
 	is.NoError(err, "Failed to update")

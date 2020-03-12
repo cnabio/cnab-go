@@ -19,10 +19,18 @@ const DefaultSchemaVersion = schemaversion.SchemaVersion("v1.0.0-WD")
 
 // Status constants define the CNAB status fields on a Result.
 const (
-	StatusSuccess = "success"
-	StatusFailure = "failure"
-	StatusPending = "pending"
-	StatusUnknown = "unknown"
+	StatusSucceeded = "succeeded"
+	StatusCanceled  = "canceled"
+	StatusFailed    = "failed"
+	StatusRunning   = "running"
+	StatusPending   = "pending"
+	StatusUnknown   = "unknown"
+
+	// Deprecated: StatusSuccess has been replaced by StatusSucceeded.
+	StatusSuccess = StatusSucceeded
+
+	// Deprecated: StatusFailure has been replaced by StatusFailed.
+	StatusFailure = StatusFailed
 )
 
 // Action constants define the CNAB action to be taken
@@ -103,7 +111,7 @@ func (r Result) Validate() error {
 	}
 
 	switch r.Status {
-	case StatusFailure, StatusPending, StatusSuccess, StatusUnknown:
+	case StatusCanceled, StatusFailed, StatusPending, StatusRunning, StatusSucceeded, StatusUnknown:
 		return nil
 	}
 	return fmt.Errorf("invalid status: %s", r.Status)

@@ -64,11 +64,11 @@ func (i *RunCustom) Run(c *claim.Claim, creds credentials.Set, opCfgs ...Operati
 	outputErrors := setOutputsOnClaim(c, opResult.Outputs)
 
 	if err != nil {
-		c.Update(i.Action, claim.StatusFailure)
+		c.Update(i.Action, claim.StatusFailed)
 		c.Result.Message = err.Error()
 		return err
 	}
-	c.Update(i.Action, claim.StatusSuccess)
+	c.Update(i.Action, claim.StatusSucceeded)
 
 	return outputErrors
 }

@@ -35,7 +35,7 @@ func TestUpgrade_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during upgrade action")
 		assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status)
 		assert.Equal(t, map[string]interface{}{"some-output": "SOME CONTENT"}, c.Outputs)
 	})
 
@@ -89,7 +89,7 @@ func TestUpgrade_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEqual(t, c.Created, c.Modified, "Claim was not updated with modified time stamp during upgrade action")
 		assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
-		assert.Equal(t, claim.StatusSuccess, c.Result.Status)
+		assert.Equal(t, claim.StatusSucceeded, c.Result.Status)
 		assert.Empty(t, c.Outputs)
 	})
 
@@ -114,7 +114,7 @@ func TestUpgrade_Run(t *testing.T) {
 		assert.Error(t, err)
 		assert.NotEmpty(t, c.Result.Message, "Expected error message in claim result message")
 		assert.Equal(t, claim.ActionUpgrade, c.Result.Action)
-		assert.Equal(t, claim.StatusFailure, c.Result.Status)
+		assert.Equal(t, claim.StatusFailed, c.Result.Status)
 		assert.Empty(t, c.Outputs)
 	})
 }
