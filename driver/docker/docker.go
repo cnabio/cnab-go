@@ -52,6 +52,7 @@ func (d *Driver) AddConfigurationOptions(opts ...ConfigurationOption) {
 func (d *Driver) Config() map[string]string {
 	return map[string]string{
 		"VERBOSE":             "Increase verbosity. true, false are supported values",
+		"PRIVILEGED":          "Give extended privileges to container (allow docker-in-docker)",
 		"PULL_ALWAYS":         "Always pull image, even if locally available (0|1)",
 		"DOCKER_DRIVER_QUIET": "Make the Docker driver quiet (only print container stdout/stderr)",
 		"OUTPUTS_MOUNT_PATH":  "Absolute path to where Docker driver can create temporary directories to bundle outputs. Defaults to temp dir.",
@@ -164,6 +165,9 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	hostCfg := &container.HostConfig{}
+	if d.config["PRIVILEGED"] == "1" {
+		hostCfg.Privileged = true
+	}
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(cfg, hostCfg); err != nil {
 			return driver.OperationResult{}, err
