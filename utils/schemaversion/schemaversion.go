@@ -28,8 +28,8 @@ func (v SchemaVersion) Validate() error {
 func GetSemverSchemaVersion(schemaVersion string) (SchemaVersion, error) {
 	r := regexp.MustCompile("^cnab-[a-z]+-(.*)")
 	match := r.FindStringSubmatch(schemaVersion)
-	if match == nil || len(match) == 0 {
-		return "", fmt.Errorf("no semver match for schemaVersion %q using regex %q", schemaVersion, r)
+	if len(match) < 2 {
+		return "", fmt.Errorf("no semver submatch for schemaVersion %q using regex %q", schemaVersion, r)
 	}
 
 	return SchemaVersion(match[1]), nil
