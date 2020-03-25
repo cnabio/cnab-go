@@ -27,7 +27,7 @@ func TestReadTopLevelProperties(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.Equal(t, CNABSchemaVersion, bundle.SchemaVersion)
+	assert.Equal(t, "1.0.1", string(bundle.SchemaVersion))
 	if bundle.Name != "foo" {
 		t.Errorf("Expected name 'foo', got '%s'", bundle.Name)
 	}
@@ -492,7 +492,7 @@ var exampleCred = Credential{
 }
 
 var exampleBundle = &Bundle{
-	SchemaVersion: CNABSchemaVersion,
+	SchemaVersion: "1.0.1",
 	Name:          "testBundle",
 	Description:   "something",
 	Version:       "1.0",

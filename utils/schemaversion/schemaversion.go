@@ -25,8 +25,12 @@ func (v SchemaVersion) Validate() error {
 // GetSemverSchemaVersion returns a SchemaVersion from the provided string,
 // trimming the non-semver prefix according to schema versioning in the
 // cnabio/cnab-spec repo
-func GetSemverSchemaVersion(schemaVersion string) SchemaVersion {
+func GetSemverSchemaVersion(schemaVersion string) (SchemaVersion, error) {
 	r := regexp.MustCompile("^cnab-[a-z]+-(.*)")
 	match := r.FindStringSubmatch(schemaVersion)
-	return SchemaVersion(match[1])
+	if match == nil || len(match) == 0 {
+		return "", fmt.Errorf("no semver match for schemaVersion %q using regex %q", schemaVersion, r)
+	}
+
+	return SchemaVersion(match[1]), nil
 }

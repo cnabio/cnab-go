@@ -14,13 +14,9 @@ import (
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Claim
-// Schema injected at build-time.
+// Schema injected at build-time, but with a default also set here.
 // This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
-var CNABSpecVersion string
-
-// CNABSchemaVersion represents the semver CNAB schema version of the Claim
-// that this library implements
-var CNABSchemaVersion = schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+d7ffba8"
 
 // Status constants define the CNAB status fields on a Result.
 const (
@@ -65,6 +61,16 @@ type Claim struct {
 	Custom          interface{}                 `json:"custom,omitempty"`
 }
 
+// GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
+// that this library implements
+func GetDefaultSchemaVersion() (schemaversion.SchemaVersion, error) {
+	ver, err := schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+	if err != nil {
+		return "", err
+	}
+	return ver, nil
+}
+
 // ValidName is a regular expression that indicates whether a name is a valid claim name.
 var ValidName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 
@@ -75,9 +81,14 @@ func New(name string) (*Claim, error) {
 		return nil, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", name)
 	}
 
+	schemaVersion, err := GetDefaultSchemaVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	return &Claim{
-		SchemaVersion: CNABSchemaVersion,
+		SchemaVersion: schemaVersion,
 		Installation:  name,
 		Revision:      ULID(),
 		Created:       now,

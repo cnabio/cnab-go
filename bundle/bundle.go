@@ -15,13 +15,9 @@ import (
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Bundle
-// Schema injected at build-time.
-// This value is prefixed with e.g. `cnab-bundle-` so isn't itself valid semver.
-var CNABSpecVersion string
-
-// CNABSchemaVersion represents the semver CNAB schema version of the Bundle
-// that this library implements
-var CNABSchemaVersion = schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+// Schema injected at build-time, but with a default also set here.
+// This value is prefixed with e.g. `cnab-core-` so isn't itself valid semver.
+var CNABSpecVersion string = "cnab-core-1.0.1"
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
@@ -44,6 +40,16 @@ type Bundle struct {
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
 	Custom map[string]interface{} `json:"custom,omitempty" yaml:"custom,omitempty"`
+}
+
+// GetDefaultSchemaVersion returns the default semver CNAB schema version of the Bundle
+// that this library implements
+func GetDefaultSchemaVersion() (schemaversion.SchemaVersion, error) {
+	ver, err := schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+	if err != nil {
+		return "", err
+	}
+	return ver, nil
 }
 
 //Unmarshal unmarshals a Bundle that was not signed.
