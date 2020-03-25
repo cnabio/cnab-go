@@ -15,7 +15,7 @@ import (
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Bundle
-// Schema injected at build-time, but with a default also set here.
+// that this library implements
 // This value is prefixed with e.g. `cnab-core-` so isn't itself valid semver.
 var CNABSpecVersion string = "cnab-core-1.0.1"
 

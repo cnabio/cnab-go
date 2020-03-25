@@ -14,7 +14,7 @@ import (
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Claim
-// Schema injected at build-time, but with a default also set here.
+// that this library implements
 // This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
 var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+d7ffba8"
 

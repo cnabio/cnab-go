@@ -8,28 +8,17 @@ else
 	CHECK  ?= which
 endif
 
-# Schema versions currently implemented by this library
-BUNDLE_SCHEMA_VERSION ?= cnab-core-1.0.1
-CLAIM_SCHEMA_VERSION  ?= cnab-claim-1.0.0-DRAFT+d7ffba8
-
-SCHEMA_URL_PREFIX     := https://cdn.cnab.io/schema
-SCHEMA_DEST_PREFIX    := ./utils/schemavalidation/schema
-
 .PHONY: fetch-schemas
 fetch-schemas:
-	@curl -s ${SCHEMA_URL_PREFIX}/${BUNDLE_SCHEMA_VERSION}/bundle.schema.json > ${SCHEMA_DEST_PREFIX}/bundle.schema.json
-	@curl -s ${SCHEMA_URL_PREFIX}/${CLAIM_SCHEMA_VERSION}/claim.schema.json > ${SCHEMA_DEST_PREFIX}/claim.schema.json
-
-LDFLAGS := -X github.com/cnabio/cnab-go/bundle.CNABSpecVersion=${BUNDLE_SCHEMA_VERSION} \
-           -X github.com/cnabio/cnab-go/claim.CNABSpecVersion=${CLAIM_SCHEMA_VERSION}
+	@go run fetch-schemas.go
 
 .PHONY: build
 build:
-	go build -ldflags '$(LDFLAGS)' ./...
+	go build ./...
 
 .PHONY: test
 test:
-	go test -ldflags '$(LDFLAGS)' ./...
+	go test ./...
 
 .PHONY: lint
 lint:
