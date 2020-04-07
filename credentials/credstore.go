@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cnabio/cnab-go/utils/crud"
 )
@@ -45,7 +46,7 @@ func (s Store) Save(cred CredentialSet) error {
 func (s Store) Read(name string) (CredentialSet, error) {
 	bytes, err := s.backingStore.Read(ItemType, name)
 	if err != nil {
-		if err == crud.ErrRecordDoesNotExist {
+		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
 			return CredentialSet{}, ErrNotFound
 		}
 		return CredentialSet{}, err
