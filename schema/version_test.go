@@ -9,19 +9,19 @@ import (
 func TestValidate(t *testing.T) {
 	testCases := []struct {
 		name    string
-		version SchemaVersion
+		version Version
 		err     string
 	}{{
 		name:    "empty",
-		version: SchemaVersion(""),
+		version: Version(""),
 		err:     `invalid schema version "": Invalid Semantic Version`,
 	}, {
 		name:    "invalid",
-		version: SchemaVersion("not-semver"),
+		version: Version("not-semver"),
 		err:     `invalid schema version "not-semver": Invalid Semantic Version`,
 	}, {
 		name:    "valid",
-		version: SchemaVersion("v1.0.0"),
+		version: Version("v1.0.0"),
 	}}
 
 	for _, tc := range testCases {

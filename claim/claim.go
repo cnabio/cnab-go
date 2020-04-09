@@ -48,7 +48,7 @@ const (
 // provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
-	SchemaVersion   schema.SchemaVersion   `json:"schemaVersion"`
+	SchemaVersion   schema.Version         `json:"schemaVersion"`
 	Installation    string                 `json:"installation"`
 	Revision        string                 `json:"revision"`
 	Created         time.Time              `json:"created"`
@@ -63,8 +63,8 @@ type Claim struct {
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
 // that this library implements
-func GetDefaultSchemaVersion() (schema.SchemaVersion, error) {
-	ver, err := schema.GetSemverSchemaVersion(CNABSpecVersion)
+func GetDefaultSchemaVersion() (schema.Version, error) {
+	ver, err := schema.GetSemver(CNABSpecVersion)
 	if err != nil {
 		return "", err
 	}

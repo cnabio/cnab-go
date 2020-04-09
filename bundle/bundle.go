@@ -21,7 +21,7 @@ var CNABSpecVersion string = "cnab-core-1.0.1"
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
-	SchemaVersion      schema.SchemaVersion   `json:"schemaVersion" yaml:"schemaVersion"`
+	SchemaVersion      schema.Version         `json:"schemaVersion" yaml:"schemaVersion"`
 	Name               string                 `json:"name" yaml:"name"`
 	Version            string                 `json:"version" yaml:"version"`
 	Description        string                 `json:"description" yaml:"description"`
@@ -44,8 +44,8 @@ type Bundle struct {
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Bundle
 // that this library implements
-func GetDefaultSchemaVersion() (schema.SchemaVersion, error) {
-	ver, err := schema.GetSemverSchemaVersion(CNABSpecVersion)
+func GetDefaultSchemaVersion() (schema.Version, error) {
+	ver, err := schema.GetSemver(CNABSpecVersion)
 	if err != nil {
 		return "", err
 	}

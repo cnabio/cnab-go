@@ -7,12 +7,12 @@ import (
 	"github.com/Masterminds/semver"
 )
 
-// SchemaVersion represents the schema version of an object
-type SchemaVersion string
+// Version represents the schema version of an object
+type Version string
 
 // Validate the provided schema version is present and adheres
 // to semantic versioning
-func (v SchemaVersion) Validate() error {
+func (v Version) Validate() error {
 	version := string(v)
 
 	_, err := semver.NewVersion(version)
@@ -22,15 +22,15 @@ func (v SchemaVersion) Validate() error {
 	return nil
 }
 
-// GetSemverSchemaVersion returns a SchemaVersion from the provided string,
-// trimming the non-semver prefix according to schema versioning in the
+// GetSemver returns a proper semver Version from the provided string,
+// trimming the non-semver prefix according to schema versioning protocol in the
 // cnabio/cnab-spec repo
-func GetSemverSchemaVersion(schemaVersion string) (SchemaVersion, error) {
+func GetSemver(schemaVersion string) (Version, error) {
 	r := regexp.MustCompile("^cnab-[a-z]+-(.*)")
 	match := r.FindStringSubmatch(schemaVersion)
 	if len(match) < 2 {
 		return "", fmt.Errorf("no semver submatch for schemaVersion %q using regex %q", schemaVersion, r)
 	}
 
-	return SchemaVersion(match[1]), nil
+	return Version(match[1]), nil
 }
