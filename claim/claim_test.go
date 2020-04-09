@@ -197,7 +197,7 @@ func TestClaimSchema(t *testing.T) {
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
-	valErrors, err := schema.Validate("claim", claimBytes)
+	valErrors, err := schema.ValidateClaim(claimBytes)
 	assert.NoError(t, err, "failed to validate claim schema")
 
 	if len(valErrors) > 0 {

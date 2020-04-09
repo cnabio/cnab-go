@@ -781,7 +781,7 @@ func TestBundleSchema(t *testing.T) {
 	bunBytes, err := json.Marshal(exampleBundle)
 	assert.NoError(t, err, "failed to json.Marshal the bundle")
 
-	valErrors, err := schema.Validate("bundle", bunBytes)
+	valErrors, err := schema.ValidateBundle(bunBytes)
 	assert.NoError(t, err, "failed to validate bundle schema")
 
 	if len(valErrors) > 0 {
