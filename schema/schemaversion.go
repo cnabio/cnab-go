@@ -1,4 +1,4 @@
-package schemaversion
+package schema
 
 import (
 	"fmt"

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
-	"github.com/cnabio/cnab-go/utils/schemavalidation"
+	"github.com/cnabio/cnab-go/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -781,7 +781,7 @@ func TestBundleSchema(t *testing.T) {
 	bunBytes, err := json.Marshal(exampleBundle)
 	assert.NoError(t, err, "failed to json.Marshal the bundle")
 
-	valErrors, err := schemavalidation.Validate("bundle", bunBytes)
+	valErrors, err := schema.Validate("bundle", bunBytes)
 	assert.NoError(t, err, "failed to validate bundle schema")
 
 	if len(valErrors) > 0 {

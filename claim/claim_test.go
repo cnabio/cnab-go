@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cnabio/cnab-go/bundle"
-	"github.com/cnabio/cnab-go/utils/schemavalidation"
+	"github.com/cnabio/cnab-go/schema"
 )
 
 func TestNew(t *testing.T) {
@@ -197,7 +197,7 @@ func TestClaimSchema(t *testing.T) {
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
-	valErrors, err := schemavalidation.Validate("claim", claimBytes)
+	valErrors, err := schema.Validate("claim", claimBytes)
 	assert.NoError(t, err, "failed to validate claim schema")
 
 	if len(valErrors) > 0 {

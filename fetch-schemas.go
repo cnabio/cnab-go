@@ -15,7 +15,7 @@ import (
 const CNABSchemaURLPrefix = "https://cdn.cnab.io/schema"
 
 // CNABSchemaDestPrefix is the filepath prefix to write schemas to
-const CNABSchemaDestPrefix = "./utils/schemavalidation/schema"
+const CNABSchemaDestPrefix = "./schema/schema"
 
 func main() {
 	schemas := map[string]string{

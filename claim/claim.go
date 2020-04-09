@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle"
-	"github.com/cnabio/cnab-go/utils/schemaversion"
+	"github.com/cnabio/cnab-go/schema"
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Claim
@@ -48,23 +48,23 @@ const (
 // provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
-	SchemaVersion   schemaversion.SchemaVersion `json:"schemaVersion"`
-	Installation    string                      `json:"installation"`
-	Revision        string                      `json:"revision"`
-	Created         time.Time                   `json:"created"`
-	Modified        time.Time                   `json:"modified"`
-	Bundle          *bundle.Bundle              `json:"bundle"`
-	BundleReference string                      `json:"bundleReference,omitempty"`
-	Result          Result                      `json:"result,omitempty"`
-	Parameters      map[string]interface{}      `json:"parameters,omitempty"`
-	Outputs         map[string]interface{}      `json:"outputs,omitempty"`
-	Custom          interface{}                 `json:"custom,omitempty"`
+	SchemaVersion   schema.SchemaVersion   `json:"schemaVersion"`
+	Installation    string                 `json:"installation"`
+	Revision        string                 `json:"revision"`
+	Created         time.Time              `json:"created"`
+	Modified        time.Time              `json:"modified"`
+	Bundle          *bundle.Bundle         `json:"bundle"`
+	BundleReference string                 `json:"bundleReference,omitempty"`
+	Result          Result                 `json:"result,omitempty"`
+	Parameters      map[string]interface{} `json:"parameters,omitempty"`
+	Outputs         map[string]interface{} `json:"outputs,omitempty"`
+	Custom          interface{}            `json:"custom,omitempty"`
 }
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
 // that this library implements
-func GetDefaultSchemaVersion() (schemaversion.SchemaVersion, error) {
-	ver, err := schemaversion.GetSemverSchemaVersion(CNABSpecVersion)
+func GetDefaultSchemaVersion() (schema.SchemaVersion, error) {
+	ver, err := schema.GetSemverSchemaVersion(CNABSpecVersion)
 	if err != nil {
 		return "", err
 	}

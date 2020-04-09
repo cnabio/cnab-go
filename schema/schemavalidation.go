@@ -1,6 +1,6 @@
 //go:generate packr2
 
-package schemavalidation
+package schema
 
 import (
 	"encoding/json"
@@ -13,7 +13,7 @@ import (
 
 // newSchemaBox returns a *packer.Box with the schema files from the schema sub-directory
 func newSchemaBox() *packr.Box {
-	return packr.New("github.com/cnabio/cnab-go/utils/schemavalidation/schema", "./schema")
+	return packr.New("github.com/cnabio/cnab-go/schema/schema", "./schema")
 }
 
 // Validate validates the provided objectBytes against the provided CNAB-Spec schemaType
