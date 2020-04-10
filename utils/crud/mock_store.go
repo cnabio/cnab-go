@@ -3,9 +3,6 @@ package crud
 import (
 	"fmt"
 	"strconv"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // The main point of these tests is to catch any case where the interface
@@ -13,26 +10,32 @@ import (
 var _ Store = &MockStore{}
 
 const (
-	ConnectCount  = "connect-count"
-	CloseCount    = "close-count"
-	TestItemType  = "test-items"
-	MockStoreType = "mock-store"
+	connectCount  = "connect-count"
+	closeCount    = "close-count"
+	testItemType  = "test-items"
+	mockStoreType = "mock-store"
 )
 
-func TestMockStore(t *testing.T) {
-	s := NewMockStore()
-	is := assert.New(t)
-	is.NoError(s.Save(TestItemType, "test", []byte("data")))
-	list, err := s.List(TestItemType)
-	is.NoError(err)
-	is.Len(list, 1)
-	data, err := s.Read(TestItemType, "test")
-	is.NoError(err)
-	is.Equal(data, []byte("data"))
-}
-
+// MockStore is an in-memory store with optional mocked functionality that is
+// intended for use with unit testing.
 type MockStore struct {
 	data map[string]map[string][]byte
+
+	// DeleteMock replaces the default Delete implementation with the specified function.
+	// This allows for simulating failures.
+	DeleteMock func(itemType string, name string) error
+
+	// ListMock replaces the default List implementation with the specified function.
+	// This allows for simulating failures.
+	ListMock func(itemType string) ([]string, error)
+
+	// ReadMock replaces the default Read implementation with the specified function.
+	// This allows for simulating failures.
+	ReadMock func(itemType string, name string) ([]byte, error)
+
+	// SaveMock replaces the default Save implementation with the specified function.
+	// This allows for simulating failures.
+	SaveMock func(itemType string, name string, data []byte) error
 }
 
 func NewMockStore() *MockStore {
@@ -40,9 +43,9 @@ func NewMockStore() *MockStore {
 }
 
 func (s *MockStore) Connect() error {
-	_, ok := s.data[MockStoreType]
+	_, ok := s.data[mockStoreType]
 	if !ok {
-		s.data[MockStoreType] = make(map[string][]byte, 1)
+		s.data[mockStoreType] = make(map[string][]byte, 1)
 	}
 
 	// Keep track of Connect calls for test asserts later
@@ -51,15 +54,15 @@ func (s *MockStore) Connect() error {
 		return err
 	}
 
-	s.data[MockStoreType][ConnectCount] = []byte(strconv.Itoa(count + 1))
+	s.data[mockStoreType][connectCount] = []byte(strconv.Itoa(count + 1))
 
 	return nil
 }
 
 func (s *MockStore) Close() error {
-	_, ok := s.data[MockStoreType]
+	_, ok := s.data[mockStoreType]
 	if !ok {
-		s.data[MockStoreType] = make(map[string][]byte, 1)
+		s.data[mockStoreType] = make(map[string][]byte, 1)
 	}
 
 	// Keep track of Close calls for test asserts later
@@ -68,12 +71,16 @@ func (s *MockStore) Close() error {
 		return err
 	}
 
-	s.data[MockStoreType][CloseCount] = []byte(strconv.Itoa(count + 1))
+	s.data[mockStoreType][closeCount] = []byte(strconv.Itoa(count + 1))
 
 	return nil
 }
 
 func (s *MockStore) List(itemType string) ([]string, error) {
+	if s.ListMock != nil {
+		return s.ListMock(itemType)
+	}
+
 	if itemData, ok := s.data[itemType]; ok {
 		buf := make([]string, len(itemData))
 		i := 0
@@ -88,6 +95,10 @@ func (s *MockStore) List(itemType string) ([]string, error) {
 }
 
 func (s *MockStore) Save(itemType string, name string, data []byte) error {
+	if s.SaveMock != nil {
+		return s.SaveMock(itemType, name, data)
+	}
+
 	var itemData map[string][]byte
 	itemData, ok := s.data[itemType]
 	if !ok {
@@ -100,6 +111,10 @@ func (s *MockStore) Save(itemType string, name string, data []byte) error {
 }
 
 func (s *MockStore) Read(itemType string, name string) ([]byte, error) {
+	if s.ReadMock != nil {
+		return s.ReadMock(itemType, name)
+	}
+
 	if itemData, ok := s.data[itemType]; ok {
 		return itemData[name], nil
 	}
@@ -108,6 +123,10 @@ func (s *MockStore) Read(itemType string, name string) ([]byte, error) {
 }
 
 func (s *MockStore) Delete(itemType string, name string) error {
+	if s.DeleteMock != nil {
+		return s.DeleteMock(itemType, name)
+	}
+
 	if itemData, ok := s.data[itemType]; ok {
 		delete(itemData, name)
 		return nil
@@ -118,7 +137,7 @@ func (s *MockStore) Delete(itemType string, name string) error {
 // GetConnectCount is for tests to safely read the Connect call count
 // without accidentally triggering it by using Read.
 func (s *MockStore) GetConnectCount() (int, error) {
-	countB, ok := s.data[MockStoreType][ConnectCount]
+	countB, ok := s.data[mockStoreType][connectCount]
 	if !ok {
 		countB = []byte("0")
 	}
@@ -134,7 +153,7 @@ func (s *MockStore) GetConnectCount() (int, error) {
 // GetCloseCount is for tests to safely read the Close call count
 // without accidentally triggering it by using Read.
 func (s *MockStore) GetCloseCount() (int, error) {
-	countB, ok := s.data[MockStoreType][CloseCount]
+	countB, ok := s.data[mockStoreType][closeCount]
 	if !ok {
 		countB = []byte("0")
 	}

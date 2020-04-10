@@ -1,17 +1,17 @@
 package claim
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/utils/crud"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCanSaveReadAndDelete(t *testing.T) {
@@ -159,4 +159,17 @@ func TestCanUpdateOutputs(t *testing.T) {
 		"bar-output": "baz",
 	}
 	is.Equal(want, c.Outputs, "Wrong outputs on claim")
+}
+
+func TestClaimStore_HandlesNotFoundError(t *testing.T) {
+	mockStore := crud.NewMockStore()
+	mockStore.ReadMock = func(itemType string, name string) (bytes []byte, err error) {
+		// Change the default error message to test that we are checking
+		// inside the error message and not matching it exactly
+		return nil, errors.New("wrapping error message: " + crud.ErrRecordDoesNotExist.Error())
+	}
+	cs := NewClaimStore(mockStore)
+
+	_, err := cs.Read("missing claim")
+	assert.EqualError(t, err, ErrClaimNotFound.Error())
 }
