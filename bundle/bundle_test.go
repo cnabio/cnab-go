@@ -144,7 +144,7 @@ func TestValuesOrDefaults(t *testing.T) {
 		},
 	}
 
-	vod, err := ValuesOrDefaults(vals, b)
+	vod, err := ValuesOrDefaults(vals, b, "install")
 
 	is.NoError(err)
 	is.True(vod["enabled"].(bool))
@@ -154,11 +154,11 @@ func TestValuesOrDefaults(t *testing.T) {
 
 	// This should err out because of type problem
 	vals["replicaCount"] = "banana"
-	_, err = ValuesOrDefaults(vals, b)
+	_, err = ValuesOrDefaults(vals, b, "install")
 	is.Error(err)
 
 	// Check for panic when zero value Bundle is passed
-	_, err = ValuesOrDefaults(vals, &Bundle{})
+	_, err = ValuesOrDefaults(vals, &Bundle{}, "install")
 	is.NoError(err)
 }
 
@@ -166,7 +166,7 @@ func TestValuesOrDefaults_NoParameter(t *testing.T) {
 	is := assert.New(t)
 	vals := map[string]interface{}{}
 	b := &Bundle{}
-	vod, err := ValuesOrDefaults(vals, b)
+	vod, err := ValuesOrDefaults(vals, b, "install")
 	is.NoError(err)
 	is.Len(vod, 0)
 }
@@ -197,7 +197,7 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 		},
 	}
 
-	_, err := ValuesOrDefaults(vals, b)
+	_, err := ValuesOrDefaults(vals, b, "install")
 	is.Error(err)
 
 	// It is unclear what the outcome should be when the user supplies
@@ -208,9 +208,63 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 	// Example: It makes perfect sense for a user to specify --set minimum=0
 	// and in so doing meet the requirement that a value be specified.
 	vals["minimum"] = 0
-	res, err := ValuesOrDefaults(vals, b)
+	res, err := ValuesOrDefaults(vals, b, "install")
 	is.NoError(err)
 	is.Equal(0, res["minimum"])
+}
+
+func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
+	is := assert.New(t)
+	vals := map[string]interface{}{
+		"param-with-default-and-override": true,
+	}
+	b := &Bundle{
+		Definitions: map[string]*definition.Schema{
+			"param-with-default-not-applicable": {
+				Type:    "string",
+				Default: "foo",
+			},
+			"required-param-not-applicable": {
+				Type: "string",
+			},
+			"param-with-default": {
+				Type:    "boolean",
+				Default: false,
+			},
+			"param-with-default-and-override": {
+				Type:    "boolean",
+				Default: false,
+			},
+		},
+		Parameters: map[string]Parameter{
+			"param-with-default-not-applicable": {
+				Definition: "param-with-default-not-applicable",
+				ApplyTo: []string{
+					"uninstall",
+				},
+			},
+			"required-param-not-applicable": {
+				Definition: "required-param-not-applicable",
+				Required:   true,
+				ApplyTo: []string{
+					"uninstall",
+				},
+			},
+			"param-with-default": {
+				Definition: "param-with-default",
+			},
+			"param-with-default-and-override": {
+				Definition: "param-with-default-and-override",
+			},
+		},
+	}
+
+	res, err := ValuesOrDefaults(vals, b, "install")
+	is.NoError(err)
+	is.Equal(true, res["param-with-default-and-override"])
+	is.Equal(false, res["param-with-default"])
+	is.Equal(nil, res["param-with-default-not-applicable"])
+	is.Equal(nil, res["required-param-with-default-not-applicable"])
 }
 
 func TestValidateVersionTag(t *testing.T) {
