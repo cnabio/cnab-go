@@ -214,17 +214,18 @@ func TestValuesOrDefaults_Required(t *testing.T) {
 }
 
 func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
-	is := assert.New(t)
+	// vals represent user-supplied parameter values
 	vals := map[string]interface{}{
 		"param-with-default-and-override": true,
 	}
+
 	b := &Bundle{
 		Definitions: map[string]*definition.Schema{
 			"param-with-default-not-applicable": {
 				Type:    "string",
 				Default: "foo",
 			},
-			"required-param-not-applicable": {
+			"required-param-with-default-not-applicable": {
 				Type: "string",
 			},
 			"param-with-default": {
@@ -243,8 +244,8 @@ func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
 					"uninstall",
 				},
 			},
-			"required-param-not-applicable": {
-				Definition: "required-param-not-applicable",
+			"required-param-with-default-not-applicable": {
+				Definition: "required-param-with-default-not-applicable",
 				Required:   true,
 				ApplyTo: []string{
 					"uninstall",
@@ -260,11 +261,13 @@ func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
 	}
 
 	res, err := ValuesOrDefaults(vals, b, "install")
-	is.NoError(err)
-	is.Equal(true, res["param-with-default-and-override"])
-	is.Equal(false, res["param-with-default"])
-	is.Equal(nil, res["param-with-default-not-applicable"])
-	is.Equal(nil, res["required-param-with-default-not-applicable"])
+	require.NoError(t, err)
+
+	expected := map[string]interface{}{
+		"param-with-default":              false,
+		"param-with-default-and-override": true,
+	}
+	require.Equal(t, expected, res)
 }
 
 func TestValidateVersionTag(t *testing.T) {
