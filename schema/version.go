@@ -32,5 +32,11 @@ func GetSemver(schemaVersion string) (Version, error) {
 		return "", fmt.Errorf("no semver submatch for schemaVersion %q using regex %q", schemaVersion, r)
 	}
 
-	return Version(match[1]), nil
+	version := Version(match[1])
+	err := version.Validate()
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
 }
