@@ -21,9 +21,13 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		err := d.applyConfigurationOptions()
 		is.Nil(err)
 
-		cfg, hostCfg := d.GetContainerConfig()
-		is.Equal(&container.Config{}, cfg)
-		is.Equal(&container.HostConfig{}, hostCfg)
+		cfg, err := d.GetContainerConfig()
+		is.Nil(err)
+		is.Equal(container.Config{}, cfg)
+
+		hostCfg, err := d.GetContainerHostConfig()
+		is.Nil(err)
+		is.Equal(container.HostConfig{}, hostCfg)
 	})
 
 	t.Run("configuration options", func(t *testing.T) {
@@ -38,14 +42,19 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		err := d.applyConfigurationOptions()
 		is.Nil(err)
 
-		expectedContainerCfg := &container.Config{
+		expectedContainerCfg := container.Config{
 			User: "cnabby",
 		}
-		expectedHostCfg := &container.HostConfig{
+		expectedHostCfg := container.HostConfig{
 			Privileged: true,
 		}
-		cfg, hostCfg := d.GetContainerConfig()
+
+		cfg, err := d.GetContainerConfig()
+		is.Nil(err)
 		is.Equal(expectedContainerCfg, cfg)
+
+		hostCfg, err := d.GetContainerHostConfig()
+		is.Nil(err)
 		is.Equal(expectedHostCfg, hostCfg)
 	})
 }

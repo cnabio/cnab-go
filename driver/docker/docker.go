@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
+	copystructure "github.com/mitchellh/copystructure"
 )
 
 // Driver is capable of running Docker invocation images using Docker itself.
@@ -50,10 +51,36 @@ func (d *Driver) AddConfigurationOptions(opts ...ConfigurationOption) {
 	d.dockerConfigurationOptions = append(d.dockerConfigurationOptions, opts...)
 }
 
-// GetContainerConfig returns the container configuration and host configuration
+// GetContainerConfig returns a copy of the container configuration
 // used by the driver during container exec
-func (d *Driver) GetContainerConfig() (*container.Config, *container.HostConfig) {
-	return d.containerCfg, d.containerHostCfg
+func (d *Driver) GetContainerConfig() (container.Config, error) {
+	cpy, err := copystructure.Copy(*d.containerCfg)
+	if err != nil {
+		return container.Config{}, err
+	}
+
+	containerCfg, ok := cpy.(container.Config)
+	if !ok {
+		return container.Config{}, err
+	}
+
+	return containerCfg, nil
+}
+
+// GetContainerHostConfig returns a copy of the container host configuration
+// used by the driver during container exec
+func (d *Driver) GetContainerHostConfig() (container.HostConfig, error) {
+	cpy, err := copystructure.Copy(*d.containerHostCfg)
+	if err != nil {
+		return container.HostConfig{}, err
+	}
+
+	hostCfg, ok := cpy.(container.HostConfig)
+	if !ok {
+		return container.HostConfig{}, err
+	}
+
+	return hostCfg, nil
 }
 
 // Config returns the Docker driver configuration options
