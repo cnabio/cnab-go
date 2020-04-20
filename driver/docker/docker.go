@@ -3,6 +3,7 @@ package docker
 import (
 	"archive/tar"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -61,7 +62,7 @@ func (d *Driver) GetContainerConfig() (container.Config, error) {
 
 	containerCfg, ok := cpy.(container.Config)
 	if !ok {
-		return container.Config{}, err
+		return container.Config{}, errors.New("unable to process container config")
 	}
 
 	return containerCfg, nil
@@ -77,7 +78,7 @@ func (d *Driver) GetContainerHostConfig() (container.HostConfig, error) {
 
 	hostCfg, ok := cpy.(container.HostConfig)
 	if !ok {
-		return container.HostConfig{}, err
+		return container.HostConfig{}, errors.New("unable to process container host config")
 	}
 
 	return hostCfg, nil
