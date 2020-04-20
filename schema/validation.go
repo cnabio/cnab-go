@@ -9,7 +9,7 @@ import (
 	"github.com/pkg/errors"
 
 	// Using this library as qri-io/jsonschema doesn't appear to have
-	// first-class support for adding auxilliary/ref'd sub-schemas,
+	// first-class support for adding auxiliary/ref'd sub-schemas,
 	// apart from fetching remote references over the network
 	// (which doesn't support airgapped scenarios)
 	"github.com/xeipuuv/gojsonschema"
@@ -43,7 +43,7 @@ func Validate(schemaType string, bytes []byte) ([]ValidationError, error) {
 	if err != nil {
 		return valErrs, errors.Wrapf(err, "failed to read the schema data for type %q", schemaType)
 	}
-	// Retrieve auxilliary definitions schema bytes
+	// Retrieve auxiliary definitions schema bytes
 	definitionsSchemaData, err := newSchemaBox().Find("definitions.schema.json")
 	if err != nil {
 		return valErrs, errors.Wrap(err, "failed to read the definitions schema data")
@@ -51,7 +51,7 @@ func Validate(schemaType string, bytes []byte) ([]ValidationError, error) {
 
 	// Build schema validator
 	sl := gojsonschema.NewSchemaLoader()
-	// Add the auxilliary definitions schema first.  It may be required (ref'd) by the main schema.
+	// Add the auxiliary definitions schema first.  It may be required (ref'd) by the main schema.
 	definitionsSchemaLoader := gojsonschema.NewBytesLoader(definitionsSchemaData)
 	err = sl.AddSchema("http://cnab.io/v1/definitions.schema.json", definitionsSchemaLoader)
 	if err != nil {
