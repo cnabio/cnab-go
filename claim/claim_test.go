@@ -97,8 +97,9 @@ func TestMarshal_New(t *testing.T) {
 	assert.Equal(t, string(wantClaim), strings.TrimSpace(string(bytes)), "marshaled claim does not match expected")
 }
 
+var schemaVersion, _ = GetDefaultSchemaVersion()
 var exampleClaim = Claim{
-	SchemaVersion:   "1.0.0-DRAFT+d7ffba8",
+	SchemaVersion:   schemaVersion,
 	Installation:    "my_claim",
 	Revision:        staticRevision,
 	Created:         staticDate,
