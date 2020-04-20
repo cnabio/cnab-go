@@ -225,7 +225,7 @@ func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
 				Type:    "string",
 				Default: "foo",
 			},
-			"required-param-with-default-not-applicable": {
+			"required-param-not-applicable": {
 				Type: "string",
 			},
 			"param-with-default": {
@@ -244,8 +244,8 @@ func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
 					"uninstall",
 				},
 			},
-			"required-param-with-default-not-applicable": {
-				Definition: "required-param-with-default-not-applicable",
+			"required-param-not-applicable": {
+				Definition: "required-param-not-applicable",
 				Required:   true,
 				ApplyTo: []string{
 					"uninstall",
