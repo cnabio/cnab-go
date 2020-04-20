@@ -170,11 +170,16 @@ type Action struct {
 }
 
 // ValuesOrDefaults returns parameter values or the default parameter values. An error is returned when the parameter value does not pass
-// the schema validation or a required parameter is missing.
-func ValuesOrDefaults(vals map[string]interface{}, b *Bundle) (map[string]interface{}, error) {
+// the schema validation or a required parameter is missing, assuming the parameter applies to the provided action.
+func ValuesOrDefaults(vals map[string]interface{}, b *Bundle, action string) (map[string]interface{}, error) {
 	res := map[string]interface{}{}
 
 	for name, param := range b.Parameters {
+		// If the parameter doesn't apply to the provided action,
+		// skip validation and do not attempt to include in the returned list
+		if !param.AppliesTo(action) {
+			continue
+		}
 		s, ok := b.Definitions[param.Definition]
 		if !ok {
 			return res, fmt.Errorf("unable to find definition for %s", name)
