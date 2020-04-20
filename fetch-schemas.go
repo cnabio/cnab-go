@@ -19,8 +19,9 @@ const CNABSchemaDestPrefix = "./schema/schema"
 
 func main() {
 	schemas := map[string]string{
-		"bundle": bundle.CNABSpecVersion,
-		"claim":  claim.CNABSpecVersion,
+		"bundle":      bundle.CNABSpecVersion,
+		"definitions": bundle.CNABSpecVersion,
+		"claim":       claim.CNABSpecVersion,
 	}
 
 	for schema, version := range schemas {

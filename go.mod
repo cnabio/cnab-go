@@ -58,6 +58,7 @@ require (
 	github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2 // indirect
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/urfave/cli v1.22.1 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/xlab/handysort v0.0.0-20150421192137-fb3537ed64a1 // indirect
 	go.etcd.io/bbolt v1.3.3 // indirect
 	golang.org/x/sys v0.0.0-20190830141801-acfa387b8d69 // indirect
