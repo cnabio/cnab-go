@@ -57,6 +57,7 @@ function test(e, project) {
     `cp -a /src/.git ${localPath}`,
     `cd ${localPath}`,
     "make bootstrap",
+    "make fetch-schemas",
     "make build",
     // Ensure that it compiles on the three main OS's
     "GOOS=windows make build",

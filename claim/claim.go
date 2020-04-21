@@ -10,12 +10,13 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle"
-	"github.com/cnabio/cnab-go/utils/schemaversion"
+	"github.com/cnabio/cnab-go/schema"
 )
 
-// DefaultSchemaVersion represents the schema version of the Claim
-// that this library returns by default
-const DefaultSchemaVersion = schemaversion.SchemaVersion("v1.0.0-WD")
+// CNABSpecVersion represents the CNAB Spec version of the Claim
+// that this library implements
+// This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
+var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+d7ffba8"
 
 // Status constants define the CNAB status fields on a Result.
 const (
@@ -47,17 +48,27 @@ const (
 // provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
-	SchemaVersion   schemaversion.SchemaVersion `json:"schemaVersion"`
-	Installation    string                      `json:"installation"`
-	Revision        string                      `json:"revision"`
-	Created         time.Time                   `json:"created"`
-	Modified        time.Time                   `json:"modified"`
-	Bundle          *bundle.Bundle              `json:"bundle"`
-	BundleReference string                      `json:"bundleReference,omitempty"`
-	Result          Result                      `json:"result,omitempty"`
-	Parameters      map[string]interface{}      `json:"parameters,omitempty"`
-	Outputs         map[string]interface{}      `json:"outputs,omitempty"`
-	Custom          interface{}                 `json:"custom,omitempty"`
+	SchemaVersion   schema.Version         `json:"schemaVersion"`
+	Installation    string                 `json:"installation"`
+	Revision        string                 `json:"revision"`
+	Created         time.Time              `json:"created"`
+	Modified        time.Time              `json:"modified"`
+	Bundle          *bundle.Bundle         `json:"bundle"`
+	BundleReference string                 `json:"bundleReference,omitempty"`
+	Result          Result                 `json:"result,omitempty"`
+	Parameters      map[string]interface{} `json:"parameters,omitempty"`
+	Outputs         map[string]interface{} `json:"outputs,omitempty"`
+	Custom          interface{}            `json:"custom,omitempty"`
+}
+
+// GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
+// that this library implements
+func GetDefaultSchemaVersion() (schema.Version, error) {
+	ver, err := schema.GetSemver(CNABSpecVersion)
+	if err != nil {
+		return "", err
+	}
+	return ver, nil
 }
 
 // ValidName is a regular expression that indicates whether a name is a valid claim name.
@@ -70,9 +81,14 @@ func New(name string) (*Claim, error) {
 		return nil, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", name)
 	}
 
+	schemaVersion, err := GetDefaultSchemaVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now()
 	return &Claim{
-		SchemaVersion: DefaultSchemaVersion,
+		SchemaVersion: schemaVersion,
 		Installation:  name,
 		Revision:      ULID(),
 		Created:       now,

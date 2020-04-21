@@ -21,7 +21,7 @@ steps:
 - script: |
     go version
     go get sigs.k8s.io/kind@v0.6.0
-    make bootstrap build lint coverage
+    make bootstrap fetch-schemas build lint coverage
     GOOS=windows make build
     GOOS=darwin make build 
   workingDirectory: '$(modulePath)'

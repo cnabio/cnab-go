@@ -8,6 +8,10 @@ else
 	CHECK  ?= which
 endif
 
+.PHONY: fetch-schemas
+fetch-schemas:
+	@go run fetch-schemas.go
+
 .PHONY: build
 build:
 	go build ./...
@@ -24,10 +28,10 @@ HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
 GOLANGCI_VERSION := v1.21.0
 HAS_KIND := $(shell $(CHECK) kind)
 HAS_KUBECTL := $(shell $(CHECK) kubectl)
-HAS_GOCOV_XML := $(shell command -v gocov-xml;)
-HAS_GOCOV := $(shell command -v gocov;)
-HAS_GO_JUNIT_REPORT := $(shell command -v go-junit-report;)
-
+HAS_GOCOV_XML := $(shell $(CHECK) gocov-xml;)
+HAS_GOCOV := $(shell $(CHECK) gocov;)
+HAS_GO_JUNIT_REPORT := $(shell $(CHECK) go-junit-report;)
+HAS_PACKR2 := $(shell $(CHECK) packr2;)
 
 .PHONY: bootstrap
 bootstrap:
@@ -49,6 +53,9 @@ ifndef HAS_GOCOV
 endif
 ifndef HAS_GO_JUNIT_REPORT
 	go get github.com/jstemmer/go-junit-report
+endif
+ifndef HAS_PACKR2
+	go get -u github.com/gobuffalo/packr/v2/packr2
 endif
 	@# go get to install global tools with modules modify our dependencies. Reset them back
 	git checkout go.mod go.sum

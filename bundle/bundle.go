@@ -9,32 +9,47 @@ import (
 	"strings"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
-	"github.com/cnabio/cnab-go/utils/schemaversion"
+	"github.com/cnabio/cnab-go/schema"
 	"github.com/docker/go/canonical/json"
 	pkgErrors "github.com/pkg/errors"
 )
 
+// CNABSpecVersion represents the CNAB Spec version of the Bundle
+// that this library implements
+// This value is prefixed with e.g. `cnab-core-` so isn't itself valid semver.
+var CNABSpecVersion string = "cnab-core-1.0.1"
+
 // Bundle is a CNAB metadata document
 type Bundle struct {
-	SchemaVersion      schemaversion.SchemaVersion `json:"schemaVersion" yaml:"schemaVersion"`
-	Name               string                      `json:"name" yaml:"name"`
-	Version            string                      `json:"version" yaml:"version"`
-	Description        string                      `json:"description" yaml:"description"`
-	Keywords           []string                    `json:"keywords,omitempty" yaml:"keywords,omitempty"`
-	Maintainers        []Maintainer                `json:"maintainers,omitempty" yaml:"maintainers,omitempty"`
-	InvocationImages   []InvocationImage           `json:"invocationImages" yaml:"invocationImages"`
-	Images             map[string]Image            `json:"images,omitempty" yaml:"images,omitempty"`
-	Actions            map[string]Action           `json:"actions,omitempty" yaml:"actions,omitempty"`
-	Parameters         map[string]Parameter        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Credentials        map[string]Credential       `json:"credentials,omitempty" yaml:"credentials,omitempty"`
-	Outputs            map[string]Output           `json:"outputs,omitempty" yaml:"outputs,omitempty"`
-	Definitions        definition.Definitions      `json:"definitions,omitempty" yaml:"definitions,omitempty"`
-	License            string                      `json:"license,omitempty" yaml:"license,omitempty"`
-	RequiredExtensions []string                    `json:"requiredExtensions,omitempty" yaml:"requiredExtensions,omitempty"`
+	SchemaVersion      schema.Version         `json:"schemaVersion" yaml:"schemaVersion"`
+	Name               string                 `json:"name" yaml:"name"`
+	Version            string                 `json:"version" yaml:"version"`
+	Description        string                 `json:"description" yaml:"description"`
+	Keywords           []string               `json:"keywords,omitempty" yaml:"keywords,omitempty"`
+	Maintainers        []Maintainer           `json:"maintainers,omitempty" yaml:"maintainers,omitempty"`
+	InvocationImages   []InvocationImage      `json:"invocationImages" yaml:"invocationImages"`
+	Images             map[string]Image       `json:"images,omitempty" yaml:"images,omitempty"`
+	Actions            map[string]Action      `json:"actions,omitempty" yaml:"actions,omitempty"`
+	Parameters         map[string]Parameter   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Credentials        map[string]Credential  `json:"credentials,omitempty" yaml:"credentials,omitempty"`
+	Outputs            map[string]Output      `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+	Definitions        definition.Definitions `json:"definitions,omitempty" yaml:"definitions,omitempty"`
+	License            string                 `json:"license,omitempty" yaml:"license,omitempty"`
+	RequiredExtensions []string               `json:"requiredExtensions,omitempty" yaml:"requiredExtensions,omitempty"`
 
 	// Custom extension metadata is a named collection of auxiliary data whose
 	// meaning is defined outside of the CNAB specification.
 	Custom map[string]interface{} `json:"custom,omitempty" yaml:"custom,omitempty"`
+}
+
+// GetDefaultSchemaVersion returns the default semver CNAB schema version of the Bundle
+// that this library implements
+func GetDefaultSchemaVersion() (schema.Version, error) {
+	ver, err := schema.GetSemver(CNABSpecVersion)
+	if err != nil {
+		return "", err
+	}
+	return ver, nil
 }
 
 //Unmarshal unmarshals a Bundle that was not signed.

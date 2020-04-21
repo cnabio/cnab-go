@@ -3,16 +3,14 @@ package claim
 import (
 	"encoding/json"
 	"io/ioutil"
-	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/qri-io/jsonschema"
-
 	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/schema"
 )
 
 func TestNew(t *testing.T) {
@@ -99,8 +97,9 @@ func TestMarshal_New(t *testing.T) {
 	assert.Equal(t, string(wantClaim), strings.TrimSpace(string(bytes)), "marshaled claim does not match expected")
 }
 
+var schemaVersion, _ = GetDefaultSchemaVersion()
 var exampleClaim = Claim{
-	SchemaVersion:   DefaultSchemaVersion,
+	SchemaVersion:   schemaVersion,
 	Installation:    "my_claim",
 	Revision:        staticRevision,
 	Created:         staticDate,
@@ -195,33 +194,16 @@ func TestMarshal_AllFields(t *testing.T) {
 }
 
 func TestClaimSchema(t *testing.T) {
-	t.Skip("This test is pending an alternate, offline-friendly implementation; see https://github.com/cnabio/cnab-go/issues/194")
+	t.Skip("This test is pending non-trivial updates to the Claim and Result objects: https://github.com/cnabio/cnab-go/issues/202")
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
-	url := "https://cnab.io/v1/claim.schema.json"
-	req, err := http.NewRequest("GET", url, nil)
-	assert.NoError(t, err, "failed to construct GET request for fetching claim schema")
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err, "failed to get claim schema")
+	valErrors, err := schema.ValidateClaim(claimBytes)
+	assert.NoError(t, err, "failed to validate claim schema")
 
-	defer res.Body.Close()
-	schemaData, err := ioutil.ReadAll(res.Body)
-	assert.NoError(t, err, "failed to read claim schema")
-
-	rs := &jsonschema.RootSchema{}
-	err = json.Unmarshal(schemaData, rs)
-	assert.NoError(t, err, "failed to json.Unmarshal root claim schema")
-
-	err = rs.FetchRemoteReferences()
-	assert.NoError(t, err, "failed to fetch remote references declared by claim schema")
-
-	errors, err := rs.ValidateBytes(claimBytes)
-	assert.NoError(t, err, "failed to validate claim")
-
-	if len(errors) > 0 {
+	if len(valErrors) > 0 {
 		t.Log("claim validation against the JSON schema failed:")
-		for _, error := range errors {
+		for _, error := range valErrors {
 			t.Log(error)
 		}
 		t.Fail()
