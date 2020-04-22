@@ -3,6 +3,7 @@ package docker
 import (
 	"archive/tar"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,6 +21,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
+	copystructure "github.com/mitchellh/copystructure"
 )
 
 // Driver is capable of running Docker invocation images using Docker itself.
@@ -31,6 +33,8 @@ type Driver struct {
 	dockerConfigurationOptions []ConfigurationOption
 	containerOut               io.Writer
 	containerErr               io.Writer
+	containerHostCfg           *container.HostConfig
+	containerCfg               *container.Config
 }
 
 // Run executes the Docker driver
@@ -46,6 +50,38 @@ func (d *Driver) Handles(dt string) bool {
 // AddConfigurationOptions adds configuration callbacks to the driver
 func (d *Driver) AddConfigurationOptions(opts ...ConfigurationOption) {
 	d.dockerConfigurationOptions = append(d.dockerConfigurationOptions, opts...)
+}
+
+// GetContainerConfig returns a copy of the container configuration
+// used by the driver during container exec
+func (d *Driver) GetContainerConfig() (container.Config, error) {
+	cpy, err := copystructure.Copy(*d.containerCfg)
+	if err != nil {
+		return container.Config{}, err
+	}
+
+	containerCfg, ok := cpy.(container.Config)
+	if !ok {
+		return container.Config{}, errors.New("unable to process container config")
+	}
+
+	return containerCfg, nil
+}
+
+// GetContainerHostConfig returns a copy of the container host configuration
+// used by the driver during container exec
+func (d *Driver) GetContainerHostConfig() (container.HostConfig, error) {
+	cpy, err := copystructure.Copy(*d.containerHostCfg)
+	if err != nil {
+		return container.HostConfig{}, err
+	}
+
+	hostCfg, ok := cpy.(container.HostConfig)
+	if !ok {
+		return container.HostConfig{}, errors.New("unable to process container host config")
+	}
+
+	return hostCfg, nil
 }
 
 // Config returns the Docker driver configuration options
@@ -155,7 +191,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		env = append(env, fmt.Sprintf("%s=%v", k, v))
 	}
 
-	cfg := &container.Config{
+	d.containerCfg = &container.Config{
 		Image:        op.Image.Image,
 		Env:          env,
 		Entrypoint:   strslice.StrSlice{"/cnab/app/run"},
@@ -163,21 +199,19 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		AttachStdout: true,
 	}
 
-	hostCfg := &container.HostConfig{}
-	for _, opt := range d.dockerConfigurationOptions {
-		if err := opt(cfg, hostCfg); err != nil {
-			return driver.OperationResult{}, err
-		}
+	d.containerHostCfg = &container.HostConfig{}
+	if err := d.applyConfigurationOptions(); err != nil {
+		return driver.OperationResult{}, err
 	}
 
-	resp, err := cli.Client().ContainerCreate(ctx, cfg, hostCfg, nil, "")
+	resp, err := cli.Client().ContainerCreate(ctx, d.containerCfg, d.containerHostCfg, nil, "")
 	switch {
 	case client.IsErrNotFound(err):
 		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", op.Image.Image)
 		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
 			return driver.OperationResult{}, err
 		}
-		if resp, err = cli.Client().ContainerCreate(ctx, cfg, hostCfg, nil, ""); err != nil {
+		if resp, err = cli.Client().ContainerCreate(ctx, d.containerCfg, d.containerHostCfg, nil, ""); err != nil {
 			return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 		}
 	case err != nil:
@@ -257,6 +291,15 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return opResult, fmt.Errorf("fetching outputs failed: %s", fetchErr)
 	}
 	return opResult, err
+}
+
+func (d *Driver) applyConfigurationOptions() error {
+	for _, opt := range d.dockerConfigurationOptions {
+		if err := opt(d.containerCfg, d.containerHostCfg); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func containerError(containerMessage string, containerErr, fetchErr error) error {
