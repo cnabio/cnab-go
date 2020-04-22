@@ -14,25 +14,18 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 	is.NotNil(d)
 	is.True(d.Handles(driver.ImageTypeDocker))
 
-	t.Run("no configuration options", func(t *testing.T) {
-		d.containerCfg = &container.Config{}
-		d.containerHostCfg = &container.HostConfig{}
-
+	t.Run("empty configuration options", func(t *testing.T) {
 		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
-		cfg, err := d.GetContainerConfig()
-		is.NoError(err)
+		cfg := d.GetContainerConfig()
 		is.Equal(container.Config{}, cfg)
 
-		hostCfg, err := d.GetContainerHostConfig()
-		is.NoError(err)
+		hostCfg := d.GetContainerHostConfig()
 		is.Equal(container.HostConfig{}, hostCfg)
 	})
 
 	t.Run("configuration options", func(t *testing.T) {
-		d.containerCfg = &container.Config{}
-		d.containerHostCfg = &container.HostConfig{}
 		d.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
 			cfg.User = "cnabby"
 			hostCfg.Privileged = true
@@ -49,12 +42,10 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 			Privileged: true,
 		}
 
-		cfg, err := d.GetContainerConfig()
-		is.NoError(err)
+		cfg := d.GetContainerConfig()
 		is.Equal(expectedContainerCfg, cfg)
 
-		hostCfg, err := d.GetContainerHostConfig()
-		is.NoError(err)
+		hostCfg := d.GetContainerHostConfig()
 		is.Equal(expectedHostCfg, hostCfg)
 	})
 }
