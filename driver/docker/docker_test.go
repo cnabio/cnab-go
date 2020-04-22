@@ -14,11 +14,21 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 	is.NotNil(d)
 	is.True(d.Handles(driver.ImageTypeDocker))
 
-	t.Run("no configuration options", func(t *testing.T) {
+	t.Run("uninitialized configuration options", func(t *testing.T) {
+		containerCfg, err := d.GetContainerConfig()
+		is.NoError(err)
+		is.Equal(container.Config{}, containerCfg)
+
+		containerHostCfg, err := d.GetContainerHostConfig()
+		is.NoError(err)
+		is.Equal(container.HostConfig{}, containerHostCfg)
+	})
+
+	t.Run("empty configuration options", func(t *testing.T) {
 		d.containerCfg = &container.Config{}
 		d.containerHostCfg = &container.HostConfig{}
 
-		err := d.applyConfigurationOptions()
+		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
 		cfg, err := d.GetContainerConfig()
@@ -39,7 +49,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 			return nil
 		})
 
-		err := d.applyConfigurationOptions()
+		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
 		expectedContainerCfg := container.Config{

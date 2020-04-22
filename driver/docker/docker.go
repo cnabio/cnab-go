@@ -55,6 +55,10 @@ func (d *Driver) AddConfigurationOptions(opts ...ConfigurationOption) {
 // GetContainerConfig returns a copy of the container configuration
 // used by the driver during container exec
 func (d *Driver) GetContainerConfig() (container.Config, error) {
+	if d.containerCfg == nil {
+		return container.Config{}, nil
+	}
+
 	cpy, err := copystructure.Copy(*d.containerCfg)
 	if err != nil {
 		return container.Config{}, err
@@ -71,6 +75,10 @@ func (d *Driver) GetContainerConfig() (container.Config, error) {
 // GetContainerHostConfig returns a copy of the container host configuration
 // used by the driver during container exec
 func (d *Driver) GetContainerHostConfig() (container.HostConfig, error) {
+	if d.containerHostCfg == nil {
+		return container.HostConfig{}, nil
+	}
+
 	cpy, err := copystructure.Copy(*d.containerHostCfg)
 	if err != nil {
 		return container.HostConfig{}, err
@@ -200,7 +208,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	d.containerHostCfg = &container.HostConfig{}
-	if err := d.applyConfigurationOptions(); err != nil {
+	if err := d.ApplyConfigurationOptions(); err != nil {
 		return driver.OperationResult{}, err
 	}
 
@@ -293,7 +301,8 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	return opResult, err
 }
 
-func (d *Driver) applyConfigurationOptions() error {
+// ApplyConfigurationOptions applies the configuration options set on the driver
+func (d *Driver) ApplyConfigurationOptions() error {
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(d.containerCfg, d.containerHostCfg); err != nil {
 			return err
