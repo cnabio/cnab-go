@@ -200,7 +200,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	d.containerHostCfg = &container.HostConfig{}
-	if err := d.applyConfigurationOptions(); err != nil {
+	if err := d.ApplyConfigurationOptions(); err != nil {
 		return driver.OperationResult{}, err
 	}
 
@@ -293,7 +293,8 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	return opResult, err
 }
 
-func (d *Driver) applyConfigurationOptions() error {
+// ApplyConfigurationOptions applies the configuration options set on the driver
+func (d *Driver) ApplyConfigurationOptions() error {
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(d.containerCfg, d.containerHostCfg); err != nil {
 			return err

@@ -18,7 +18,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		d.containerCfg = &container.Config{}
 		d.containerHostCfg = &container.HostConfig{}
 
-		err := d.applyConfigurationOptions()
+		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
 		cfg, err := d.GetContainerConfig()
@@ -39,7 +39,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 			return nil
 		})
 
-		err := d.applyConfigurationOptions()
+		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
 		expectedContainerCfg := container.Config{
