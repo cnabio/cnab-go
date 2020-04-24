@@ -18,10 +18,12 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		err := d.ApplyConfigurationOptions()
 		is.NoError(err)
 
-		cfg := d.GetContainerConfig()
+		cfg, err := d.GetContainerConfig()
+		is.NoError(err)
 		is.Equal(container.Config{}, cfg)
 
-		hostCfg := d.GetContainerHostConfig()
+		hostCfg, err := d.GetContainerHostConfig()
+		is.NoError(err)
 		is.Equal(container.HostConfig{}, hostCfg)
 	})
 
@@ -42,10 +44,12 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 			Privileged: true,
 		}
 
-		cfg := d.GetContainerConfig()
+		cfg, err := d.GetContainerConfig()
+		is.NoError(err)
 		is.Equal(expectedContainerCfg, cfg)
 
-		hostCfg := d.GetContainerHostConfig()
+		hostCfg, err := d.GetContainerHostConfig()
+		is.NoError(err)
 		is.Equal(expectedHostCfg, hostCfg)
 	})
 }
