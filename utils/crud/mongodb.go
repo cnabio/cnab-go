@@ -21,8 +21,9 @@ type mongoDBStore struct {
 }
 
 type doc struct {
-	Name string `json:"name"`
-	Data []byte `json:"data"`
+	Name  string `json:"name"`
+	Group string `json:"group"`
+	Data  []byte `json:"data"`
 }
 
 // NewMongoDBStore creates a new storage engine that uses MongoDB
@@ -68,11 +69,17 @@ func (s *mongoDBStore) getCollection(itemType string) *mgo.Collection {
 	return c
 }
 
-func (s *mongoDBStore) List(itemType string) ([]string, error) {
+func (s *mongoDBStore) List(itemType string, group string) ([]string, error) {
 	collection := s.getCollection(itemType)
 
 	var res []doc
-	if err := collection.Find(nil).All(&res); err != nil {
+	var query map[string]string
+	if group != "" {
+		query = map[string]string{
+			"group": group,
+		}
+	}
+	if err := collection.Find(query).All(&res); err != nil {
 		return []string{}, wrapErr(err)
 	}
 	buf := []string{}
@@ -82,10 +89,10 @@ func (s *mongoDBStore) List(itemType string) ([]string, error) {
 	return buf, nil
 }
 
-func (s *mongoDBStore) Save(itemType string, name string, data []byte) error {
+func (s *mongoDBStore) Save(itemType string, group string, name string, data []byte) error {
 	collection := s.getCollection(itemType)
 
-	return wrapErr(collection.Insert(doc{name, data}))
+	return wrapErr(collection.Insert(doc{Name: name, Group: group, Data: data}))
 }
 
 func (s *mongoDBStore) Read(itemType string, name string) ([]byte, error) {

@@ -1,6 +1,8 @@
 package action
 
 import (
+	"os"
+
 	"github.com/cnabio/cnab-go/driver"
 )
 
@@ -22,5 +24,11 @@ func (cfgs OperationConfigs) ApplyConfig(op *driver.Operation) error {
 			return err
 		}
 	}
+
+	// If out wasn't configured, default it
+	if op.Out == nil {
+		op.Out = os.Stdout
+	}
+
 	return nil
 }

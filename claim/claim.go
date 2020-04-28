@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"sort"
 	"sync"
 	"time"
 
@@ -17,7 +18,7 @@ import (
 // CNABSpecVersion represents the CNAB Spec version of the Claim
 // that this library implements
 // This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
-var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+d7ffba8"
+var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+b5ed2f3"
 
 // Status constants define the CNAB status fields on a Result.
 const (
@@ -43,23 +44,56 @@ const (
 	ActionUnknown   = "unknown"
 )
 
+// Output constants define metadata about outputs that may be stored on a claim
+// Result.
+const (
+	OutputContentDigest = "contentDigest"
+)
+
+var (
+	builtinActions = map[string]struct{}{"install": {}, "uninstall": {}, "upgrade": {}}
+)
+
 // Claim is an installation claim receipt.
 //
 // Claims represent information about a particular installation, and
 // provide the necessary data to upgrade and uninstall
 // a CNAB package.
 type Claim struct {
-	SchemaVersion   schema.Version         `json:"schemaVersion"`
-	Installation    string                 `json:"installation"`
-	Revision        string                 `json:"revision"`
-	Created         time.Time              `json:"created"`
-	Modified        time.Time              `json:"modified"`
-	Bundle          *bundle.Bundle         `json:"bundle"`
-	BundleReference string                 `json:"bundleReference,omitempty"`
-	Result          Result                 `json:"result,omitempty"`
-	Parameters      map[string]interface{} `json:"parameters,omitempty"`
-	Outputs         map[string]interface{} `json:"outputs,omitempty"`
-	Custom          interface{}            `json:"custom,omitempty"`
+	// SchemaVersion is the version of the claim schema.
+	SchemaVersion schema.Version `json:"schemaVersion"`
+
+	// Id of the claim.
+	ID string `json:"id"`
+
+	// Installation name.
+	Installation string `json:"installation"`
+
+	// Revision of the installation.
+	Revision string `json:"revision"`
+
+	// Created timestamp of the claim.
+	Created time.Time `json:"created"`
+
+	// Action executed against the installation.
+	Action string `json:"action"`
+
+	// Bundle is the definition of the bundle.
+	Bundle bundle.Bundle `json:"bundle"`
+
+	// BundleReference is the canonical reference to the bundle used in the action.
+	BundleReference string `json:"bundleReference,omitempty"`
+
+	// Parameters are the key/value pairs that were passed in during the operation.
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+
+	// Custom extension data applicable to a given runtime.
+	Custom interface{} `json:"custom,omitempty"`
+
+	// Results of executing the Claim's operation.
+	// These are not stored in the Claim document but can be loaded onto the
+	// the Claim to build an in-memory hierarchy.
+	Results Results `json:"-"`
 }
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
@@ -75,68 +109,100 @@ func GetDefaultSchemaVersion() (schema.Version, error) {
 // ValidName is a regular expression that indicates whether a name is a valid claim name.
 var ValidName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 
-// New creates a new Claim initialized for an installation operation.
-func New(name string) (*Claim, error) {
-
-	if !ValidName.MatchString(name) {
-		return nil, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", name)
+// New creates a new Claim initialized for an operation.
+func New(installation string, action string, bun bundle.Bundle, parameters map[string]interface{}) (Claim, error) {
+	if !ValidName.MatchString(installation) {
+		return Claim{}, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", installation)
 	}
 
 	schemaVersion, err := GetDefaultSchemaVersion()
 	if err != nil {
-		return nil, err
+		return Claim{}, err
 	}
 
 	now := time.Now()
+	id, err := NewULID()
+	if err != nil {
+		return Claim{}, err
+	}
 	revision, err := NewULID()
 	if err != nil {
-		return nil, err
+		return Claim{}, err
 	}
 
-	return &Claim{
+	return Claim{
 		SchemaVersion: schemaVersion,
-		Installation:  name,
+		ID:            id,
+		Installation:  installation,
 		Revision:      revision,
 		Created:       now,
-		Modified:      now,
-		Result: Result{
-			Action: ActionUnknown,
-			Status: StatusUnknown,
-		},
-		Parameters: map[string]interface{}{},
-		Outputs:    map[string]interface{}{},
+		Action:        action,
+		Bundle:        bun,
+		Parameters:    parameters,
 	}, nil
 }
 
-// Update is a convenience for modifying the necessary fields on a Claim.
-//
-// Per spec, when a claim is updated, the action, status, revision, and modified fields all change.
-// All but status and action can be computed.
-func (c *Claim) Update(action, status string) {
-	c.Result.Action = action
-	c.Result.Status = status
-	c.Modified = time.Now()
-	c.Revision = MustNewULID()
-}
+// NewClaim is a convenience for creating a new claim from an existing claim.
+func (c Claim) NewClaim(action string, bun bundle.Bundle, parameters map[string]interface{}) (Claim, error) {
+	updatedClaim := c
+	updatedClaim.Bundle = bun
+	updatedClaim.Action = action
+	updatedClaim.Parameters = parameters
+	updatedClaim.Created = time.Now()
 
-// Result tracks the result of an operation on a CNAB installation
-type Result struct {
-	Message string `json:"message,omitempty"`
-	Action  string `json:"action"`
-	Status  string `json:"status"`
-}
+	id, err := NewULID()
+	if err != nil {
+		return Claim{}, err
+	}
+	updatedClaim.ID = id
 
-// Validate the Result
-func (r Result) Validate() error {
-	if r.Action == "" {
-		return errors.New("the action must be provided")
+	modifies, err := updatedClaim.IsModifyingAction()
+	if err != nil {
+		return Claim{}, err
 	}
 
-	switch r.Status {
-	case StatusCanceled, StatusFailed, StatusPending, StatusRunning, StatusSucceeded, StatusUnknown:
-		return nil
+	if modifies {
+		rev, err := NewULID()
+		if err != nil {
+			return Claim{}, err
+		}
+		updatedClaim.Revision = rev
 	}
-	return fmt.Errorf("invalid status: %s", r.Status)
+
+	return updatedClaim, nil
+}
+
+// IsModifyingAction determines if the Claim's action modifies the bundle.
+// Non-modifying actions are not required to be persisted by the Claims spec.
+func (c Claim) IsModifyingAction() (bool, error) {
+	switch c.Action {
+	case ActionInstall, ActionUpgrade, ActionUninstall:
+		return true, nil
+	default:
+		actionDef, ok := c.Bundle.Actions[c.Action]
+		if !ok {
+			return false, fmt.Errorf("custom action not defined %q", c.Action)
+		}
+
+		return actionDef.Modifies, nil
+	}
+}
+
+// NewResult is a convenience for creating a result with the necessary fields
+// set on a Result.
+func (c Claim) NewResult(status string) (Result, error) {
+	id, err := NewULID()
+	if err != nil {
+		return Result{}, err
+	}
+
+	return Result{
+		ID:             id,
+		ClaimID:        c.ID,
+		Created:        time.Now(),
+		Status:         status,
+		OutputMetadata: OutputMetadata{},
+	}, nil
 }
 
 // Validate the Claim
@@ -147,8 +213,66 @@ func (c Claim) Validate() error {
 		return errors.Wrap(err, "claim validation failed")
 	}
 
-	// validate the Result
-	return errors.Wrap(c.Result.Validate(), "claim validation failed")
+	if c.ID == "" {
+		return errors.New("the claim id must be set")
+	}
+
+	if c.Revision == "" {
+		return errors.New("the revision must be set")
+	}
+
+	if c.Installation == "" {
+		return errors.New("the installation must be set")
+	}
+
+	if c.Action == "" {
+		return errors.New("the action must be set")
+	}
+
+	// Check the action is built-in or defined as a custom action
+	if _, isBuildInAction := builtinActions[c.Action]; !isBuildInAction {
+		_, isCustomAction := c.Bundle.Actions[c.Action]
+		if !isCustomAction {
+			return fmt.Errorf("action %q is not defined in the bundle", c.Action)
+		}
+	}
+
+	return nil
+}
+
+// GetLastResult returns the most recent (last) result associated with the
+// claim.
+func (c Claim) GetLastResult() (Result, error) {
+	if len(c.Results) == 0 {
+		return Result{}, errors.New("the claim has no results")
+	}
+
+	sort.Sort(c.Results)
+	return c.Results[len(c.Results)-1], nil
+}
+
+// GetStatus returns the status of the claim using the last result.
+func (c Claim) GetStatus() string {
+	result, err := c.GetLastResult()
+	if err != nil {
+		return StatusUnknown
+	}
+
+	return result.Status
+}
+
+type Claims []Claim
+
+func (c Claims) Len() int {
+	return len(c)
+}
+
+func (c Claims) Less(i, j int) bool {
+	return c[i].ID < c[j].ID
+}
+
+func (c Claims) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
 }
 
 // ulidMutex guards the generation of ULIDs, because the use of rand

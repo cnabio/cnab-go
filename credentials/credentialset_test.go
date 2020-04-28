@@ -53,8 +53,7 @@ func TestCredentialSet_ResolveCredentials(t *testing.T) {
 }
 
 func TestCredentialSet_Expand(t *testing.T) {
-
-	b := &bundle.Bundle{
+	b := bundle.Bundle{
 		Name: "knapsack",
 		Credentials: map[string]bundle.Credential{
 			"first": {
@@ -119,7 +118,7 @@ func TestCredentialSet_Merge(t *testing.T) {
 }
 
 func TestCredentialSetMissingRequiredCred(t *testing.T) {
-	b := &bundle.Bundle{
+	b := bundle.Bundle{
 		Name: "knapsack",
 		Credentials: map[string]bundle.Credential{
 			"first": {
@@ -138,7 +137,7 @@ func TestCredentialSetMissingRequiredCred(t *testing.T) {
 }
 
 func TestCredentialSetMissingOptionalCred(t *testing.T) {
-	b := &bundle.Bundle{
+	b := bundle.Bundle{
 		Name: "knapsack",
 		Credentials: map[string]bundle.Credential{
 			"first": {

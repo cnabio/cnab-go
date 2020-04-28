@@ -130,34 +130,22 @@ func (d *Driver) getOperationResult(op *driver.Operation) (driver.OperationResul
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
 	}
-	for _, item := range op.Outputs {
-		fileName := path.Join(d.outputDirName, item)
+	for outputPath, outputName := range op.Outputs {
+		fileName := path.Join(d.outputDirName, outputPath)
 		_, err := os.Stat(fileName)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return opResult, fmt.Errorf("Command driver (%s) failed checking for output file: %s Error: %v", d.Name, item, err)
+			return opResult, fmt.Errorf("Command driver (%s) failed checking for output file: %s Error: %v", d.Name, outputPath, err)
 		}
 
 		contents, err := ioutil.ReadFile(fileName)
 		if err != nil {
-			return opResult, fmt.Errorf("Command driver (%s) failed reading output file: %s Error: %v", d.Name, item, err)
+			return opResult, fmt.Errorf("Command driver (%s) failed reading output file: %s Error: %v", d.Name, outputPath, err)
 		}
 
-		opResult.Outputs[item] = string(contents)
-	}
-	// Check if there are missing outputs and get default values if any
-	for name, output := range op.Bundle.Outputs {
-		if output.AppliesTo(op.Action) {
-			if _, exists := opResult.Outputs[output.Path]; !exists {
-				if outputDefinition, exists := op.Bundle.Definitions[output.Definition]; exists && outputDefinition.Default != nil {
-					opResult.Outputs[output.Path] = fmt.Sprintf("%v", outputDefinition.Default)
-				} else {
-					return opResult, fmt.Errorf("Command driver (%s) failed - required output %s for action %s is missing and has no default is defined", d.Name, name, op.Action)
-				}
-			}
-		}
+		opResult.Outputs[outputName] = string(contents)
 	}
 	return opResult, nil
 }

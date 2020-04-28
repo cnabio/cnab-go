@@ -39,7 +39,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 			Files: map[string]string{
 				"/cnab/app/image-map.json": "{}",
 			},
-			Outputs: []string{"/cnab/app/outputs/output1", "/cnab/app/outputs/output2"},
+			Outputs: map[string]string{"/cnab/app/outputs/output1": "output1", "/cnab/app/outputs/output2": "output2"},
 			Out:     os.Stdout,
 			Bundle: &bundle.Bundle{
 				Definitions: definition.Definitions{
@@ -64,8 +64,8 @@ func TestCommandDriverOutputs(t *testing.T) {
 		}
 		assert.Equal(t, 2, len(opResult.Outputs), "Expecting two output files")
 		assert.Equal(t, map[string]string{
-			"/cnab/app/outputs/output1": "TEST_OUTPUT_1\n",
-			"/cnab/app/outputs/output2": "TEST_OUTPUT_2\n",
+			"output1": "TEST_OUTPUT_1\n",
+			"output2": "TEST_OUTPUT_2\n",
 		}, opResult.Outputs)
 	}
 	CreateAndRunTestCommandDriver(t, name, content, testfunc)
@@ -94,7 +94,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 			Files: map[string]string{
 				"/cnab/app/image-map.json": "{}",
 			},
-			Outputs: []string{"/cnab/app/outputs/output1", "/cnab/app/outputs/output2"},
+			Outputs: map[string]string{"/cnab/app/outputs/output1": "output1", "/cnab/app/outputs/output2": "output2"},
 			Out:     os.Stdout,
 			Bundle: &bundle.Bundle{
 				Definitions: definition.Definitions{
@@ -114,7 +114,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 			},
 		}
 		_, err := cmddriver.Run(&op)
-		assert.Errorf(t, err, "Command driver (test-outputs-missing.sh) failed for item: /cnab/app/outputs/output2 no output value found and no default value set")
+		assert.NoError(t, err)
 	}
 	CreateAndRunTestCommandDriver(t, name, content, testfunc)
 	// Test for an output missing with default value present
@@ -142,7 +142,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 			Files: map[string]string{
 				"/cnab/app/image-map.json": "{}",
 			},
-			Outputs: []string{"/cnab/app/outputs/output1", "/cnab/app/outputs/output2"},
+			Outputs: map[string]string{"/cnab/app/outputs/output1": "output1", "/cnab/app/outputs/output2": "output2"},
 			Out:     os.Stdout,
 			Bundle: &bundle.Bundle{
 				Definitions: definition.Definitions{
@@ -167,10 +167,9 @@ func TestCommandDriverOutputs(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Driver Run failed %v", err)
 		}
-		assert.Equal(t, 2, len(opResult.Outputs), "Expecting two output files")
+		assert.Equal(t, 1, len(opResult.Outputs), "Expecting one output files")
 		assert.Equal(t, map[string]string{
-			"/cnab/app/outputs/output1": "TEST_OUTPUT_1\n",
-			"/cnab/app/outputs/output2": "DEFAULT OUTPUT 2",
+			"output1": "TEST_OUTPUT_1\n",
 		}, opResult.Outputs)
 	}
 	CreateAndRunTestCommandDriver(t, name, content, testfunc)
