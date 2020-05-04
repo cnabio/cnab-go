@@ -226,6 +226,7 @@ func TestULID(t *testing.T) {
 				if strings.Compare(next, last) != 1 {
 					t.Fatal("generated a ULID that was not monotonically increasing")
 				}
+				last = next
 			}
 		}()
 	}
