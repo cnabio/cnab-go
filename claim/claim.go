@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/oklog/ulid"
@@ -133,13 +134,6 @@ func (r Result) Validate() error {
 	return fmt.Errorf("invalid status: %s", r.Status)
 }
 
-// ULID generates a string representation of a ULID.
-func ULID() string {
-	now := time.Now()
-	entropy := rand.New(rand.NewSource(now.UnixNano()))
-	return ulid.MustNew(ulid.Timestamp(now), entropy).String()
-}
-
 // Validate the Claim
 func (c Claim) Validate() error {
 	// validate the schemaVersion
@@ -150,4 +144,19 @@ func (c Claim) Validate() error {
 
 	// validate the Result
 	return errors.Wrap(c.Result.Validate(), "claim validation failed")
+}
+
+// ulidMutex guards the generation of ULIDs, because the use of rand
+// is not thread-safe.
+var ulidMutex sync.Mutex
+
+// ulidEntropy must be set once and reused when generating ULIDs, to guarantee
+// that each ULID is monotonically increasing.
+var ulidEntropy = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+
+// ULID generates a string representation of a ULID.
+func ULID() string {
+	ulidMutex.Lock()
+	defer ulidMutex.Unlock()
+	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy).String()
 }

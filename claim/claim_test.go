@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -208,4 +209,25 @@ func TestClaimSchema(t *testing.T) {
 		}
 		t.Fail()
 	}
+}
+
+func TestULID(t *testing.T) {
+	// Validate that the ULID function is thread-safe and generates
+	// monotonically increasing values
+
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var last string
+			for j := 0; j < 1000; j++ {
+				next := ULID()
+				if strings.Compare(next, last) != 1 {
+					t.Fatal("generated a ULID that was not monotonically increasing")
+				}
+			}
+		}()
+	}
+	wg.Wait()
 }
