@@ -88,10 +88,15 @@ func New(name string) (*Claim, error) {
 	}
 
 	now := time.Now()
+	revision, err := NewULID()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Claim{
 		SchemaVersion: schemaVersion,
 		Installation:  name,
-		Revision:      ULID(),
+		Revision:      revision,
 		Created:       now,
 		Modified:      now,
 		Result: Result{
@@ -111,7 +116,7 @@ func (c *Claim) Update(action, status string) {
 	c.Result.Action = action
 	c.Result.Status = status
 	c.Modified = time.Now()
-	c.Revision = ULID()
+	c.Revision = MustNewULID()
 }
 
 // Result tracks the result of an operation on a CNAB installation
@@ -154,9 +159,23 @@ var ulidMutex sync.Mutex
 // that each ULID is monotonically increasing.
 var ulidEntropy = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
 
-// ULID generates a string representation of a ULID.
-func ULID() string {
+// MustNewULID generates a string representation of a ULID and panics on failure
+// instead of returning an error.
+func MustNewULID() string {
+	result, err := NewULID()
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
+// NewULID generates a string representation of a ULID.
+func NewULID() (string, error) {
 	ulidMutex.Lock()
 	defer ulidMutex.Unlock()
-	return ulid.MustNew(ulid.Timestamp(time.Now()), ulidEntropy).String()
+	result, err := ulid.New(ulid.Timestamp(time.Now()), ulidEntropy)
+	if err != nil {
+		return "", errors.Wrap(err, "could not generate a new ULID")
+	}
+	return result.String(), nil
 }

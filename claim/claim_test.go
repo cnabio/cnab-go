@@ -8,7 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/oklog/ulid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/schema"
@@ -211,7 +213,7 @@ func TestClaimSchema(t *testing.T) {
 	}
 }
 
-func TestULID(t *testing.T) {
+func TestNewULID_ThreadSafe(t *testing.T) {
 	// Validate that the ULID function is thread-safe and generates
 	// monotonically increasing values
 
@@ -222,7 +224,11 @@ func TestULID(t *testing.T) {
 			defer wg.Done()
 			var last string
 			for j := 0; j < 1000; j++ {
-				next := ULID()
+				next, err := NewULID()
+				if err != nil {
+					t.Fatal(err)
+				}
+
 				if strings.Compare(next, last) != 1 {
 					t.Fatal("generated a ULID that was not monotonically increasing")
 				}
@@ -231,4 +237,45 @@ func TestULID(t *testing.T) {
 		}()
 	}
 	wg.Wait()
+}
+
+func TestMustNewULID_ReturnsError(t *testing.T) {
+	originalEntropy := ulidEntropy
+	defer func() {
+		ulidEntropy = originalEntropy
+	}()
+	ulidEntropy = strings.NewReader("")
+
+	result, err := NewULID()
+	require.EqualError(t, err, "could not generate a new ULID: EOF")
+	assert.Equal(t, "", result, "no ULID should be returned when an error occurs")
+}
+
+func TestMustNewULID(t *testing.T) {
+	result1 := MustNewULID()
+	_, err := ulid.Parse(result1)
+	require.NoError(t, err, "MustNewULID did not generate a properly encoded ULID")
+
+	result2 := MustNewULID()
+	_, err = ulid.Parse(result2)
+	require.NoError(t, err, "MustNewULID did not generate a properly encoded ULID")
+
+	assert.Greater(t, result2, result1, "expected increasing ULID values with each call to MustNewULID")
+}
+
+func TestMustNewULID_Panics(t *testing.T) {
+	originalEntropy := ulidEntropy
+	defer func() {
+		ulidEntropy = originalEntropy
+	}()
+	ulidEntropy = strings.NewReader("")
+
+	defer func() {
+		recovered := recover()
+		err := recovered.(error)
+		require.EqualError(t, err, "could not generate a new ULID: EOF")
+	}()
+
+	MustNewULID()
+	require.Fail(t, "expected MustNewULID to panic")
 }
