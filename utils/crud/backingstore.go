@@ -7,33 +7,57 @@ var _ Store = &BackingStore{}
 // - Connect is called before a method when the connection is closed.
 // - Close is called after each method when AutoClose is true (default).
 type BackingStore struct {
-	AutoClose    bool
-	opened       bool
+
+	// AutoClose specifies if the connection should be automatically
+	// closed when done accessing the backing store.
+	AutoClose bool
+
+	// opened specifies if the backing store's connect has been called
+	// and has not been closed yet.
+	opened bool
+
+	// connect handler for the backing store, if defined.
+	connect func() error
+
+	// close handler for the backing store, if defined.
+	close func() error
+
+	// backingStore being wrapped.
 	backingStore Store
 }
 
 func NewBackingStore(store Store) *BackingStore {
-	return &BackingStore{
+	backingStore := BackingStore{
 		AutoClose:    true,
 		backingStore: store,
 	}
+
+	if connectable, ok := store.(HasConnect); ok {
+		backingStore.connect = connectable.Connect
+	}
+
+	if closable, ok := store.(HasClose); ok {
+		backingStore.close = closable.Close
+	}
+
+	return &backingStore
 }
 
 func (s *BackingStore) Connect() error {
 	if s.opened {
 		return nil
 	}
-	if connectable, ok := s.backingStore.(HasConnect); ok {
+	if s.connect != nil {
 		s.opened = true
-		return connectable.Connect()
+		return s.connect()
 	}
 	return nil
 }
 
 func (s *BackingStore) Close() error {
-	if closable, ok := s.backingStore.(HasClose); ok {
+	if s.close != nil {
 		s.opened = false
-		return closable.Close()
+		return s.close()
 	}
 	return nil
 }
@@ -46,45 +70,46 @@ func (s *BackingStore) autoClose() error {
 }
 
 func (s *BackingStore) List(itemType string) ([]string, error) {
-	err := s.Connect()
-	if err != nil {
-		return nil, err
+	if s.shouldAutoConnect() {
+		defer s.autoClose()
+		if err := s.Connect(); err != nil {
+			return nil, err
+		}
 	}
-
-	defer s.autoClose()
 
 	return s.backingStore.List(itemType)
 }
 
 func (s *BackingStore) Save(itemType string, name string, data []byte) error {
-	err := s.Connect()
-	if err != nil {
-		return err
+	if s.shouldAutoConnect() {
+		defer s.autoClose()
+		if err := s.Connect(); err != nil {
+			return err
+		}
 	}
-
-	defer s.autoClose()
 
 	return s.backingStore.Save(itemType, name, data)
 }
 
 func (s *BackingStore) Read(itemType string, name string) ([]byte, error) {
-	err := s.Connect()
-	if err != nil {
-		return nil, err
+	if s.shouldAutoConnect() {
+		defer s.autoClose()
+		if err := s.Connect(); err != nil {
+			return nil, err
+		}
 	}
-
-	defer s.autoClose()
 
 	return s.backingStore.Read(itemType, name)
 }
 
 // ReadAll retrieves all the items.
 func (s *BackingStore) ReadAll(itemType string) ([][]byte, error) {
-	defer s.autoClose()
-
-	autoClose := s.AutoClose
-	s.AutoClose = false
-	defer func() { s.AutoClose = autoClose }()
+	if s.shouldAutoConnect() {
+		defer s.autoClose()
+		if err := s.Connect(); err != nil {
+			return nil, err
+		}
+	}
 
 	results := make([][]byte, 0)
 	list, err := s.List(itemType)
@@ -104,12 +129,18 @@ func (s *BackingStore) ReadAll(itemType string) ([][]byte, error) {
 }
 
 func (s *BackingStore) Delete(itemType string, name string) error {
-	err := s.Connect()
-	if err != nil {
-		return err
+	if s.shouldAutoConnect() {
+		defer s.autoClose()
+		if err := s.Connect(); err != nil {
+			return err
+		}
 	}
 
-	defer s.autoClose()
-
 	return s.backingStore.Delete(itemType, name)
+}
+
+func (s *BackingStore) shouldAutoConnect() bool {
+	// If the connection is already open, let the upstream
+	// caller manage the connection.
+	return !s.opened && s.connect != nil
 }
