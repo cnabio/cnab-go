@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cnabio/cnab-go/bundle"
 	"github.com/docker/go/canonical/json"
+
+	"github.com/cnabio/cnab-go/bundle"
 )
 
 // ImageType constants provide some of the image types supported

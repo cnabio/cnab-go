@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cnabio/cnab-go/bundle"
-	"github.com/cnabio/cnab-go/utils/crud"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/utils/crud"
 )
 
 func TestCanSaveReadAndDelete(t *testing.T) {
