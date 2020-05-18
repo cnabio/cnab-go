@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"regexp"
+	"sync"
 	"time"
 
 	"github.com/oklog/ulid"
@@ -87,10 +88,15 @@ func New(name string) (*Claim, error) {
 	}
 
 	now := time.Now()
+	revision, err := NewULID()
+	if err != nil {
+		return nil, err
+	}
+
 	return &Claim{
 		SchemaVersion: schemaVersion,
 		Installation:  name,
-		Revision:      ULID(),
+		Revision:      revision,
 		Created:       now,
 		Modified:      now,
 		Result: Result{
@@ -110,7 +116,7 @@ func (c *Claim) Update(action, status string) {
 	c.Result.Action = action
 	c.Result.Status = status
 	c.Modified = time.Now()
-	c.Revision = ULID()
+	c.Revision = MustNewULID()
 }
 
 // Result tracks the result of an operation on a CNAB installation
@@ -133,13 +139,6 @@ func (r Result) Validate() error {
 	return fmt.Errorf("invalid status: %s", r.Status)
 }
 
-// ULID generates a string representation of a ULID.
-func ULID() string {
-	now := time.Now()
-	entropy := rand.New(rand.NewSource(now.UnixNano()))
-	return ulid.MustNew(ulid.Timestamp(now), entropy).String()
-}
-
 // Validate the Claim
 func (c Claim) Validate() error {
 	// validate the schemaVersion
@@ -150,4 +149,33 @@ func (c Claim) Validate() error {
 
 	// validate the Result
 	return errors.Wrap(c.Result.Validate(), "claim validation failed")
+}
+
+// ulidMutex guards the generation of ULIDs, because the use of rand
+// is not thread-safe.
+var ulidMutex sync.Mutex
+
+// ulidEntropy must be set once and reused when generating ULIDs, to guarantee
+// that each ULID is monotonically increasing.
+var ulidEntropy = ulid.Monotonic(rand.New(rand.NewSource(time.Now().UnixNano())), 0)
+
+// MustNewULID generates a string representation of a ULID and panics on failure
+// instead of returning an error.
+func MustNewULID() string {
+	result, err := NewULID()
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
+
+// NewULID generates a string representation of a ULID.
+func NewULID() (string, error) {
+	ulidMutex.Lock()
+	defer ulidMutex.Unlock()
+	result, err := ulid.New(ulid.Timestamp(time.Now()), ulidEntropy)
+	if err != nil {
+		return "", errors.Wrap(err, "could not generate a new ULID")
+	}
+	return result.String(), nil
 }
