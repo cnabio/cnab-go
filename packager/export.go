@@ -8,10 +8,11 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/docker/docker/pkg/archive"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/loader"
 	"github.com/cnabio/cnab-go/imagestore"
-	"github.com/docker/docker/pkg/archive"
 )
 
 type Exporter struct {

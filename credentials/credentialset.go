@@ -7,9 +7,10 @@ import (
 	"io/ioutil"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/secrets"
-	"gopkg.in/yaml.v2"
 )
 
 // Set is an actual set of resolved credentials.

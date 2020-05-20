@@ -3,10 +3,11 @@ package docker
 import (
 	"testing"
 
-	"github.com/cnabio/cnab-go/driver"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/cnabio/cnab-go/driver"
 )
 
 func TestDriver_GetConfigurationOptions(t *testing.T) {

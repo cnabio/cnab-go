@@ -4,16 +4,16 @@ run:
 linters:
   disable-all: true
   enable:
-  - gofmt
-  - goimports
-  - golint
-  - gosimple
-  - ineffassign
-  - misspell
-  - unused
-  - deadcode
-  - govet
+    - gofmt
+    - goimports
+    - golint
+    - gosimple
+    - ineffassign
+    - misspell
+    - unused
+    - deadcode
+    - govet
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/radu-matei/cnab-go
+    local-prefixes: github.com/cnabio/cnab-go

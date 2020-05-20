@@ -6,12 +6,12 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/cnabio/cnab-go/bundle/definition"
-	"github.com/cnabio/cnab-go/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	yaml "gopkg.in/yaml.v2"
+
+	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/schema"
 )
 
 func TestReadTopLevelProperties(t *testing.T) {

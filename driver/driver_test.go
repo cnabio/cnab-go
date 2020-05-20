@@ -6,8 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cnabio/cnab-go/bundle"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/cnabio/cnab-go/bundle"
 )
 
 var _ Driver = &DebugDriver{}

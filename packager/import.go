@@ -6,9 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/docker/pkg/archive"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/loader"
-	"github.com/docker/docker/pkg/archive"
 )
 
 // Importer is responsible for importing a file

@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/secrets/host"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestCredentialSet_ResolveCredentials(t *testing.T) {

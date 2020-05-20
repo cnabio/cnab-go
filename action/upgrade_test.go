@@ -5,10 +5,11 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/driver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/cnabio/cnab-go/claim"
+	"github.com/cnabio/cnab-go/driver"
 )
 
 // makes sure Upgrade implements Action interface

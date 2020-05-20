@@ -10,7 +10,6 @@ import (
 	"os"
 	unix_path "path"
 
-	"github.com/cnabio/cnab-go/driver"
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
@@ -22,6 +21,8 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
 	"github.com/mitchellh/copystructure"
+
+	"github.com/cnabio/cnab-go/driver"
 )
 
 // Driver is capable of running Docker invocation images using Docker itself.

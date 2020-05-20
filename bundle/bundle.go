@@ -8,10 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/cnabio/cnab-go/bundle/definition"
-	"github.com/cnabio/cnab-go/schema"
 	"github.com/docker/go/canonical/json"
 	pkgErrors "github.com/pkg/errors"
+
+	"github.com/cnabio/cnab-go/bundle/definition"
+	"github.com/cnabio/cnab-go/schema"
 )
 
 // CNABSpecVersion represents the CNAB Spec version of the Bundle

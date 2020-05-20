@@ -4,8 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cnabio/cnab-go/utils/crud"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/cnabio/cnab-go/utils/crud"
 )
 
 func TestCredentialStore_HandlesNotFoundError(t *testing.T) {
