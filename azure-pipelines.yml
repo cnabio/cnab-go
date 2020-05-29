@@ -7,6 +7,7 @@ steps:
     version: '1.13.10'
 
 - script: |
+    set -euo pipefail
     go version
     go get sigs.k8s.io/kind@v0.6.0
     make bootstrap fetch-schemas build lint coverage
