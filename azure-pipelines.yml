@@ -5,12 +5,20 @@ steps:
 - task: GoTool@0
   inputs:
     version: '1.13.10'
+  displayName: 'Install Go'
 
 - script: |
-    set -euo pipefail
-    go version
+    set -xeuo pipefail
+    mkdir -p /home/vsts/go/bin/
+    echo "##vso[task.prependpath]/home/vsts/go/bin/"
+  displayName: 'Configure Go'
+
+- script: |
+    go env
+    go mod download
     go get sigs.k8s.io/kind@v0.6.0
-    make bootstrap fetch-schemas build lint coverage
+    sudo make bootstrap
+    make fetch-schemas build lint coverage
     GOOS=windows make build
     GOOS=darwin make build 
   workingDirectory: '$(System.DefaultWorkingDirectory)'
