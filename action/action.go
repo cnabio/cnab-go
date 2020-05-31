@@ -14,8 +14,8 @@ import (
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver"
+	"github.com/cnabio/cnab-go/valuesource"
 )
 
 // stateful is there just to make callers of opFromClaims more readable
@@ -52,7 +52,7 @@ func New(d driver.Driver, cp claim.Provider) Action {
 // caller is responsible for persisting the claim records and outputs using the
 // SaveOperationResult function. An error is only returned when the operation could not
 // be executed, otherwise any error is returned in the OperationResult.
-func (a Action) Run(c claim.Claim, creds credentials.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
+func (a Action) Run(c claim.Claim, creds valuesource.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
 	if a.Driver == nil {
 		return driver.OperationResult{}, claim.Result{}, errors.New("the action driver is not set")
 	}
@@ -365,8 +365,8 @@ func getImageMap(b bundle.Bundle) ([]byte, error) {
 	return json.Marshal(imgs)
 }
 
-func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds credentials.Set) (*driver.Operation, error) {
-	env, files, err := creds.Expand(c.Bundle, stateless)
+func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds valuesource.Set) (*driver.Operation, error) {
+	env, files, err := creds.ExpandCredentials(&c.Bundle, stateless)
 	if err != nil {
 		return nil, err
 	}

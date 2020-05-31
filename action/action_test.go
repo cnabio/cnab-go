@@ -8,12 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cnabio/cnab-go/claim"
+	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/utils/crud"
+	"github.com/cnabio/cnab-go/valuesource"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/debug"
 
@@ -37,7 +39,7 @@ func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	return d.Result, d.Error
 }
 
-var mockSet = credentials.Set{
+var mockSet = valuesource.Set{
 	"secret_one": "I'm a secret",
 	"secret_two": "I'm also a secret",
 }
