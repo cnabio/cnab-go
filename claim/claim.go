@@ -91,9 +91,9 @@ type Claim struct {
 	Custom interface{} `json:"custom,omitempty"`
 
 	// Results of executing the Claim's operation.
-	// These are not stored in the Claim document but can be loaded onto the
+	// These are not stored in the Claim document but is loaded onto the
 	// the Claim to build an in-memory hierarchy.
-	Results Results `json:"-"`
+	results Results
 }
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
@@ -191,18 +191,7 @@ func (c Claim) IsModifyingAction() (bool, error) {
 // NewResult is a convenience for creating a result with the necessary fields
 // set on a Result.
 func (c Claim) NewResult(status string) (Result, error) {
-	id, err := NewULID()
-	if err != nil {
-		return Result{}, err
-	}
-
-	return Result{
-		ID:             id,
-		ClaimID:        c.ID,
-		Created:        time.Now(),
-		Status:         status,
-		OutputMetadata: OutputMetadata{},
-	}, nil
+	return NewResult(c, status)
 }
 
 // Validate the Claim
@@ -230,7 +219,7 @@ func (c Claim) Validate() error {
 	}
 
 	// Check the action is built-in or defined as a custom action
-	if _, isBuildInAction := builtinActions[c.Action]; !isBuildInAction {
+	if _, isBuiltInAction := builtinActions[c.Action]; !isBuiltInAction {
 		_, isCustomAction := c.Bundle.Actions[c.Action]
 		if !isCustomAction {
 			return fmt.Errorf("action %q is not defined in the bundle", c.Action)
@@ -243,12 +232,12 @@ func (c Claim) Validate() error {
 // GetLastResult returns the most recent (last) result associated with the
 // claim.
 func (c Claim) GetLastResult() (Result, error) {
-	if len(c.Results) == 0 {
+	if len(c.results) == 0 {
 		return Result{}, errors.New("the claim has no results")
 	}
 
-	sort.Sort(c.Results)
-	return c.Results[len(c.Results)-1], nil
+	sort.Sort(c.results)
+	return c.results[len(c.results)-1], nil
 }
 
 // GetStatus returns the status of the claim using the last result.

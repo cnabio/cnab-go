@@ -40,7 +40,7 @@ func (s FileSystemStore) List(itemType string, group string) ([]string, error) {
 	if err != nil {
 		// The group's directory doesn't exist, gracefully handle and continue
 		if os.IsNotExist(err) {
-			return []string{}, nil
+			return []string{}, ErrRecordDoesNotExist
 		}
 		return []string{}, err
 	}

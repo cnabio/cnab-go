@@ -103,7 +103,7 @@ func TestResultOutputs_SetContentDigest(t *testing.T) {
 			},
 		}
 		err := outputs.SetContentDigest("test1", contentDigest)
-		require.EqualError(t, err, "cannot set the claim result's Outputs[test1][contentDigest] because it is not type map[string]string but map[string]interface {}")
+		require.EqualError(t, err, "cannot set the claim result's OutputMetadata[test1][contentDigest] because it is not type map[string]string but map[string]interface {}")
 	})
 }
 

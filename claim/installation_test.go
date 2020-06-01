@@ -1,12 +1,8 @@
 package claim
 
 import (
+	"sort"
 	"testing"
-
-	"github.com/cnabio/cnab-go/bundle"
-	"github.com/cnabio/cnab-go/bundle/definition"
-
-	"github.com/cnabio/cnab-go/utils/crud"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,17 +18,14 @@ func TestInstallation_GetInstallationTimestamp(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("has claims", func(t *testing.T) {
-		i := Installation{
-			Name:   installationName,
-			Claims: Claims{upgrade, install1, install2},
-		}
+		i := NewInstallation(installationName, Claims{upgrade, install1, install2})
 
 		installTime, err := i.GetInstallationTimestamp()
 		require.NoError(t, err, "GetInstallationTimestamp failed")
 		assert.Equal(t, install1.Created, installTime, "invalid installation time")
 	})
 	t.Run("no claims", func(t *testing.T) {
-		i := Installation{Name: installationName}
+		i := NewInstallation(installationName, nil)
 
 		_, err := i.GetInstallationTimestamp()
 		require.EqualError(t, err, "the installation test has no claims")
@@ -43,7 +36,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	upgrade := Claim{
 		ID:     "2",
 		Action: ActionUpgrade,
-		Results: Results{
+		results: Results{
 			{
 				ID:     "1",
 				Status: StatusRunning,
@@ -53,7 +46,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	install := Claim{
 		ID:     "1",
 		Action: ActionInstall,
-		Results: Results{
+		results: Results{
 			{
 				ID:     "1",
 				Status: StatusSucceeded,
@@ -62,13 +55,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	}
 
 	t.Run("claim exists", func(t *testing.T) {
-		i := Installation{
-			Name: "wordpress",
-			Claims: Claims{
-				upgrade,
-				install,
-			},
-		}
+		i := NewInstallation("wordpress", Claims{upgrade, install})
 
 		c, err := i.GetLastClaim()
 
@@ -77,9 +64,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	})
 
 	t.Run("no claims", func(t *testing.T) {
-		i := Installation{
-			Name: "wordpress",
-		}
+		i := NewInstallation("wordpress", nil)
 
 		c, err := i.GetLastClaim()
 
@@ -97,7 +82,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	upgrade := Claim{
 		ID:     "2",
 		Action: ActionUpgrade,
-		Results: Results{
+		results: Results{
 			failed,
 			{
 				ID:     "1",
@@ -108,7 +93,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	install := Claim{
 		ID:     "1",
 		Action: ActionInstall,
-		Results: Results{
+		results: Results{
 			{
 				ID:     "1",
 				Status: StatusSucceeded,
@@ -117,13 +102,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	}
 
 	t.Run("result exists", func(t *testing.T) {
-		i := Installation{
-			Name: "wordpress",
-			Claims: Claims{
-				upgrade,
-				install,
-			},
-		}
+		i := NewInstallation("wordpress", Claims{upgrade, install})
 
 		r, err := i.GetLastResult()
 
@@ -133,9 +112,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	})
 
 	t.Run("no claims", func(t *testing.T) {
-		i := Installation{
-			Name: "wordpress",
-		}
+		i := NewInstallation("wordpress", nil)
 
 		r, err := i.GetLastResult()
 
@@ -145,14 +122,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
-		i := Installation{
-			Name: "wordpress",
-			Claims: Claims{
-				Claim{
-					ID: "1",
-				},
-			},
-		}
+		i := NewInstallation("wordpress", Claims{Claim{ID: "1"}})
 
 		r, err := i.GetLastResult()
 
@@ -162,86 +132,36 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	})
 }
 
-func TestInstallation_GetLastOutputs(t *testing.T) {
-	cp := NewClaimStore(crud.NewMockStore(), nil, nil)
-
-	b := bundle.Bundle{
-		Name: "mybun",
-		Definitions: map[string]*definition.Schema{
-			"output1": {
-				Type: "string",
-			},
-			"output2": {
-				Type: "string",
-			},
-		},
-		Outputs: map[string]bundle.Output{
-			"output1": {
-				Definition: "output1",
-			},
-			"output2": {
-				Definition: "output2",
-				ApplyTo:    []string{"upgrade"},
-			},
-		},
+func TestInstallationByName_Sort(t *testing.T) {
+	installations := InstallationByName{
+		{Name: "c"},
+		{Name: "a"},
+		{Name: "b"},
 	}
 
-	// Generate claim data and outputs from install and upgrade
-	const installationName = "test"
-	installClaim, err := New(installationName, ActionInstall, b, nil)
-	require.NoError(t, err)
-	err = cp.SaveClaim(installClaim)
-	require.NoError(t, err)
-	installResult, err := installClaim.NewResult(StatusSucceeded)
-	require.NoError(t, err)
-	err = cp.SaveResult(installResult)
-	require.NoError(t, err)
-	installOutput1 := Output{
-		Claim:  installClaim,
-		Result: installResult,
-		Name:   "output1",
-		Value:  []byte("install output1"),
+	sort.Sort(installations)
+
+	assert.Equal(t, "a", installations[0].Name)
+	assert.Equal(t, "b", installations[1].Name)
+	assert.Equal(t, "c", installations[2].Name)
+}
+
+func TestInstallationByModified_Sort(t *testing.T) {
+	cid1 := MustNewULID()
+	cid2 := MustNewULID()
+	cid3 := MustNewULID()
+	cid4 := MustNewULID()
+
+	installations := InstallationByModified{
+		{Name: "c", Claims: []Claim{{ID: cid4}, {ID: cid2}}}, // require a sort for this to end up last (cid4 is the "oldest" timestamp)
+		{Name: "a", Claims: []Claim{{ID: cid1}}},
+		{Name: "b", Claims: []Claim{{ID: cid3}}},
 	}
-	err = cp.SaveOutput(installOutput1)
-	require.NoError(t, err)
 
-	upgradeClaim, err := installClaim.NewClaim(ActionUpgrade, installClaim.Bundle, nil)
-	require.NoError(t, err)
-	err = cp.SaveClaim(upgradeClaim)
-	require.NoError(t, err)
-	upgradeResult, err := upgradeClaim.NewResult(StatusSucceeded)
-	require.NoError(t, err)
-	err = cp.SaveResult(upgradeResult)
-	require.NoError(t, err)
-	upgradeOutput1 := Output{
-		Claim:  upgradeClaim,
-		Result: upgradeResult,
-		Name:   "output1",
-		Value:  []byte("upgrade output1"),
-	}
-	err = cp.SaveOutput(upgradeOutput1)
-	require.NoError(t, err)
-	upgradeOutput2 := Output{
-		Claim:  upgradeClaim,
-		Result: upgradeResult,
-		Name:   "output2",
-		Value:  []byte("upgrade output2"),
-	}
-	err = cp.SaveOutput(upgradeOutput2)
-	require.NoError(t, err)
+	installations.SortClaims()
+	sort.Sort(installations)
 
-	i := Installation{Name: installationName}
-	outputs, err := i.GetLastOutputs(cp)
-
-	require.NoError(t, err, "GetLastOutputs failed")
-	require.NotNil(t, outputs, "did not get any outputs")
-	assert.Equal(t, 2, outputs.Len(), "wrong number of outputs identified")
-
-	gotOutput1, hasOutput1 := outputs.GetByName("output1")
-	assert.True(t, hasOutput1, "should have found output1")
-	assert.Equal(t, "upgrade output1", string(gotOutput1.Value), "did not find the most recent value for output1")
-
-	gotOutput2, hasOutput2 := outputs.GetByName("output2")
-	assert.True(t, hasOutput2, "should have found output2")
-	assert.Equal(t, "upgrade output2", string(gotOutput2.Value), "did not find the most recent value for output2")
+	assert.Equal(t, "a", installations[0].Name)
+	assert.Equal(t, "b", installations[1].Name)
+	assert.Equal(t, "c", installations[2].Name)
 }

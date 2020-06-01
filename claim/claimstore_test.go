@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,6 +30,132 @@ var b64decode = func(src []byte) ([]byte, error) {
 	return dst[:n], err
 }
 
+// generateClaimData creates test claims, results and outputs
+// it returns a claim Provider, and a test cleanup function.
+//
+// claims/
+//   foo/
+//     CLAIM_ID_1 (install)
+//     CLAIM_ID_2 (upgrade)
+//     CLAIM_ID_3 (invoke - test)
+//     CLAIM_ID_4 (uninstall)
+//   bar/
+//     CLAIM_ID_10 (install)
+//   baz/
+//     CLAIM_ID_20 (install)
+//     CLAIM_ID_21 (install)
+// results/
+//   CLAIM_ID_1/
+//     RESULT_ID_1 (success)
+//   CLAIM_ID_2/
+//     RESULT_ID 2 (success)
+//   CLAIM_ID_3/
+//     RESULT_ID_3 (failed)
+//   CLAIM_ID_4/
+//     RESULT_ID_4 (success)
+//   CLAIM_ID_10/
+//     RESULT_ID_10 (running)
+//     RESULT_ID_11 (success)
+//   CLAIM_ID_20/
+//     RESULT_ID_20 (failed)
+//   CLAIM_ID_21/
+//     NO RESULT YET
+// outputs/
+//   RESULT_ID_1/
+//     RESULT_ID_1_OUTPUT_1
+//   RESULT_ID_2/
+//     RESULT_ID_2_OUTPUT_1
+//     RESULT_ID_2_OUTPUT_2
+func generateClaimData(t *testing.T) (Provider, func() error) {
+	tempDir, err := ioutil.TempDir("", "cnabtest")
+	require.NoError(t, err, "Failed to create temp dir")
+	cleanup := func() error { return os.RemoveAll(tempDir) }
+
+	storeDir := filepath.Join(tempDir, "claimstore")
+	backingStore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
+	cp := NewClaimStore(backingStore, nil, nil)
+
+	bun := bundle.Bundle{
+		Definitions: map[string]*definition.Schema{
+			"output1": {
+				Type: "string",
+			},
+			"output2": {
+				Type: "string",
+			},
+		},
+		Outputs: map[string]bundle.Output{
+			"output1": {
+				Definition: "output1",
+			},
+			"output2": {
+				Definition: "output2",
+				ApplyTo:    []string{"upgrade"},
+			},
+		},
+	}
+	createClaim := func(installation string, action string) Claim {
+		c, err := New(installation, action, bun, nil)
+		require.NoError(t, err, "New claim failed")
+
+		err = cp.SaveClaim(c)
+		require.NoError(t, err, "SaveClaim failed")
+
+		return c
+	}
+
+	createResult := func(c Claim, status string) Result {
+		r, err := c.NewResult(status)
+		require.NoError(t, err, "NewResult failed")
+
+		err = cp.SaveResult(r)
+		require.NoError(t, err, "SaveResult failed")
+
+		return r
+	}
+
+	createOutput := func(c Claim, r Result, name string) Output {
+		o := NewOutput(c, r, name, []byte(c.Action+" "+name))
+
+		err = cp.SaveOutput(o)
+		require.NoError(t, err, "SaveOutput failed")
+
+		return o
+	}
+
+	// Create the foo installation data
+	const foo = "foo"
+	c := createClaim(foo, ActionInstall)
+	r := createResult(c, StatusSucceeded)
+	createOutput(c, r, "output1")
+
+	c = createClaim(foo, ActionUpgrade)
+	r = createResult(c, StatusSucceeded)
+	createOutput(c, r, "output1")
+	createOutput(c, r, "output2")
+
+	c = createClaim(foo, "test")
+	createResult(c, StatusFailed)
+
+	c = createClaim(foo, ActionUninstall)
+	createResult(c, StatusSucceeded)
+
+	// Create the bar installation data
+	const bar = "bar"
+	c = createClaim(bar, ActionInstall)
+	createResult(c, StatusRunning)
+	createResult(c, StatusSucceeded)
+
+	// Create the baz installation data
+	const baz = "baz"
+	c = createClaim(baz, ActionInstall)
+	createResult(c, StatusFailed)
+
+	createClaim(baz, ActionInstall)
+
+	return cp, cleanup
+}
+
 func TestCanSaveReadAndDelete(t *testing.T) {
 	is := assert.New(t)
 	must := require.New(t)
@@ -39,7 +164,7 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	must.NoError(err)
 	c1.Bundle = bundle.Bundle{Name: "foobundle", Version: "0.1.2"}
 
-	tempDir, err := ioutil.TempDir("", "duffletest")
+	tempDir, err := ioutil.TempDir("", "cnabtest")
 	must.NoError(err, "Failed to create temp dir")
 	defer os.RemoveAll(tempDir)
 
@@ -70,7 +195,7 @@ func TestCanUpdate(t *testing.T) {
 	c1, err := New("foo", ActionUnknown, b, nil)
 	is.NoError(err)
 
-	tempDir, err := ioutil.TempDir("", "duffletest")
+	tempDir, err := ioutil.TempDir("", "cnabtest")
 	is.NoError(err, "Failed to create temp dir")
 	defer os.RemoveAll(tempDir)
 
@@ -93,78 +218,306 @@ func TestCanUpdate(t *testing.T) {
 	is.NotEqual(c1.Revision, c3.Revision, "revision did not update")
 }
 
-func TestListInstallations(t *testing.T) {
-	is := assert.New(t)
+func TestClaimStore_Installations(t *testing.T) {
+	cp, cleanup := generateClaimData(t)
+	defer cleanup()
 
-	tempDir, err := ioutil.TempDir("", "duffletest")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %s", err)
-	}
-	defer os.RemoveAll(tempDir)
+	t.Run("ListInstallations", func(t *testing.T) {
+		installations, err := cp.ListInstallations()
+		require.NoError(t, err, "ListInstallations failed")
 
-	storeDir := filepath.Join(tempDir, "claimstore")
-	store := NewClaimStore(crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions()), nil, nil)
+		require.Len(t, installations, 3, "Expected 3 installations")
+		assert.Equal(t, []string{"bar", "baz", "foo"}, installations)
+	})
 
-	b1 := bundle.Bundle{Name: "foobundle", Version: "0.1.0"}
-	c1, err := New("foo", ActionUnknown, b1, nil)
-	is.NoError(err)
+	t.Run("ReadAllInstallationStatus", func(t *testing.T) {
+		installations, err := cp.ReadAllInstallationStatus()
+		require.NoError(t, err, "ReadAllInstallationStatus failed")
 
-	is.NoError(store.SaveClaim(c1), "Failed to store: %s", err)
+		require.Len(t, installations, 3, "Expected 3 installations")
+		bar := installations[0]
+		baz := installations[1]
+		foo := installations[2]
 
-	b2 := bundle.Bundle{Name: "barbundle", Version: "0.1.0"}
-	c2, err := New("bar", ActionUnknown, b2, nil)
-	is.NoError(err)
+		// Validate the results were sorted by Name
+		assert.Equal(t, "bar", bar.Name)
+		assert.Equal(t, "baz", baz.Name)
+		assert.Equal(t, "foo", foo.Name)
+	})
 
-	is.NoError(store.SaveClaim(c2), "Failed to store: %s", err)
+	t.Run("ReadInstallationStatus", func(t *testing.T) {
+		foo, err := cp.ReadInstallationStatus("foo")
+		require.NoError(t, err, "ReadInstallationStatus failed")
 
-	b3 := bundle.Bundle{Name: "bazbundle", Version: "0.1.0"}
-	c3, err := New("baz", ActionUnknown, b3, nil)
-	is.NoError(err)
+		assert.Equal(t, "foo", foo.Name)
 
-	is.NoError(store.SaveClaim(c3), "Failed to store: %s", err)
+		// Validate enough information was set to render its status
+		assert.Equal(t, StatusSucceeded, foo.GetLastStatus())
+		lastClaim, err := foo.GetLastClaim()
+		require.NoError(t, err, "GetLastClaim failed")
+		assert.Equal(t, ActionUninstall, lastClaim.Action)
+	})
 
-	installations, err := store.ListInstallations()
-	is.NoError(err, "Failed to read claims: %s", err)
+	t.Run("ReadInstallationStatus - invalid installation", func(t *testing.T) {
+		foo, err := cp.ReadInstallationStatus("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, foo)
+	})
 
-	is.Len(installations, 3)
-	is.Equal("bar", installations[0])
-	is.Equal("baz", installations[1])
-	is.Equal("foo", installations[2])
+	t.Run("ReadInstallation", func(t *testing.T) {
+		foo, err := cp.ReadInstallation("foo")
+		require.NoError(t, err, "ReadInstallation failed")
+
+		assert.Equal(t, "foo", foo.Name)
+		require.Len(t, foo.Claims, 4, "Expected 4 claims")
+		assert.Equal(t, "foo", foo.Claims[0].Installation, "expected the claim to be associated with the installation")
+		assert.Equal(t, ActionInstall, foo.Claims[0].Action)
+		assert.Equal(t, ActionUpgrade, foo.Claims[1].Action)
+		assert.Equal(t, "test", foo.Claims[2].Action)
+		assert.Equal(t, ActionUninstall, foo.Claims[3].Action)
+	})
+
+	t.Run("ReadInstallation - invalid installation", func(t *testing.T) {
+		foo, err := cp.ReadInstallation("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, foo)
+	})
 }
 
-func TestReadAll(t *testing.T) {
-	is := assert.New(t)
-	must := assert.New(t)
+func TestClaimStore_Claims(t *testing.T) {
+	cp, cleanup := generateClaimData(t)
+	defer cleanup()
 
-	tempDir, err := ioutil.TempDir("", "duffletest")
-	must.NoError(err, "Failed to create temp dir")
-	defer os.RemoveAll(tempDir)
+	t.Run("ReadAllClaims", func(t *testing.T) {
+		claims, err := cp.ReadAllClaims("foo")
+		require.NoError(t, err, "Failed to read claims: %s", err)
 
-	storeDir := filepath.Join(tempDir, "claimstore")
-	store := NewClaimStore(crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions()), nil, nil)
+		require.Len(t, claims, 4, "Expected 4 claims")
+		assert.Equal(t, ActionInstall, claims[0].Action)
+		assert.Equal(t, ActionUpgrade, claims[1].Action)
+		assert.Equal(t, "test", claims[2].Action)
+		assert.Equal(t, ActionUninstall, claims[3].Action)
+	})
 
-	b := bundle.Bundle{Name: "foobundle", Version: "0.1.0"}
-	c1, err := New("foo", ActionInstall, b, nil)
-	must.NoError(err)
-	t.Log(c1.ID)
-	must.NoError(store.SaveClaim(c1), "Failed to store: %s", err)
+	t.Run("ReadAllClaims - invalid installation", func(t *testing.T) {
+		claims, err := cp.ReadAllClaims("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, claims)
+	})
 
-	c2, err := c1.NewClaim(ActionUpgrade, b, nil)
-	must.NoError(err, "NewClaim failed")
-	must.NoError(store.SaveClaim(c2), "Failed to store: %s", err)
+	t.Run("ListClaims", func(t *testing.T) {
+		claims, err := cp.ListClaims("foo")
+		require.NoError(t, err, "Failed to read claims: %s", err)
 
-	c3, err := c1.NewClaim(ActionUninstall, b, nil)
-	must.NoError(err, "NewClaim failed")
-	must.NoError(store.SaveClaim(c3), "Failed to store: %s", err)
+		require.Len(t, claims, 4, "Expected 4 claims")
+	})
 
-	claims, err := store.ReadAllClaims(c1.Installation)
-	must.NoError(err, "Failed to read claims: %s", err)
+	t.Run("ListClaims - invalid installation", func(t *testing.T) {
+		claims, err := cp.ListClaims("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, claims)
+	})
 
-	must.Len(claims, 3)
-	t.Log(claims[0].ID, claims[1].ID, claims[2].ID)
-	is.Equal(ActionInstall, claims[0].Action)
-	is.Equal(ActionUpgrade, claims[1].Action)
-	is.Equal(ActionUninstall, claims[2].Action)
+	t.Run("ReadClaim", func(t *testing.T) {
+		claims, err := cp.ListClaims("foo")
+		require.NoError(t, err, "ListClaims failed")
+
+		assert.NotEmpty(t, claims, "no claims were found")
+		claimID := claims[0]
+
+		c, err := cp.ReadClaim(claimID)
+		require.NoError(t, err, "ReadClaim failed")
+
+		assert.Equal(t, "foo", c.Installation)
+		assert.Equal(t, ActionInstall, c.Action)
+	})
+
+	t.Run("ReadClaim - invalid claim", func(t *testing.T) {
+		_, err := cp.ReadClaim("missing")
+		require.EqualError(t, err, "Claim does not exist")
+	})
+
+	t.Run("ReadLastClaim", func(t *testing.T) {
+		c, err := cp.ReadLastClaim("bar")
+		require.NoError(t, err, "ReadLastClaim failed")
+
+		assert.Equal(t, "bar", c.Installation)
+		assert.Equal(t, ActionInstall, c.Action)
+	})
+
+	t.Run("ReadLastClaim - invalid installation", func(t *testing.T) {
+		c, err := cp.ReadLastClaim("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, c)
+	})
+}
+
+func TestClaimStore_Results(t *testing.T) {
+	cp, cleanup := generateClaimData(t)
+	defer cleanup()
+
+	barClaims, err := cp.ListClaims("bar")
+	require.NoError(t, err, "ListClaims failed")
+	require.Len(t, barClaims, 1, "expected 1 claim")
+	claimID := barClaims[0] // this claim has multiple results
+
+	bazClaims, err := cp.ListClaims("baz")
+	require.NoError(t, err, "ListClaims failed")
+	require.Len(t, bazClaims, 2, "expected 2 claims")
+	unfinishedClaimID := bazClaims[1] // this claim doesn't have any results yet
+
+	t.Run("ListResults", func(t *testing.T) {
+		results, err := cp.ListResults(claimID)
+		require.NoError(t, err, "ListResults failed")
+		assert.Len(t, results, 2, "expected 2 results")
+	})
+
+	t.Run("ListResults - unfinished claim", func(t *testing.T) {
+		results, err := cp.ListResults(unfinishedClaimID)
+		require.NoError(t, err, "listing results for a claim that doesn't have any yet should not result in an error")
+		assert.Empty(t, results)
+	})
+
+	t.Run("ReadAllResults", func(t *testing.T) {
+		results, err := cp.ReadAllResults(claimID)
+		require.NoError(t, err, "ReadAllResults failed")
+		assert.Len(t, results, 2, "expected 2 results")
+
+		assert.Equal(t, StatusRunning, results[0].Status)
+		assert.Equal(t, StatusSucceeded, results[1].Status)
+	})
+
+	t.Run("ReadAllResults - unfinished claim", func(t *testing.T) {
+		results, err := cp.ReadAllResults(unfinishedClaimID)
+		require.NoError(t, err, "reading results for a claim that doesn't have any yet should not result in an error")
+		assert.Empty(t, results)
+	})
+
+	t.Run("ReadLastResult", func(t *testing.T) {
+		r, err := cp.ReadLastResult(claimID)
+		require.NoError(t, err, "ReadLastResult failed")
+
+		assert.Equal(t, StatusSucceeded, r.Status)
+	})
+
+	t.Run("ReadLastResult - unfinished claim", func(t *testing.T) {
+		results, err := cp.ReadAllResults(unfinishedClaimID)
+		require.NoError(t, err, "reading results for a claim that doesn't have any yet should not result in an error")
+		assert.Empty(t, results)
+	})
+
+	t.Run("ReadResult", func(t *testing.T) {
+		results, err := cp.ListResults(claimID)
+		require.NoError(t, err, "ListResults failed")
+
+		resultID := results[0]
+
+		r, err := cp.ReadResult(resultID)
+		require.NoError(t, err, "ReadResult failed")
+
+		assert.Equal(t, StatusRunning, r.Status)
+	})
+
+	t.Run("ReadResult - invalid result", func(t *testing.T) {
+		r, err := cp.ReadResult("missing")
+		require.EqualError(t, err, "Result does not exist")
+		assert.Empty(t, r)
+	})
+}
+
+func TestClaimStore_Outputs(t *testing.T) {
+	cp, cleanup := generateClaimData(t)
+	defer cleanup()
+
+	fooClaims, err := cp.ReadAllClaims("foo")
+	require.NoError(t, err, "ReadAllClaims failed")
+	require.NotEmpty(t, fooClaims, "expected foo to have a claim")
+	fooClaim := fooClaims[1]
+	fooResults, err := cp.ReadAllResults(fooClaim.ID) // Use foo's upgrade claim that has two outputs
+	require.NoError(t, err, "ReadAllResults failed")
+	require.NotEmpty(t, fooResults, "expected foo to have a result")
+	fooResult := fooResults[0]
+	resultID := fooResult.ID // this result has an output
+
+	barClaims, err := cp.ReadAllClaims("bar")
+	require.NoError(t, err, "ReadAllClaims failed")
+	require.Len(t, barClaims, 1, "expected bar to have a claim")
+	barClaim := barClaims[0]
+	barResults, err := cp.ReadAllResults(barClaim.ID)
+	require.NoError(t, err, "ReadAllResults failed")
+	require.NotEmpty(t, barResults, "expected bar to have a result")
+	barResult := barResults[0]
+	resultIDWithoutOutputs := barResult.ID
+
+	t.Run("ListOutputs", func(t *testing.T) {
+		outputs, err := cp.ListOutputs(resultID)
+		require.NoError(t, err, "ListResults failed")
+		assert.Len(t, outputs, 2, "expected 2 outputs")
+
+		assert.Equal(t, "output1", outputs[0])
+		assert.Equal(t, "output2", outputs[1])
+	})
+
+	t.Run("ListOutputs - no outputs", func(t *testing.T) {
+		outputs, err := cp.ListResults(resultIDWithoutOutputs)
+		require.NoError(t, err, "listing outputs for a result that doesn't have any should not result in an error")
+		assert.Empty(t, outputs)
+	})
+
+	t.Run("ReadLastOutputs", func(t *testing.T) {
+		outputs, err := cp.ReadLastOutputs("foo")
+
+		require.NoError(t, err, "GetLastOutputs failed")
+		assert.Equal(t, 2, outputs.Len(), "wrong number of outputs identified")
+
+		gotOutput1, hasOutput1 := outputs.GetByName("output1")
+		assert.True(t, hasOutput1, "should have found output1")
+		assert.Equal(t, "upgrade output1", string(gotOutput1.Value), "did not find the most recent value for output1")
+
+		gotOutput2, hasOutput2 := outputs.GetByName("output2")
+		assert.True(t, hasOutput2, "should have found output2")
+		assert.Equal(t, "upgrade output2", string(gotOutput2.Value), "did not find the most recent value for output2")
+	})
+
+	t.Run("ReadLastOutputs - invalid installation", func(t *testing.T) {
+		outputs, err := cp.ReadLastOutputs("missing")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, outputs)
+	})
+
+	t.Run("ReadLastOutput", func(t *testing.T) {
+		o, err := cp.ReadLastOutput("foo", "output1")
+
+		require.NoError(t, err, "GetLastOutputs failed")
+		assert.Equal(t, "upgrade output1", string(o.Value), "did not find the most recent value for output1")
+	})
+
+	t.Run("ReadLastOutput - invalid installation", func(t *testing.T) {
+		o, err := cp.ReadLastOutput("missing", "output1")
+		require.EqualError(t, err, "Installation does not exist")
+		assert.Empty(t, o)
+	})
+
+	t.Run("ReadOutput", func(t *testing.T) {
+		// Read the initial value of output1 from the install action
+		installClaim := fooClaims[0]
+		installResult, err := cp.ReadLastResult(installClaim.ID)
+		require.NoError(t, err, "ReadLastResult failed")
+
+		o, err := cp.ReadOutput(installClaim, installResult, "output1")
+		require.NoError(t, err, "ReadOutput failed")
+
+		assert.Equal(t, "output1", o.Name)
+		assert.Equal(t, installResult.ID, o.result.ID, "output.Result is not set")
+		assert.Equal(t, installClaim.ID, o.result.claim.ID, "output.Result.Claim is not set")
+		assert.Equal(t, "install output1", string(o.Value))
+	})
+
+	t.Run("ReadOutput - no outputs", func(t *testing.T) {
+		o, err := cp.ReadOutput(barClaim, barResult, "output1")
+		require.EqualError(t, err, "Output does not exist")
+		assert.Empty(t, o)
+	})
 }
 
 func TestCanUpdateOutputs(t *testing.T) {
@@ -217,19 +570,6 @@ func TestCanUpdateOutputs(t *testing.T) {
 		"bar-output": "baz",
 	}
 	is.Equal(wantOutputs, result.OutputMetadata, "Wrong outputs on result")
-}
-
-func TestClaimStore_HandlesNotFoundError(t *testing.T) {
-	mockStore := crud.NewMockStore()
-	mockStore.ReadMock = func(itemType string, name string) (bytes []byte, err error) {
-		// Change the default error message to test that we are checking
-		// inside the error message and not matching it exactly
-		return nil, errors.New("wrapping error message: " + crud.ErrRecordDoesNotExist.Error())
-	}
-	cs := NewClaimStore(mockStore, nil, nil)
-
-	_, err := cs.ReadClaim("missing claim")
-	assert.EqualError(t, err, ErrClaimNotFound.Error())
 }
 
 func TestStore_EncryptClaims(t *testing.T) {
@@ -291,12 +631,7 @@ func TestStore_EncryptOutputs(t *testing.T) {
 	err = s.SaveResult(r)
 	require.NoError(t, err, "SaveResult failed")
 
-	password := Output{
-		Claim:  c,
-		Result: r,
-		Name:   "password",
-		Value:  []byte("mypassword"),
-	}
+	password := NewOutput(c, r, "password", []byte("mypassword"))
 	err = s.SaveOutput(password)
 	require.NoError(t, err, "SaveOutput failed")
 
@@ -307,12 +642,12 @@ func TestStore_EncryptOutputs(t *testing.T) {
 	require.NoError(t, err, "failed to decrypt raw output data")
 	assert.Equal(t, string(password.Value), string(decryptedOutputB), "decrypted output doesn't match the original output")
 
-	port := Output{
-		Claim:  c,
-		Result: r,
-		Name:   "port",
-		Value:  []byte("8080"),
-	}
+	// Verify the password is decrypted by the claim store automatically
+	retrievedPassword, err := s.ReadOutput(c, r, "password")
+	require.NoError(t, err, "ReadOutput failed")
+	assert.Equal(t, string(password.Value), string(retrievedPassword.Value), "ReadOutput didn't decrypt the output automatically")
+
+	port := NewOutput(c, r, "port", []byte("8080"))
 	err = s.SaveOutput(port)
 	require.NoError(t, err, "SaveOutput failed")
 

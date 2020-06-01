@@ -18,7 +18,6 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Make sure that the default Result has status and action set.
 	claim, err := New("my_claim", ActionInstall, exampleBundle, nil)
 	assert.NoError(t, err)
 
@@ -247,7 +246,7 @@ func TestClaim_GetLastResult(t *testing.T) {
 
 	t.Run("result exists", func(t *testing.T) {
 		c := Claim{
-			Results: Results{
+			results: Results{
 				succeeded,
 				running,
 			},

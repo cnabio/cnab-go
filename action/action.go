@@ -130,12 +130,7 @@ func (a Action) SaveOperationResult(opResult driver.OperationResult, c claim.Cla
 			continue
 		}
 
-		output := claim.Output{
-			Claim:  c,
-			Result: r,
-			Name:   outputName,
-			Value:  []byte(outputValue),
-		}
+		output := claim.NewOutput(c, r, outputName, []byte(outputValue))
 		err = a.Claims.SaveOutput(output)
 		if err != nil {
 			bigerr = multierror.Append(bigerr, err)

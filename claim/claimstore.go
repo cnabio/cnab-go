@@ -81,20 +81,36 @@ var noOpEncryptionHandler = func(data []byte) ([]byte, error) {
 }
 
 func (s Store) ListInstallations() ([]string, error) {
-	return s.backingStore.List(ItemTypeClaims, "")
+	names, err := s.backingStore.List(ItemTypeClaims, "")
+	sort.Strings(names)
+	return names, err
 }
 
 func (s Store) ListClaims(installation string) ([]string, error) {
-	return s.backingStore.List(ItemTypeClaims, installation)
+	claims, err := s.backingStore.List(ItemTypeClaims, installation)
+	return claims, s.handleNotExistsError(err, ErrInstallationNotFound)
 }
 
 func (s Store) ListResults(claimID string) ([]string, error) {
-	return s.backingStore.List(ItemTypeResults, claimID)
+	results, err := s.backingStore.List(ItemTypeResults, claimID)
+	if err != nil {
+		// Gracefully handle a claim not having any results
+		if err == crud.ErrRecordDoesNotExist {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return results, nil
 }
 
 func (s Store) ListOutputs(resultID string) ([]string, error) {
 	outputNames, err := s.backingStore.List(ItemTypeOutputs, resultID)
 	if err != nil {
+		// Gracefully handle a result not having any outputs
+		if err == crud.ErrRecordDoesNotExist {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -113,53 +129,44 @@ func (s Store) ReadInstallation(installation string) (Installation, error) {
 		return Installation{}, err
 	}
 
-	i := Installation{
-		Name:   installation,
-		Claims: claims,
-	}
+	i := NewInstallation(installation, claims)
+
 	return i, nil
 }
 
 func (s Store) ReadInstallationStatus(installation string) (Installation, error) {
-	i := Installation{
-		Name: installation,
-	}
-
 	claimIds, err := s.ListClaims(installation)
 	if err != nil {
 		return Installation{}, err
 	}
 
-	if len(claimIds) == 0 {
-		return i, nil
+	var claims Claims
+	if len(claimIds) > 0 {
+		sort.Strings(claimIds)
+		lastClaimID := claimIds[len(claimIds)-1]
+		c, err := s.ReadClaim(lastClaimID)
+		if err != nil {
+			return Installation{}, err
+		}
+
+		resultIDs, err := s.ListResults(lastClaimID)
+		if err != nil {
+			return Installation{}, err
+		}
+
+		if len(resultIDs) > 0 {
+			sort.Strings(resultIDs)
+			lastResultID := resultIDs[len(resultIDs)-1]
+			r, err := s.ReadResult(lastResultID)
+			if err != nil {
+				return Installation{}, err
+			}
+			c.results = Results{r}
+		}
+		claims = append(claims, c)
 	}
 
-	sort.Strings(claimIds)
-	lastClaimID := claimIds[len(claimIds)-1]
-	c, err := s.ReadClaim(lastClaimID)
-	if err != nil {
-		return Installation{}, err
-	}
-	i.Claims = Claims{c}
-
-	resultIDs, err := s.ListResults(lastClaimID)
-	if err != nil {
-		return Installation{}, err
-	}
-
-	if len(resultIDs) == 0 {
-		return i, nil
-	}
-
-	sort.Strings(resultIDs)
-	lastResultID := resultIDs[len(resultIDs)-1]
-	r, err := s.ReadResult(lastResultID)
-	if err != nil {
-		return Installation{}, err
-	}
-	i.Claims[0].Results = Results{r}
-
-	return i, nil
+	return NewInstallation(installation, claims), nil
 }
 
 func (s Store) ReadAllInstallationStatus() ([]Installation, error) {
@@ -172,7 +179,6 @@ func (s Store) ReadAllInstallationStatus() ([]Installation, error) {
 	for _, name := range names {
 		installation, err := s.ReadInstallationStatus(name)
 		if err != nil {
-			// TODO: (carolynvs) for any of these ranges, return some results instead of nothing when one fails
 			return nil, err
 		}
 		installations = append(installations, installation)
@@ -184,15 +190,12 @@ func (s Store) ReadAllInstallationStatus() ([]Installation, error) {
 func (s Store) ReadClaim(claimID string) (Claim, error) {
 	bytes, err := s.backingStore.Read(ItemTypeClaims, claimID)
 	if err != nil {
-		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
-			return Claim{}, ErrClaimNotFound
-		}
-		return Claim{}, err
+		return Claim{}, s.handleNotExistsError(err, ErrClaimNotFound)
 	}
 
 	bytes, err = s.decrypt(bytes)
 	if err != nil {
-		return Claim{}, errors.Wrap(err, "error decrypting claim")
+		return Claim{}, errors.Wrapf(err, "error decrypting claim %s", claimID)
 	}
 
 	claim := Claim{}
@@ -203,8 +206,7 @@ func (s Store) ReadClaim(claimID string) (Claim, error) {
 func (s Store) ReadAllClaims(installation string) ([]Claim, error) {
 	items, err := s.backingStore.ReadAll(ItemTypeClaims, installation)
 	if err != nil {
-		// TODO: handle installation not found
-		return nil, err
+		return nil, s.handleNotExistsError(err, ErrInstallationNotFound)
 	}
 
 	claims := make(Claims, len(items))
@@ -229,8 +231,7 @@ func (s Store) ReadAllClaims(installation string) ([]Claim, error) {
 func (s Store) ReadLastClaim(installation string) (Claim, error) {
 	claimIds, err := s.backingStore.List(ItemTypeClaims, installation)
 	if err != nil {
-		// TODO: handle installation not found
-		return Claim{}, err
+		return Claim{}, s.handleNotExistsError(err, ErrInstallationNotFound)
 	}
 
 	if len(claimIds) == 0 {
@@ -246,11 +247,7 @@ func (s Store) ReadLastClaim(installation string) (Claim, error) {
 func (s Store) ReadResult(resultID string) (Result, error) {
 	bytes, err := s.backingStore.Read(ItemTypeResults, resultID)
 	if err != nil {
-		// TODO: handle installation/ claim / result not found
-		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
-			return Result{}, ErrResultNotFound
-		}
-		return Result{}, err
+		return Result{}, s.handleNotExistsError(err, ErrResultNotFound)
 	}
 	result := Result{}
 	err = json.Unmarshal(bytes, &result)
@@ -260,7 +257,10 @@ func (s Store) ReadResult(resultID string) (Result, error) {
 func (s Store) ReadAllResults(claimID string) ([]Result, error) {
 	items, err := s.backingStore.ReadAll(ItemTypeResults, claimID)
 	if err != nil {
-		// TODO: handle claim not found
+		// Gracefully handle a claim not having any results
+		if err == crud.ErrRecordDoesNotExist {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -278,11 +278,85 @@ func (s Store) ReadAllResults(claimID string) ([]Result, error) {
 	return results, nil
 }
 
+// ReadLastOutputs returns the most recent (last) value of each output associated
+// with the installation.
+func (s Store) ReadLastOutputs(installation string) (Outputs, error) {
+	return s.readLastOutputs(installation, "")
+}
+
+// ReadLastOutput returns the most recent value (last) of the specified Output associated
+// with the installation.
+func (s Store) ReadLastOutput(installation string, name string) (Output, error) {
+	outputs, err := s.readLastOutputs(installation, name)
+	if err != nil {
+		return Output{}, err
+	}
+
+	if o, ok := outputs.GetByName(name); ok {
+		return o, nil
+	}
+
+	return Output{}, ErrOutputNotFound
+}
+
+// readLastOutputs returns the most recent (last) value of the specified output,
+// or all if none if no filter is specified, associated with the installation,
+// sorted by name.
+func (s Store) readLastOutputs(installation string, filterOutput string) (Outputs, error) {
+	var results Results
+
+	claims, err := s.ReadAllClaims(installation)
+	if err != nil {
+		return Outputs{}, err
+	}
+
+	for _, c := range claims {
+		resultIds, err := s.ListResults(c.ID)
+		if err != nil {
+			return Outputs{}, err
+		}
+		for _, resultID := range resultIds {
+			results = append(results, Result{
+				ID:      resultID,
+				ClaimID: c.ID,
+				claim:   c,
+			})
+		}
+	}
+
+	// Determine the result that contains the final output value for each output
+	// outputName -> resultID
+	sort.Sort(results)
+	lastOutputs := map[string]Result{}
+	for _, result := range results {
+		outputNames, err := s.ListOutputs(result.ID)
+		if err != nil {
+			return Outputs{}, err
+		}
+		for _, outputName := range outputNames {
+			// Figure out if we want to retrieve and return this output
+			if filterOutput == "" || filterOutput == outputName {
+				lastOutputs[outputName] = result
+			}
+		}
+	}
+
+	outputs := make([]Output, 0, len(lastOutputs))
+	for outputName, result := range lastOutputs {
+		output, err := s.ReadOutput(result.claim, result, outputName)
+		if err != nil {
+			return Outputs{}, err
+		}
+
+		outputs = append(outputs, output)
+	}
+
+	return NewOutputs(outputs), nil
+}
 func (s Store) ReadLastResult(claimID string) (Result, error) {
 	resultIDs, err := s.backingStore.List(ItemTypeResults, claimID)
 	if err != nil {
-		// TODO: handle installation/claim not found
-		return Result{}, err
+		return Result{}, s.handleNotExistsError(err, ErrClaimNotFound)
 	}
 
 	if len(resultIDs) == 0 {
@@ -295,16 +369,13 @@ func (s Store) ReadLastResult(claimID string) (Result, error) {
 	return s.ReadResult(lastResultID)
 }
 
-func (s Store) ReadOutput(claim Claim, result Result, outputName string) (Output, error) {
-	bytes, err := s.backingStore.Read(ItemTypeOutputs, s.outputKey(result.ID, outputName))
+func (s Store) ReadOutput(c Claim, r Result, outputName string) (Output, error) {
+	bytes, err := s.backingStore.Read(ItemTypeOutputs, s.outputKey(r.ID, outputName))
 	if err != nil {
-		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
-			return Output{}, ErrOutputNotFound
-		}
-		return Output{}, err
+		return Output{}, s.handleNotExistsError(err, ErrOutputNotFound)
 	}
 
-	sensitive, err := claim.Bundle.IsOutputSensitive(outputName)
+	sensitive, err := c.Bundle.IsOutputSensitive(outputName)
 	if err != nil {
 		return Output{}, errors.Wrapf(err, "could not determine if the output %q is sensitive", outputName)
 	}
@@ -312,57 +383,55 @@ func (s Store) ReadOutput(claim Claim, result Result, outputName string) (Output
 	if sensitive {
 		bytes, err = s.decrypt(bytes)
 		if err != nil {
-			return Output{}, errors.Wrap(err, "error decrypting output")
+			return Output{}, errors.Wrapf(err, "error decrypting output %s", outputName)
 		}
 	}
 
-	return Output{
-		Claim:  claim,
-		Result: result,
-		Name:   outputName,
-		Value:  bytes,
-	}, nil
+	return NewOutput(c, r, outputName, bytes), nil
 }
 
-func (s Store) SaveClaim(claim Claim) error {
-	bytes, err := json.MarshalIndent(claim, "", "  ")
+func (s Store) SaveClaim(c Claim) error {
+	bytes, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
 	}
 
 	bytes, err = s.encrypt(bytes)
 	if err != nil {
-		return errors.Wrapf(err, "error encrypting claim %s of installation %s", claim.ID, claim.Installation)
+		return errors.Wrapf(err, "error encrypting claim %s of installation %s", c.ID, c.Installation)
 	}
 
-	return s.backingStore.Save(ItemTypeClaims, claim.Installation, claim.ID, bytes)
+	return s.backingStore.Save(ItemTypeClaims, c.Installation, c.ID, bytes)
 }
 
-func (s Store) SaveResult(result Result) error {
-	bytes, err := json.MarshalIndent(result, "", "  ")
+func (s Store) SaveResult(r Result) error {
+	bytes, err := json.MarshalIndent(r, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return s.backingStore.Save(ItemTypeResults, result.ClaimID, result.ID, bytes)
+	return s.backingStore.Save(ItemTypeResults, r.ClaimID, r.ID, bytes)
 }
 
-func (s Store) SaveOutput(output Output) error {
-	sensitive, err := output.Claim.Bundle.IsOutputSensitive(output.Name)
-	if err != nil {
-		return errors.Wrapf(err, "could not determine if the output %q is sensitive", output.Name)
+func (s Store) SaveOutput(o Output) error {
+	if o.claim.ID == "" {
+		return errors.New("output.Claim is not set")
 	}
 
-	data := output.Value
+	sensitive, err := o.claim.Bundle.IsOutputSensitive(o.Name)
+	if err != nil {
+		return errors.Wrapf(err, "could not determine if the output %q is sensitive", o.Name)
+	}
+
+	data := o.Value
 	if sensitive {
-		data, err = s.encrypt(output.Value)
+		data, err = s.encrypt(o.Value)
 		if err != nil {
-			// TODO (carolynvs) make all of the error messages provide context like this one
-			return errors.Wrapf(err, "error encrypting output %s for result %s of installation %s", output.Name, output.Result.ID, output.Claim.Installation)
+			return errors.Wrapf(err, "error encrypting output %s for result %s of installation %s", o.Name, o.result.ID, o.claim.Installation)
 		}
 	}
 
-	return s.backingStore.Save(ItemTypeOutputs, output.Result.ID, s.outputKey(output.Result.ID, output.Name), data)
+	return s.backingStore.Save(ItemTypeOutputs, o.result.ID, s.outputKey(o.result.ID, o.Name), data)
 }
 
 func (s Store) DeleteInstallation(installation string) error {
@@ -371,7 +440,6 @@ func (s Store) DeleteInstallation(installation string) error {
 		return err
 	}
 
-	// Todo: go routines
 	for _, claimID := range claimIds {
 		err := s.DeleteClaim(claimID)
 		if err != nil {
@@ -388,7 +456,6 @@ func (s Store) DeleteClaim(claimID string) error {
 		return err
 	}
 
-	// Todo: go routines
 	for _, resultID := range resultIds {
 		err := s.DeleteResult(resultID)
 		if err != nil {
@@ -396,7 +463,8 @@ func (s Store) DeleteClaim(claimID string) error {
 		}
 	}
 
-	return s.backingStore.Delete(ItemTypeClaims, claimID)
+	err = s.backingStore.Delete(ItemTypeClaims, claimID)
+	return s.handleNotExistsError(err, ErrClaimNotFound)
 }
 
 func (s Store) DeleteResult(resultID string) error {
@@ -405,7 +473,6 @@ func (s Store) DeleteResult(resultID string) error {
 		return err
 	}
 
-	// Todo: go routines
 	for _, output := range outputNames {
 		err := s.DeleteOutput(resultID, output)
 		if err != nil {
@@ -413,11 +480,13 @@ func (s Store) DeleteResult(resultID string) error {
 		}
 	}
 
-	return s.backingStore.Delete(ItemTypeResults, resultID)
+	err = s.backingStore.Delete(ItemTypeResults, resultID)
+	return s.handleNotExistsError(err, ErrResultNotFound)
 }
 
 func (s Store) DeleteOutput(resultID string, outputName string) error {
-	return s.backingStore.Delete(ItemTypeOutputs, s.outputKey(resultID, outputName))
+	err := s.backingStore.Delete(ItemTypeOutputs, s.outputKey(resultID, outputName))
+	return s.handleNotExistsError(err, ErrOutputNotFound)
 }
 
 // outputKey returns the full name of an Output suitable for storage.
@@ -425,4 +494,13 @@ func (s Store) DeleteOutput(resultID string, outputName string) error {
 // not unique across bundle executions.
 func (s Store) outputKey(resultID string, output string) string {
 	return resultID + "-" + output
+}
+
+// handleNotExistsError converts generic ErrRecordDoesNotExist errors from the crud layer
+// into the specified typed error, if present.
+func (s Store) handleNotExistsError(crudError error, typedError error) error {
+	if crudError != nil && strings.Contains(crudError.Error(), crud.ErrRecordDoesNotExist.Error()) {
+		return typedError
+	}
+	return crudError
 }

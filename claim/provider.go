@@ -30,10 +30,10 @@ type Provider interface {
 	// ReadClaim returns the specified Claim.
 	ReadClaim(claimID string) (Claim, error)
 
-	// ReadAllClaim returns all claims associated with an Installation, sorted in ascending order.
+	// ReadAllClaims returns all claims associated with an Installation, sorted in ascending order.
 	ReadAllClaims(installation string) ([]Claim, error)
 
-	// ReadLastClaim returns the last result associated with an Installation.
+	// ReadLastClaim returns the last claim associated with an Installation.
 	ReadLastClaim(installation string) (Claim, error)
 
 	// ReadResult returns the specified Result.
@@ -45,6 +45,14 @@ type Provider interface {
 	// ReadLastResult returns the last result associated with a Claim.
 	ReadLastResult(claimID string) (Result, error)
 
+	// ReadAllOutputs returns the most recent (last) value of each Output associated
+	// with the installation.
+	ReadLastOutputs(installation string) (Outputs, error)
+
+	// ReadLastOutput returns the most recent value (last) of the specified Output associated
+	// with the installation.
+	ReadLastOutput(installation string, name string) (Output, error)
+
 	// ReadOutput returns the contents of the named output associated with the specified Result.
 	ReadOutput(claim Claim, result Result, outputName string) (Output, error)
 
@@ -55,7 +63,8 @@ type Provider interface {
 	// SaveResult persists the specified result.
 	SaveResult(result Result) error
 
-	// SaveOutput persists the
+	// SaveOutput persists the output, encrypting the value if defined as
+	// sensitive (write-only) in the bundle.
 	SaveOutput(output Output) error
 
 	// DeleteInstallation removes all data associated with the specified installation.

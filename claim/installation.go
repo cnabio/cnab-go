@@ -14,6 +14,21 @@ type Installation struct {
 	Claims
 }
 
+// NewInstallation creates an Installation and ensures the contained data is sorted.
+func NewInstallation(name string, claims []Claim) Installation {
+	i := Installation{
+		Name:   name,
+		Claims: claims,
+	}
+
+	sort.Sort(i.Claims)
+	for _, c := range i.Claims {
+		sort.Sort(c.results)
+	}
+
+	return i
+}
+
 // GetInstallationTimestamp searches the claims associated with the installation
 // for the first claim for Install and returns its timestamp.
 func (i Installation) GetInstallationTimestamp() (time.Time, error) {
@@ -21,7 +36,6 @@ func (i Installation) GetInstallationTimestamp() (time.Time, error) {
 		return time.Time{}, fmt.Errorf("the installation %s has no claims", i.Name)
 	}
 
-	sort.Sort(i.Claims)
 	for _, c := range i.Claims {
 		if c.Action == ActionInstall {
 			return c.Created, nil
@@ -38,7 +52,6 @@ func (i Installation) GetLastClaim() (Claim, error) {
 		return Claim{}, fmt.Errorf("the installation %s has no claims", i.Name)
 	}
 
-	sort.Sort(i.Claims)
 	lastClaim := i.Claims[len(i.Claims)-1]
 	return lastClaim, nil
 }
@@ -51,12 +64,11 @@ func (i Installation) GetLastResult() (Result, error) {
 		return Result{}, err
 	}
 
-	if len(lastClaim.Results) == 0 {
+	if len(lastClaim.results) == 0 {
 		return Result{}, errors.New("the last claim has no results")
 	}
 
-	sort.Sort(lastClaim.Results)
-	lastResult := lastClaim.Results[len(lastClaim.Results)-1]
+	lastResult := lastClaim.results[len(lastClaim.results)-1]
 	return lastResult, nil
 }
 
@@ -71,56 +83,44 @@ func (i Installation) GetLastStatus() string {
 	return lastResult.Status
 }
 
-// GetLastOutputs returns the most recent (last) value of each output associated
-// with the installation, sorted by the output name.
-func (i Installation) GetLastOutputs(p Provider) (*Outputs, error) {
-	var results Results
+type InstallationByName []Installation
 
-	claims, err := p.ReadAllClaims(i.Name)
-	if err != nil {
-		return nil, err
+func (ibn InstallationByName) Len() int {
+	return len(ibn)
+}
+
+func (ibn InstallationByName) Less(i, j int) bool {
+	return ibn[i].Name < ibn[j].Name
+}
+
+func (ibn InstallationByName) Swap(i, j int) {
+	ibn[i], ibn[j] = ibn[j], ibn[i]
+}
+
+// InstallationByModified sorts installations by which has been modified most recently
+// Assumes that the installation's claims have already been sorted first, for example
+// with SortClaims or manually.
+type InstallationByModified []Installation
+
+// SortClaims presorts the claims on each installation before the
+// installations can be sorted.
+func (ibm InstallationByModified) SortClaims() {
+	for _, i := range ibm {
+		sort.Sort(i.Claims)
 	}
-	i.Claims = claims
+}
 
-	// TODO: (carolynvs) retrieve data concurrently
-	for _, c := range i.Claims {
-		resultIds, err := p.ListResults(c.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, resultID := range resultIds {
-			results = append(results, Result{
-				ID:      resultID,
-				ClaimID: c.ID,
-				Claim:   c,
-			})
-		}
-	}
+func (ibm InstallationByModified) Len() int {
+	return len(ibm)
+}
 
-	// Determine the result that contains the final output value for each output
-	// outputName -> resultID
-	sort.Sort(results)
-	lastOutputs := map[string]Result{}
-	for _, result := range results {
-		outputNames, err := p.ListOutputs(result.ID)
-		if err != nil {
-			return nil, err
-		}
-		for _, outputName := range outputNames {
-			lastOutputs[outputName] = result
-		}
-	}
+func (ibm InstallationByModified) Less(i, j int) bool {
+	ic := ibm[i].Claims[len(ibm[i].Claims)-1]
+	jc := ibm[j].Claims[len(ibm[j].Claims)-1]
 
-	outputs := NewOutputs()
-	for outputName, result := range lastOutputs {
-		output, err := p.ReadOutput(result.Claim, result, outputName)
-		if err != nil {
-			return nil, err
-		}
+	return ic.ID < jc.ID
+}
 
-		outputs.Append(output)
-	}
-
-	sort.Sort(outputs)
-	return outputs, nil
+func (ibm InstallationByModified) Swap(i, j int) {
+	ibm[i], ibm[j] = ibm[j], ibm[i]
 }
