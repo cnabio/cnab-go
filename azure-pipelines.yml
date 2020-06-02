@@ -14,6 +14,7 @@ steps:
   displayName: 'Configure Go'
 
 - script: |
+    set -xeuo pipefail
     go env
     go mod download
     go get sigs.k8s.io/kind@v0.6.0
