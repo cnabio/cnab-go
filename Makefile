@@ -49,13 +49,13 @@ ifndef HAS_GOCOV_XML
 	go get github.com/AlekSi/gocov-xml
 endif
 ifndef HAS_GOCOV
-	go get -u github.com/axw/gocov/gocov
+	go get github.com/axw/gocov@v1.0.0
 endif
 ifndef HAS_GO_JUNIT_REPORT
-	go get github.com/jstemmer/go-junit-report
+	go get github.com/jstemmer/go-junit-report@v0.9.1
 endif
 ifndef HAS_PACKR2
-	go get -u github.com/gobuffalo/packr/v2/packr2
+	go get github.com/gobuffalo/packr/v2/packr2@v2.8.0
 endif
 	@# go get to install global tools with modules modify our dependencies. Reset them back
 	git checkout go.mod go.sum
