@@ -49,7 +49,7 @@ ifndef HAS_GOCOV_XML
 	go get github.com/AlekSi/gocov-xml
 endif
 ifndef HAS_GOCOV
-	go get github.com/axw/gocov@v1.0.0
+	go get github.com/axw/gocov/gocov@v1.0.0
 endif
 ifndef HAS_GO_JUNIT_REPORT
 	go get github.com/jstemmer/go-junit-report@v0.9.1
