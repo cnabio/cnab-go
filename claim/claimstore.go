@@ -95,7 +95,7 @@ func (s Store) ListResults(claimID string) ([]string, error) {
 	results, err := s.backingStore.List(ItemTypeResults, claimID)
 	if err != nil {
 		// Gracefully handle a claim not having any results
-		if err == crud.ErrRecordDoesNotExist {
+		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
 			return nil, nil
 		}
 		return nil, err
@@ -108,7 +108,7 @@ func (s Store) ListOutputs(resultID string) ([]string, error) {
 	outputNames, err := s.backingStore.List(ItemTypeOutputs, resultID)
 	if err != nil {
 		// Gracefully handle a result not having any outputs
-		if err == crud.ErrRecordDoesNotExist {
+		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
 			return nil, nil
 		}
 		return nil, err
@@ -258,7 +258,7 @@ func (s Store) ReadAllResults(claimID string) ([]Result, error) {
 	items, err := s.backingStore.ReadAll(ItemTypeResults, claimID)
 	if err != nil {
 		// Gracefully handle a claim not having any results
-		if err == crud.ErrRecordDoesNotExist {
+		if strings.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error()) {
 			return nil, nil
 		}
 		return nil, err
