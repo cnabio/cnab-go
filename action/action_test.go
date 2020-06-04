@@ -755,6 +755,72 @@ func TestAction_RunAction(t *testing.T) {
 		assert.Empty(t, claimResult.OutputMetadata)
 	})
 
+	t.Run("when an output with a default isn't generated", func(t *testing.T) {
+		c := newClaim(claim.ActionInstall)
+
+		// Add an output with a default value, the mock driver doesn't generate outputs
+		// it only prints the bundle definition
+		c.Bundle.Outputs["hasDefault1"] = bundle.Output{
+			Definition: "hasDefault1",
+		}
+		c.Bundle.Definitions["hasDefault1"] = &definition.Schema{
+			Default: "some default1",
+		}
+
+		// This output applies to the active action and should also be defaulted
+		c.Bundle.Outputs["hasDefault2"] = bundle.Output{
+			ApplyTo:    []string{claim.ActionInstall},
+			Definition: "hasDefault2",
+		}
+		c.Bundle.Definitions["hasDefault2"] = &definition.Schema{
+			Default: "some default2",
+		}
+
+		// This output does NOT apply and should NOT be defaulted
+		c.Bundle.Outputs["hasDefault3"] = bundle.Output{
+			ApplyTo:    []string{claim.ActionUpgrade},
+			Definition: "hasDefault3",
+		}
+		c.Bundle.Definitions["hasDefault3"] = &definition.Schema{
+			Default: "some default3",
+		}
+
+		d := &mockDriver{
+			shouldHandle: true,
+			Result:       driver.OperationResult{},
+			Error:        nil,
+		}
+		inst := New(d, nil)
+		opResult, _, err := inst.Run(c, mockSet, out)
+		require.NoError(t, err)
+
+		assert.Contains(t, opResult.Outputs, "hasDefault1", "the output always applies so an output value should have been set")
+		assert.Equal(t, "some default1", opResult.Outputs["hasDefault1"], "the output value should be the bundle default")
+
+		assert.Contains(t, opResult.Outputs, "hasDefault2", "the output applies to the install action so an output value should have been set")
+		assert.Equal(t, "some default2", opResult.Outputs["hasDefault2"], "the output value should be the bundle default")
+
+		assert.NotContains(t, opResult.Outputs, "hasDefault3", "the output applies only to upgrade so an output value should not have been set")
+	})
+
+	t.Run("error case: required output not generated", func(t *testing.T) {
+		c := newClaim(claim.ActionInstall)
+
+		// Add a required output that the runtime cannot default for us (and the mock driver won't generate)
+		c.Bundle.Outputs["noDefault"] = bundle.Output{Definition: "noDefault"}
+		c.Bundle.Definitions["noDefault"] = &definition.Schema{Type: "string"}
+
+		d := &mockDriver{
+			shouldHandle: true,
+			Result:       driver.OperationResult{},
+			Error:        nil,
+		}
+		inst := New(d, nil)
+		opResult, _, err := inst.Run(c, mockSet, out)
+		require.NoError(t, err)
+		require.Contains(t, opResult.Error.Error(), "required output noDefault is missing and has no default")
+	})
+
 	t.Run("error case: driver can't handle image", func(t *testing.T) {
 		c := newClaim(claim.ActionInstall)
 		d := &mockDriver{
