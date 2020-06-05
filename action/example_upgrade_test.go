@@ -6,10 +6,10 @@ import (
 	"github.com/cnabio/cnab-go/action"
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/lookup"
 	"github.com/cnabio/cnab-go/utils/crud"
+	"github.com/cnabio/cnab-go/valuesource"
 )
 
 // Install the bundle and only record the success/failure of the operation.
@@ -55,7 +55,7 @@ func Example_upgrade() {
 	a.SaveAllOutputs = true
 
 	// Pass an empty set of credentials
-	var creds credentials.Set
+	var creds valuesource.Set
 
 	opResult, claimResult, err := a.Run(c, creds)
 	if err != nil {

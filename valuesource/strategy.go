@@ -4,38 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/cnabio/cnab-go/bundle"
 )
 
 // Set is an actual set of resolved values.
 // This is the output of resolving a parameter or credential set file.
 type Set map[string]string
-
-// ExpandCredentials expands the set into env vars and paths per the spec in the bundle.
-//
-// This matches the credentials required by the bundle to the credentials present
-// in the Set, and then expands them per the definition in the Bundle.
-func (s Set) ExpandCredentials(b *bundle.Bundle, stateless bool) (env, files map[string]string, err error) {
-	env, files = map[string]string{}, map[string]string{}
-	for name, val := range b.Credentials {
-		src, ok := s[name]
-		if !ok {
-			if stateless || !val.Required {
-				continue
-			}
-			err = fmt.Errorf("credential %q is missing from the user-supplied credentials", name)
-			return
-		}
-		if val.EnvironmentVariable != "" {
-			env[val.EnvironmentVariable] = src
-		}
-		if val.Path != "" {
-			files[val.Path] = src
-		}
-	}
-	return
-}
 
 // Merge merges a second Set into the base.
 //

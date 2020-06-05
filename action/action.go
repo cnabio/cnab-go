@@ -366,7 +366,7 @@ func getImageMap(b bundle.Bundle) ([]byte, error) {
 }
 
 func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds valuesource.Set) (*driver.Operation, error) {
-	env, files, err := creds.ExpandCredentials(&c.Bundle, stateless)
+	env, files, err := expandCredentials(&c.Bundle, creds, stateless)
 	if err != nil {
 		return nil, err
 	}
@@ -472,4 +472,29 @@ func injectParameters(c claim.Claim, env, files map[string]string) error {
 		}
 	}
 	return nil
+}
+
+// expandCredentials expands the given set into env vars and paths per the spec in the bundle.
+//
+// This matches the credentials required by the bundle to the credentials present
+// in the Set, and then expands them per the definition in the Bundle.
+func expandCredentials(b *bundle.Bundle, set valuesource.Set, stateless bool) (env, files map[string]string, err error) {
+	env, files = map[string]string{}, map[string]string{}
+	for name, val := range b.Credentials {
+		src, ok := set[name]
+		if !ok {
+			if stateless || !val.Required {
+				continue
+			}
+			err = fmt.Errorf("credential %q is missing from the user-supplied credentials", name)
+			return
+		}
+		if val.EnvironmentVariable != "" {
+			env[val.EnvironmentVariable] = src
+		}
+		if val.Path != "" {
+			files[val.Path] = src
+		}
+	}
+	return
 }
