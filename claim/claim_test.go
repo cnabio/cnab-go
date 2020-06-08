@@ -218,7 +218,6 @@ func TestMarshal_AllFields(t *testing.T) {
 }
 
 func TestClaimSchema(t *testing.T) {
-	t.Skip("This test is pending non-trivial updates to the Claim and Result objects: https://github.com/cnabio/cnab-go/issues/202")
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
