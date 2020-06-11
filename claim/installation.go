@@ -23,7 +23,9 @@ func NewInstallation(name string, claims []Claim) Installation {
 
 	sort.Sort(i.Claims)
 	for _, c := range i.Claims {
-		sort.Sort(c.results)
+		if c.results != nil {
+			sort.Sort(c.results)
+		}
 	}
 
 	return i
@@ -64,11 +66,16 @@ func (i Installation) GetLastResult() (Result, error) {
 		return Result{}, err
 	}
 
-	if len(lastClaim.results) == 0 {
+	if lastClaim.results == nil {
+		return Result{}, errors.New("the last claim does not have any results loaded")
+	}
+
+	results := *lastClaim.results
+	if len(results) == 0 {
 		return Result{}, errors.New("the last claim has no results")
 	}
 
-	lastResult := lastClaim.results[len(lastClaim.results)-1]
+	lastResult := results[len(results)-1]
 	return lastResult, nil
 }
 

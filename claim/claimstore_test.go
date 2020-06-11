@@ -270,6 +270,7 @@ func TestClaimStore_Installations(t *testing.T) {
 
 		assert.Equal(t, "foo", foo.Name)
 		require.Len(t, foo.Claims, 4, "Expected 4 claims")
+		assert.Equal(t, StatusSucceeded, foo.GetLastStatus(), "expected the status to be loaded on the installation")
 		assert.Equal(t, "foo", foo.Claims[0].Installation, "expected the claim to be associated with the installation")
 		assert.Equal(t, ActionInstall, foo.Claims[0].Action)
 		assert.Equal(t, ActionUpgrade, foo.Claims[1].Action)

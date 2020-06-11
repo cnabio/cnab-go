@@ -19,7 +19,7 @@ type Result struct {
 	// This is not stored in the Result document but is loaded onto
 	// the Result to build an in-memory hierarchy.
 	// This may not always be set depending on how the Result was constructed.
-	claim Claim
+	claim *Claim
 
 	// Created timestamp of the result.
 	Created time.Time `json:"created"`
@@ -48,7 +48,7 @@ func NewResult(c Claim, status string) (Result, error) {
 	return Result{
 		ID:             id,
 		ClaimID:        c.ID,
-		claim:          c,
+		claim:          &c,
 		Created:        time.Now(),
 		Status:         status,
 		OutputMetadata: OutputMetadata{},

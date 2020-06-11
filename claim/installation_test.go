@@ -36,7 +36,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	upgrade := Claim{
 		ID:     "2",
 		Action: ActionUpgrade,
-		results: Results{
+		results: &Results{
 			{
 				ID:     "1",
 				Status: StatusRunning,
@@ -46,7 +46,7 @@ func TestInstallation_GetLastClaim(t *testing.T) {
 	install := Claim{
 		ID:     "1",
 		Action: ActionInstall,
-		results: Results{
+		results: &Results{
 			{
 				ID:     "1",
 				Status: StatusSucceeded,
@@ -82,7 +82,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	upgrade := Claim{
 		ID:     "2",
 		Action: ActionUpgrade,
-		results: Results{
+		results: &Results{
 			failed,
 			{
 				ID:     "1",
@@ -93,7 +93,7 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	install := Claim{
 		ID:     "1",
 		Action: ActionInstall,
-		results: Results{
+		results: &Results{
 			{
 				ID:     "1",
 				Status: StatusSucceeded,
@@ -122,11 +122,21 @@ func TestInstallation_GetLastResult(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
-		i := NewInstallation("wordpress", Claims{Claim{ID: "1"}})
+		i := NewInstallation("wordpress", Claims{Claim{ID: "1", results: &Results{}}})
 
 		r, err := i.GetLastResult()
 
 		require.EqualError(t, err, "the last claim has no results")
+		assert.Equal(t, Result{}, r, "should return an empty result when one cannot be found")
+		assert.Equal(t, StatusUnknown, i.GetLastStatus(), "GetLastStatus did not return the expected value")
+	})
+
+	t.Run("no results loaded", func(t *testing.T) {
+		i := NewInstallation("wordpress", Claims{Claim{ID: "1"}})
+
+		r, err := i.GetLastResult()
+
+		require.EqualError(t, err, "the last claim does not have any results loaded")
 		assert.Equal(t, Result{}, r, "should return an empty result when one cannot be found")
 		assert.Equal(t, StatusUnknown, i.GetLastStatus(), "GetLastStatus did not return the expected value")
 	})

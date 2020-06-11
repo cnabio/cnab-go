@@ -91,9 +91,9 @@ type Claim struct {
 	Custom interface{} `json:"custom,omitempty"`
 
 	// Results of executing the Claim's operation.
-	// These are not stored in the Claim document but is loaded onto the
+	// These are not stored in the Claim document but can be loaded onto the
 	// the Claim to build an in-memory hierarchy.
-	results Results
+	results *Results
 }
 
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
@@ -232,12 +232,17 @@ func (c Claim) Validate() error {
 // GetLastResult returns the most recent (last) result associated with the
 // claim.
 func (c Claim) GetLastResult() (Result, error) {
-	if len(c.results) == 0 {
+	if c.results == nil {
+		return Result{}, errors.New("the claim does not have results loaded")
+	}
+
+	results := *c.results
+	if len(results) == 0 {
 		return Result{}, errors.New("the claim has no results")
 	}
 
-	sort.Sort(c.results)
-	return c.results[len(c.results)-1], nil
+	sort.Sort(results)
+	return results[len(results)-1], nil
 }
 
 // GetStatus returns the status of the claim using the last result.

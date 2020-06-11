@@ -245,7 +245,7 @@ func TestClaim_GetLastResult(t *testing.T) {
 
 	t.Run("result exists", func(t *testing.T) {
 		c := Claim{
-			results: Results{
+			results: &Results{
 				succeeded,
 				running,
 			},
@@ -258,8 +258,22 @@ func TestClaim_GetLastResult(t *testing.T) {
 		assert.Equal(t, StatusSucceeded, c.GetStatus(), "GetStatus did not return the status of the last result")
 	})
 
+	t.Run("no results loaded", func(t *testing.T) {
+		c := Claim{
+			results: nil,
+		}
+
+		r, err := c.GetLastResult()
+
+		require.EqualError(t, err, "the claim does not have results loaded")
+		assert.Equal(t, Result{}, r, "should return an empty result when one cannot be found")
+		assert.Equal(t, StatusUnknown, c.GetStatus(), "GetStatus should return unknown when there are no results")
+	})
+
 	t.Run("no results", func(t *testing.T) {
-		c := Claim{}
+		c := Claim{
+			results: &Results{},
+		}
 
 		r, err := c.GetLastResult()
 

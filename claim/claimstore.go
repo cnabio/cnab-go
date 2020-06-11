@@ -129,7 +129,19 @@ func (s Store) ReadInstallation(installation string) (Installation, error) {
 		return Installation{}, err
 	}
 
-	i := NewInstallation(installation, claims)
+	hierarchy := make(Claims, len(claims))
+	for i, c := range claims {
+		results, err := s.ReadAllResults(c.ID)
+		if err != nil {
+			return Installation{}, err
+		}
+
+		claimResults := Results(results)
+		c.results = &claimResults
+		hierarchy[i] = c
+	}
+
+	i := NewInstallation(installation, hierarchy)
 
 	return i, nil
 }
@@ -161,7 +173,7 @@ func (s Store) ReadInstallationStatus(installation string) (Installation, error)
 			if err != nil {
 				return Installation{}, err
 			}
-			c.results = Results{r}
+			c.results = &Results{r}
 		}
 		claims = append(claims, c)
 	}
@@ -319,7 +331,7 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 			results = append(results, Result{
 				ID:      resultID,
 				ClaimID: c.ID,
-				claim:   c,
+				claim:   &c,
 			})
 		}
 	}
@@ -343,7 +355,7 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 
 	outputs := make([]Output, 0, len(lastOutputs))
 	for outputName, result := range lastOutputs {
-		output, err := s.ReadOutput(result.claim, result, outputName)
+		output, err := s.ReadOutput(*result.claim, result, outputName)
 		if err != nil {
 			return Outputs{}, err
 		}
@@ -353,6 +365,7 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 
 	return NewOutputs(outputs), nil
 }
+
 func (s Store) ReadLastResult(claimID string) (Result, error) {
 	resultIDs, err := s.backingStore.List(ItemTypeResults, claimID)
 	if err != nil {

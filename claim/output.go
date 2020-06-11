@@ -24,7 +24,7 @@ type Output struct {
 
 // NewOutput creates a new Output document with all required values set.
 func NewOutput(c Claim, r Result, name string, value []byte) Output {
-	r.claim = c
+	r.claim = &c
 	return Output{
 		claim:  c,
 		result: r,
