@@ -21,6 +21,14 @@ import (
 // stateful is there just to make callers of opFromClaims more readable
 const stateful = false
 
+// Well known constants define the Well Known CNAB actions to be taken
+const (
+	ActionDryRun = "io.cnab.dry-run"
+	ActionHelp   = "io.cnab.help"
+	ActionLog    = "io.cnab.log"
+	ActionStatus = "io.cnab.status"
+)
+
 // Action executes a bundle operation and helps save the results.
 type Action struct {
 	Claims         claim.Provider

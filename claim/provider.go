@@ -14,8 +14,8 @@ type Provider interface {
 	// ListOutputs returns the names of outputs associated with a result that
 	// have been persisted. It is possible for results to have outputs that were
 	// generated but not persisted see
-	// https://github.com/cnabio/cnab-spec/blob/master/400-claims.md#outputs for
-	// more information.
+	// https://github.com/cnabio/cnab-spec/blob/cnab-claim-1.0.0-DRAFT+b5ed2f3/400-claims.md#outputs
+	// for more information.
 	ListOutputs(resultID string) ([]string, error)
 
 	// ReadInstallation returns the specified Installation with all Claims and their Results loaded.
