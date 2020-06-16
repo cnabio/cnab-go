@@ -39,8 +39,8 @@ type Driver struct {
 }
 
 // Run executes the Docker driver
-func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
-	return d.exec(op)
+func (d *Driver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
+	return d.exec(ctx, op)
 }
 
 // Handles indicates that the Docker driver supports "docker" and "oci"
@@ -171,9 +171,7 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 	return cli, nil
 }
 
-func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
-	ctx := context.Background()
-
+func (d *Driver) exec(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	cli, err := d.initializeDockerCli()
 	if err != nil {
 		return driver.OperationResult{}, err

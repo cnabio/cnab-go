@@ -4,12 +4,14 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDriver_Run_Integration(t *testing.T) {
@@ -74,7 +76,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			tc.op.Environment["CNAB_ACTION"] = tc.op.Action
 			tc.op.Environment["CNAB_INSTALLATION_NAME"] = tc.op.Installation
 
-			_, err := k.Run(tc.op)
+			_, err := k.Run(context.Background(), tc.op)
 
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())

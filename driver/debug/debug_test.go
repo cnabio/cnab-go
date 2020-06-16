@@ -1,6 +1,8 @@
 package debug
 
 import (
+	"bytes"
+	"context"
 	"io/ioutil"
 	"testing"
 
@@ -25,7 +27,7 @@ func TestDebugDriver_Run(t *testing.T) {
 	is := assert.New(t)
 	is.NotNil(d)
 
-	op := &driver.Operation{
+	op := driver.Operation{
 		Installation: "test",
 		Image: bundle.InvocationImage{
 			BaseImage: bundle.BaseImage{
@@ -33,9 +35,23 @@ func TestDebugDriver_Run(t *testing.T) {
 				ImageType: "oci",
 			},
 		},
-		Out: ioutil.Discard,
 	}
 
-	_, err := d.Run(op)
-	is.NoError(err)
+	t.Run("success", func(t *testing.T) {
+		op.Out = ioutil.Discard
+
+		_, err := d.Run(context.Background(), &op)
+		is.NoError(err)
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		output := bytes.Buffer{}
+		op.Out = &output
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := d.Run(ctx, &op)
+		is.Empty(output.String())
+		is.EqualError(err, "context canceled")
+	})
 }

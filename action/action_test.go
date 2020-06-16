@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -32,7 +33,7 @@ type mockDriver struct {
 func (d *mockDriver) Handles(imageType string) bool {
 	return d.shouldHandle
 }
-func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (d *mockDriver) Run(context context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	d.Operation = op
 	return d.Result, d.Error
 }

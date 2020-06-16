@@ -28,6 +28,7 @@ func TestCheckDriverExists(t *testing.T) {
 	}
 	CreateAndRunTestCommandDriver(t, name, "", testfunc)
 }
+
 func CreateAndRunTestCommandDriver(t *testing.T, name string, content string, testfunc func(t *testing.T, d *Driver)) {
 	cmddriver := &Driver{Name: name}
 	dirname, err := ioutil.TempDir("", "cnab")

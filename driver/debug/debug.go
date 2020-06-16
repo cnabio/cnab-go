@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -15,18 +16,24 @@ type Driver struct {
 }
 
 // Run executes the operation on the Debug driver
-func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
-	data, err := json.MarshalIndent(op, "", "  ")
-	if err != nil {
-		return driver.OperationResult{}, err
+func (d *Driver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
+	select {
+	case <-ctx.Done():
+		return driver.OperationResult{}, ctx.Err()
+	default:
+
+		data, err := json.MarshalIndent(op, "", "  ")
+		if err != nil {
+			return driver.OperationResult{}, err
+		}
+
+		result := driver.OperationResult{}
+		result.Logs.Write(data)
+
+		fmt.Fprintln(op.Out, result.Logs.String())
+
+		return result, nil
 	}
-
-	result := driver.OperationResult{}
-	result.Logs.Write(data)
-
-	fmt.Fprintln(op.Out, result.Logs.String())
-
-	return result, nil
 }
 
 // Handles always returns true, effectively claiming to work for any image type

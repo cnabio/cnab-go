@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -131,7 +132,8 @@ func (k *Driver) setClient(conf *rest.Config) error {
 }
 
 // Run executes the operation inside of the invocation image.
-func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (k *Driver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
+	// TODO: use passed context to handle cancellation and timeouts https://github.com/cnabio/cnab-go/issues/220
 	if k.Namespace == "" {
 		return driver.OperationResult{}, fmt.Errorf("KUBE_NAMESPACE is required")
 	}

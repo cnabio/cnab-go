@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -31,7 +32,7 @@ func TestDriver_Run(t *testing.T) {
 		},
 	}
 
-	_, err := k.Run(&op)
+	_, err := k.Run(context.Background(), &op)
 	assert.NoError(t, err)
 
 	jobList, _ := k.jobs.List(metav1.ListOptions{})

@@ -3,8 +3,12 @@
 package command
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
@@ -58,7 +62,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				},
 			},
 		}
-		opResult, err := cmddriver.Run(&op)
+		opResult, err := cmddriver.Run(context.Background(), &op)
 		if err != nil {
 			t.Fatalf("Driver Run failed %v", err)
 		}
@@ -113,7 +117,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				},
 			},
 		}
-		_, err := cmddriver.Run(&op)
+		_, err := cmddriver.Run(context.Background(), &op)
 		assert.NoError(t, err)
 	}
 	CreateAndRunTestCommandDriver(t, name, content, testfunc)
@@ -163,7 +167,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				},
 			},
 		}
-		opResult, err := cmddriver.Run(&op)
+		opResult, err := cmddriver.Run(context.Background(), &op)
 		if err != nil {
 			t.Fatalf("Driver Run failed %v", err)
 		}
@@ -171,6 +175,43 @@ func TestCommandDriverOutputs(t *testing.T) {
 		assert.Equal(t, map[string]string{
 			"output1": "TEST_OUTPUT_1\n",
 		}, opResult.Outputs)
+	}
+	CreateAndRunTestCommandDriver(t, name, content, testfunc)
+}
+
+func TestCommandDriverCancellation(t *testing.T) {
+	content := `#!/bin/sh
+		echo command executed
+	`
+	name := "test-command.sh"
+	output := bytes.Buffer{}
+	testfunc := func(t *testing.T, cmddriver *Driver) {
+		if !cmddriver.CheckDriverExists() {
+			t.Fatalf("Expected driver %s to exist Driver Name %s ", name, cmddriver.Name)
+		}
+		op := driver.Operation{
+			Action:       "install",
+			Installation: "test",
+			Parameters:   map[string]interface{}{},
+			Image: bundle.InvocationImage{
+				BaseImage: bundle.BaseImage{
+					Image:     "cnab/helloworld:latest",
+					ImageType: "docker",
+				},
+			},
+			Revision:    "01DDY0MT808KX0GGZ6SMXN4TW",
+			Environment: map[string]string{},
+			Files: map[string]string{
+				"/cnab/app/image-map.json": "{}",
+			},
+			Out:    &output,
+			Bundle: &bundle.Bundle{Name: "mybun"},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := cmddriver.Run(ctx, &op)
+		require.EqualError(t, err, "Start of driver (test-command.sh) failed: context canceled")
+		assert.NotContains(t, output.String(), "command executed")
 	}
 	CreateAndRunTestCommandDriver(t, name, content, testfunc)
 }

@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -78,7 +79,7 @@ func (a Action) Run(c claim.Claim, creds credentials.Set, opCfgs ...OperationCon
 	}
 
 	var opErr *multierror.Error
-	opResult, err := a.Driver.Run(op)
+	opResult, err := a.Driver.Run(context.TODO(), op)
 	if err != nil {
 		opErr = multierror.Append(opErr, err)
 	}
