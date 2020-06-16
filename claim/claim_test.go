@@ -3,6 +3,7 @@ package claim
 import (
 	"encoding/json"
 	"io/ioutil"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -17,36 +18,104 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	// Make sure that the default Result has status and action set.
-	claim, err := New("my_claim")
+	claim, err := New("my_claim", ActionInstall, exampleBundle, nil)
 	assert.NoError(t, err)
 
-	err = claim.Validate()
-	assert.NoError(t, err)
-
+	assert.NotEmpty(t, claim.ID)
+	assert.NotEmpty(t, claim.Revision)
+	assert.NotEmpty(t, claim.Created)
 	assert.Equal(t, "my_claim", claim.Installation, "Installation name is set")
-	assert.Equal(t, "unknown", claim.Result.Status)
-	assert.Equal(t, "unknown", claim.Result.Action)
-
-	assert.Equal(t, map[string]interface{}{}, claim.Outputs)
-	assert.Equal(t, map[string]interface{}{}, claim.Parameters)
+	assert.Equal(t, "install", claim.Action)
+	assert.Equal(t, exampleBundle, claim.Bundle)
+	assert.Nil(t, claim.Parameters)
 }
 
-func TestUpdate(t *testing.T) {
-	claim, err := New("claim")
+func TestClaim_Validate(t *testing.T) {
+	t.Run("builtin action", func(t *testing.T) {
+		c, err := New("test", ActionInstall, exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+		err = c.Validate()
+		require.NoError(t, err, "Validate failed")
+	})
+
+	t.Run("custom action", func(t *testing.T) {
+		c, err := New("test", "logs", exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+		err = c.Validate()
+		require.NoError(t, err, "Validate failed")
+	})
+
+	t.Run("missing id", func(t *testing.T) {
+		c, err := New("test", ActionInstall, exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+
+		c.ID = ""
+
+		err = c.Validate()
+		require.EqualError(t, err, "the claim id must be set")
+	})
+
+	t.Run("missing revision", func(t *testing.T) {
+		c, err := New("test", ActionInstall, exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+
+		c.Revision = ""
+
+		err = c.Validate()
+		require.EqualError(t, err, "the revision must be set")
+	})
+
+	t.Run("missing installation", func(t *testing.T) {
+		c, err := New("test", ActionInstall, exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+
+		c.Installation = ""
+
+		err = c.Validate()
+		require.EqualError(t, err, "the installation must be set")
+	})
+
+	t.Run("missing action", func(t *testing.T) {
+		c, err := New("test", "", exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+
+		err = c.Validate()
+		require.EqualError(t, err, "the action must be set")
+	})
+
+	t.Run("invalid action", func(t *testing.T) {
+		c, err := New("test", "missing", exampleBundle, nil)
+		require.NoError(t, err, "New failed")
+
+		err = c.Validate()
+		require.EqualError(t, err, `action "missing" is not defined in the bundle`)
+	})
+}
+
+func TestClaim_NewClaim(t *testing.T) {
+	existingClaim, err := New("claim", ActionUnknown, exampleBundle, nil)
 	assert.NoError(t, err)
-	oldMod := claim.Modified
-	oldUlid := claim.Revision
 
-	time.Sleep(1 * time.Millisecond) // Force the Update to happen at a new time. For those of us who remembered to press the Turbo button.
+	t.Run("modifying action", func(t *testing.T) {
+		updatedClaim, err := existingClaim.NewClaim("test", exampleBundle, nil)
+		require.NoError(t, err, "NewClaim failed")
 
-	claim.Update(ActionInstall, StatusSucceeded)
+		is := assert.New(t)
+		is.NotEqual(existingClaim.ID, updatedClaim.ID)
+		is.NotEqual(existingClaim.Revision, updatedClaim.Revision)
+		is.Equal("test", updatedClaim.Action)
+	})
 
-	is := assert.New(t)
-	is.NotEqual(oldMod, claim.Modified)
-	is.NotEqual(oldUlid, claim.Revision)
-	is.Equal("install", claim.Result.Action)
-	is.Equal("succeeded", claim.Result.Status)
+	t.Run("non-modifying action", func(t *testing.T) {
+		updatedClaim, err := existingClaim.NewClaim("logs", exampleBundle, nil)
+		require.NoError(t, err, "NewClaim failed")
+
+		is := assert.New(t)
+		is.NotEqual(existingClaim.ID, updatedClaim.ID)
+		is.Equal(existingClaim.Revision, updatedClaim.Revision)
+		is.Equal("logs", updatedClaim.Action)
+	})
+
 }
 
 func TestValidName(t *testing.T) {
@@ -71,6 +140,7 @@ func TestValidName(t *testing.T) {
 }
 
 var (
+	staticID       = "id"
 	staticRevision = "revision"
 	staticDate     = time.Date(1983, time.April, 18, 1, 2, 3, 4, time.UTC)
 	exampleBundle  = bundle.Bundle{
@@ -79,17 +149,21 @@ var (
 		Version:          "v0.1.0",
 		Description:      "this is my bundle",
 		InvocationImages: []bundle.InvocationImage{},
+		Actions: map[string]bundle.Action{
+			"test": {Modifies: true},
+			"logs": {Modifies: false},
+		},
 	}
 )
 
 func TestMarshal_New(t *testing.T) {
-	claim, err := New("my_claim")
+	claim, err := New("my_claim", ActionUnknown, bundle.Bundle{}, nil)
 	assert.NoError(t, err)
 
 	// override dynamic fields for testing
+	claim.ID = staticID
 	claim.Revision = staticRevision
 	claim.Created = staticDate
-	claim.Modified = staticDate
 
 	bytes, err := json.Marshal(claim)
 	assert.NoError(t, err, "failed to json.Marshal claim")
@@ -97,30 +171,24 @@ func TestMarshal_New(t *testing.T) {
 	wantClaim, err := ioutil.ReadFile("testdata/claim.default.json")
 	assert.NoError(t, err, "failed to read test claim")
 
-	assert.Equal(t, string(wantClaim), strings.TrimSpace(string(bytes)), "marshaled claim does not match expected")
+	gotClaim := strings.TrimSpace(string(bytes))
+	assert.Equal(t, string(wantClaim), gotClaim, "marshaled claim does not match expected")
 }
 
 var schemaVersion, _ = GetDefaultSchemaVersion()
 var exampleClaim = Claim{
 	SchemaVersion:   schemaVersion,
+	ID:              staticID,
 	Installation:    "my_claim",
 	Revision:        staticRevision,
 	Created:         staticDate,
-	Modified:        staticDate,
-	Bundle:          &exampleBundle,
+	Bundle:          exampleBundle,
 	BundleReference: "example.com/mybundle@sha256:2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae",
-	Result: Result{
-		Action:  ActionInstall,
-		Message: "result message",
-		Status:  StatusPending,
-	},
+	Action:          ActionInstall,
 	Parameters: map[string]interface{}{
 		"myparam": "myparamvalue",
 	},
-	Outputs: map[string]interface{}{
-		"myoutput": "myoutputvalue",
-	},
-	Custom: []string{
+	Custom: []interface{}{
 		"anything goes",
 	},
 }
@@ -138,54 +206,6 @@ func TestValidateExampleClaim(t *testing.T) {
 		`claim validation failed: invalid schema version "not-semver": Invalid Semantic Version`)
 }
 
-func TestResult_Validate_ValidStatus(t *testing.T) {
-	validStatuses := []string{
-		StatusCanceled,
-		StatusRunning,
-		StatusFailed,
-		StatusPending,
-		StatusSucceeded,
-		StatusUnknown,
-	}
-	for _, status := range validStatuses {
-		t.Run(status+" status", func(t *testing.T) {
-			result := Result{
-				Action: ActionInstall,
-				Status: status,
-			}
-			err := result.Validate()
-			assert.NoError(t, err, "%s is a valid claim status", status)
-		})
-	}
-}
-
-func TestValidate_InvalidResult(t *testing.T) {
-	claim := exampleClaim
-
-	t.Run("if result is empty, validation should fail", func(t *testing.T) {
-		claim.Result = Result{}
-		err := claim.Validate()
-		assert.EqualError(t, err, "claim validation failed: the action must be provided")
-	})
-
-	t.Run("if result has empty action, validation should fail", func(t *testing.T) {
-		claim.Result = Result{
-			Status: StatusSucceeded,
-		}
-		err := claim.Validate()
-		assert.EqualError(t, err, "claim validation failed: the action must be provided")
-	})
-
-	t.Run("if result has invalid status, validation should fail", func(t *testing.T) {
-		claim.Result = Result{
-			Action: "install",
-			Status: "invalidStatus",
-		}
-		err := claim.Validate()
-		assert.EqualError(t, err, "claim validation failed: invalid status: invalidStatus")
-	})
-}
-
 func TestMarshal_AllFields(t *testing.T) {
 	bytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal claim")
@@ -193,11 +213,11 @@ func TestMarshal_AllFields(t *testing.T) {
 	wantClaim, err := ioutil.ReadFile("testdata/claim.allfields.json")
 	assert.NoError(t, err, "failed to read test claim")
 
-	assert.Equal(t, strings.TrimSpace(string(wantClaim)), string(bytes), "marshaled claim does not match expected")
+	gotClaim := string(bytes)
+	assert.Equal(t, strings.TrimSpace(string(wantClaim)), gotClaim, "marshaled claim does not match expected")
 }
 
 func TestClaimSchema(t *testing.T) {
-	t.Skip("This test is pending non-trivial updates to the Claim and Result objects: https://github.com/cnabio/cnab-go/issues/202")
 	claimBytes, err := json.Marshal(exampleClaim)
 	assert.NoError(t, err, "failed to json.Marshal the claim")
 
@@ -211,6 +231,71 @@ func TestClaimSchema(t *testing.T) {
 		}
 		t.Fail()
 	}
+}
+
+func TestClaim_GetLastResult(t *testing.T) {
+	succeeded := Result{
+		ID:     "2",
+		Status: StatusSucceeded,
+	}
+	running := Result{
+		ID:     "1",
+		Status: StatusRunning,
+	}
+
+	t.Run("result exists", func(t *testing.T) {
+		c := Claim{
+			results: &Results{
+				succeeded,
+				running,
+			},
+		}
+
+		r, err := c.GetLastResult()
+
+		require.NoError(t, err, "GetLastResult failed")
+		assert.Equal(t, succeeded, r, "GetLastResult did not return the expected result")
+		assert.Equal(t, StatusSucceeded, c.GetStatus(), "GetStatus did not return the status of the last result")
+	})
+
+	t.Run("no results loaded", func(t *testing.T) {
+		c := Claim{
+			results: nil,
+		}
+
+		r, err := c.GetLastResult()
+
+		require.EqualError(t, err, "the claim does not have results loaded")
+		assert.Equal(t, Result{}, r, "should return an empty result when one cannot be found")
+		assert.Equal(t, StatusUnknown, c.GetStatus(), "GetStatus should return unknown when there are no results")
+	})
+
+	t.Run("no results", func(t *testing.T) {
+		c := Claim{
+			results: &Results{},
+		}
+
+		r, err := c.GetLastResult()
+
+		require.EqualError(t, err, "the claim has no results")
+		assert.Equal(t, Result{}, r, "should return an empty result when one cannot be found")
+		assert.Equal(t, StatusUnknown, c.GetStatus(), "GetStatus should return unknown when there are no results")
+	})
+
+}
+
+func TestClaims_Sort(t *testing.T) {
+	c := Claims{
+		{ID: "2"},
+		{ID: "1"},
+		{ID: "3"},
+	}
+
+	sort.Sort(c)
+
+	assert.Equal(t, "1", c[0].ID, "Claims did not sort 1 to the first slot")
+	assert.Equal(t, "2", c[1].ID, "Claims did not sort 2 to the second slot")
+	assert.Equal(t, "3", c[2].ID, "Claims did not sort 3 to the third slot")
 }
 
 func TestNewULID_ThreadSafe(t *testing.T) {
@@ -278,4 +363,34 @@ func TestMustNewULID_Panics(t *testing.T) {
 
 	MustNewULID()
 	require.Fail(t, "expected MustNewULID to panic")
+}
+
+func TestClaim_IsModifyingAction(t *testing.T) {
+	testcases := []struct {
+		name         string
+		action       string
+		wantModifies bool
+		wantError    string
+	}{
+		{name: "install", action: ActionInstall, wantModifies: true},
+		{name: "upgrade", action: ActionInstall, wantModifies: true},
+		{name: "uninstall", action: ActionInstall, wantModifies: true},
+		{name: "modifying action", action: "test", wantModifies: true},
+		{name: "non-modifying action", action: "logs", wantModifies: false},
+		{name: "invalid action", action: "missing", wantError: `custom action not defined "missing"`},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := Claim{Action: tc.action, Bundle: exampleBundle}
+			modifies, err := c.IsModifyingAction()
+
+			if tc.wantError != "" {
+				require.EqualError(t, err, tc.wantError)
+			} else {
+				require.NoError(t, err, "IsModifyingAction failed")
+				assert.Equal(t, tc.wantModifies, modifies, "invalid modifies")
+			}
+		})
+	}
 }

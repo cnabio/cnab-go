@@ -19,6 +19,9 @@ func TestBackingStore_Read(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
+			s.groups[testItemType] = map[string][]string{
+				testGroup: {"key1"},
+			}
 			s.data[testItemType] = map[string][]byte{"key1": []byte("value1")}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
@@ -57,7 +60,7 @@ func TestBackingStore_Store(t *testing.T) {
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			err := bs.Save(testItemType, "key1", []byte("value1"))
+			err := bs.Save(testItemType, "", "key1", []byte("value1"))
 			require.NoError(t, err, "expected Store to succeed")
 
 			connectCount, err := s.GetConnectCount()
@@ -107,6 +110,9 @@ func TestBackingStore_List(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
+			s.groups[testItemType] = map[string][]string{
+				testGroup: {"key1"},
+			}
 			s.data[testItemType] = map[string][]byte{
 				"key1": []byte("value1"),
 				"key2": []byte("value2"),
@@ -114,10 +120,10 @@ func TestBackingStore_List(t *testing.T) {
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			results, err := bs.List(testItemType)
+			results, err := bs.List(testItemType, testGroup)
 			require.NoError(t, err, "expected List to succeed")
 			require.Contains(t, results, "key1")
-			require.Contains(t, results, "key2")
+			require.NotContains(t, results, "key2")
 
 			connectCount, err := s.GetConnectCount()
 			require.NoError(t, err, "GetConnectCount failed")
@@ -146,6 +152,9 @@ func TestBackingStore_Delete(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
+			s.groups[testItemType] = map[string][]string{
+				testGroup: {"key1"},
+			}
 			s.data[testItemType] = map[string][]byte{"key1": []byte("value1")}
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
@@ -183,6 +192,9 @@ func TestBackingStore_ReadAll(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
+			s.groups[testItemType] = map[string][]string{
+				testGroup: {"key1"},
+			}
 			s.data[testItemType] = map[string][]byte{
 				"key1": []byte("value1"),
 				"key2": []byte("value2"),
@@ -190,10 +202,10 @@ func TestBackingStore_ReadAll(t *testing.T) {
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
-			results, err := bs.ReadAll(testItemType)
+			results, err := bs.ReadAll(testItemType, testGroup)
 			require.NoError(t, err, "expected ReadAll to succeed")
 			assert.Contains(t, results, []byte("value1"))
-			assert.Contains(t, results, []byte("value2"))
+			assert.NotContains(t, results, []byte("value2"))
 
 			connectCount, err := s.GetConnectCount()
 			require.NoError(t, err, "GetConnectCount failed")

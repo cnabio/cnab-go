@@ -259,7 +259,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	go func() {
 		defer attach.Close()
 		for {
-			_, err := stdcopy.StdCopy(stdout, stderr, attach.Reader)
+			_, err = stdcopy.StdCopy(stdout, stderr, attach.Reader)
 			if err != nil {
 				break
 			}
@@ -308,7 +308,6 @@ func containerError(containerMessage string, containerErr, fetchErr error) error
 	if fetchErr != nil {
 		return fmt.Errorf("%s: %v. fetching outputs failed: %s", containerMessage, containerErr, fetchErr)
 	}
-
 	return fmt.Errorf("%s: %v", containerMessage, containerErr)
 }
 
@@ -329,10 +328,8 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 	if err != nil {
 		return opResult, fmt.Errorf("error copying outputs from container: %s", err)
 	}
-
 	tarReader := tar.NewReader(ioReader)
 	header, err := tarReader.Next()
-
 	// io.EOF pops us out of loop on successful run.
 	for err == nil {
 		// skip directories because we're gathering file contents
@@ -344,12 +341,15 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 		var contents []byte
 		// CopyFromContainer strips prefix above outputs directory.
 		pathInContainer := unix_path.Join("/cnab", "app", header.Name)
-
-		contents, err = ioutil.ReadAll(tarReader)
-		if err != nil {
-			return opResult, fmt.Errorf("error while reading %q from outputs tar: %s", pathInContainer, err)
+		outputName, shouldCapture := op.Outputs[pathInContainer]
+		if shouldCapture {
+			contents, err = ioutil.ReadAll(tarReader)
+			if err != nil {
+				return opResult, fmt.Errorf("error while reading %q from outputs tar: %s", pathInContainer, err)
+			}
+			opResult.Outputs[outputName] = string(contents)
 		}
-		opResult.Outputs[pathInContainer] = string(contents)
+
 		header, err = tarReader.Next()
 	}
 
@@ -357,34 +357,7 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 		return opResult, err
 	}
 
-	// if an applicable output is expected but does not exist and it has a
-	// non-empty default value, create an entry in the map with the
-	// default value as its contents
-	for name, output := range op.Bundle.Outputs {
-		filepath := unix_path.Join("/cnab", "app", "outputs", name)
-		if !existsInOutputsMap(opResult.Outputs, filepath) && output.AppliesTo(op.Action) {
-			if outputDefinition, exists := op.Bundle.Definitions[output.Definition]; exists {
-				outputDefault := outputDefinition.Default
-				if outputDefault != nil {
-					contents := fmt.Sprintf("%v", outputDefault)
-					opResult.Outputs[filepath] = contents
-				} else {
-					return opResult, fmt.Errorf("required output %s is missing and has no default", name)
-				}
-			}
-		}
-	}
-
 	return opResult, nil
-}
-
-func existsInOutputsMap(outputsMap map[string]string, path string) bool {
-	for outputPath := range outputsMap {
-		if outputPath == path {
-			return true
-		}
-	}
-	return false
 }
 
 func generateTar(files map[string]string) (io.Reader, error) {

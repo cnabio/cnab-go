@@ -3,6 +3,8 @@ package lookup
 import (
 	"fmt"
 
+	"github.com/cnabio/cnab-go/driver/debug"
+
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/command"
 	"github.com/cnabio/cnab-go/driver/docker"
@@ -17,7 +19,7 @@ func Lookup(name string) (driver.Driver, error) {
 	case "kubernetes", "k8s":
 		return &kubernetes.Driver{}, nil
 	case "debug":
-		return &driver.DebugDriver{}, nil
+		return &debug.Driver{}, nil
 	default:
 		cmddriver := &command.Driver{Name: name}
 		if cmddriver.CheckDriverExists() {

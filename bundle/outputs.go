@@ -1,5 +1,9 @@
 package bundle
 
+import (
+	"fmt"
+)
+
 type Output struct {
 	Definition  string   `json:"definition" yaml:"definition"`
 	ApplyTo     []string `json:"applyTo,omitempty" yaml:"applyTo,omitempty"`
@@ -19,4 +23,19 @@ func (output *Output) AppliesTo(action string) bool {
 		}
 	}
 	return false
+}
+
+// IsOutputSensitive is a convenience function that determines if an output's
+// value is sensitive.
+func (b Bundle) IsOutputSensitive(outputName string) (bool, error) {
+	if output, ok := b.Outputs[outputName]; ok {
+		if def, ok := b.Definitions[output.Definition]; ok {
+			sensitive := def.WriteOnly != nil && *def.WriteOnly
+			return sensitive, nil
+		}
+
+		return false, fmt.Errorf("output definition %q not found", output.Definition)
+	}
+
+	return false, fmt.Errorf("output %q not defined", outputName)
 }

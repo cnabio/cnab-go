@@ -17,6 +17,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 		op := &driver.Operation{}
 		err := a.ApplyConfig(op)
 		assert.NoError(t, err, "ApplyConfig should not have returned an error")
+		assert.Equal(t, os.Stdout, op.Out, "write to stdout when output is undefined")
 	})
 
 	t.Run("all config is persisted", func(t *testing.T) {

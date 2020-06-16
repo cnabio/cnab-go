@@ -1,10 +1,9 @@
 package driver
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-
-	"github.com/docker/go/canonical/json"
 
 	"github.com/cnabio/cnab-go/bundle"
 )
@@ -33,8 +32,9 @@ type Operation struct {
 	Environment map[string]string `json:"environment"`
 	// Files contains files that should be injected into the invocation image.
 	Files map[string]string `json:"files"`
-	// Outputs is a list of paths starting with `/cnab/app/outputs` that the driver should return the contents of in the OperationResult.
-	Outputs []string `json:"outputs"`
+	// Outputs map of output paths (e.g. /cnab/app/outputs/NAME) to the name of the output.
+	// Indicates which outputs the driver should return the contents of in the OperationResult.
+	Outputs map[string]string `json:"outputs"`
 	// Output stream for log messages from the driver
 	Out io.Writer `json:"-"`
 	// Bundle represents the bundle information for use by the operation
@@ -50,8 +50,41 @@ type ResolvedCred struct {
 
 // OperationResult is the output of the Driver running an Operation.
 type OperationResult struct {
-	// Outputs is a map from the container path of an output file to its contents (i.e. /cnab/app/outputs/...).
+	// Outputs maps from the name of the output to its content.
 	Outputs map[string]string
+
+	// Logs is the combined logs from the bundle execution.
+	Logs bytes.Buffer
+
+	// Error is any errors from executing the operation.
+	Error error
+}
+
+// SetDefaultOutputValues for an output when it does not exist and it has a
+// non-empty default value.
+func (r *OperationResult) SetDefaultOutputValues(op Operation) error {
+	if r.Outputs == nil {
+		r.Outputs = make(map[string]string)
+	}
+
+	for name, output := range op.Bundle.Outputs {
+		_, hasOutput := r.Outputs[name]
+		if hasOutput || !output.AppliesTo(op.Action) {
+			continue
+		}
+
+		if outputDefinition, exists := op.Bundle.Definitions[output.Definition]; exists {
+			outputDefault := outputDefinition.Default
+			if outputDefault != nil {
+				contents := fmt.Sprintf("%v", outputDefault)
+				r.Outputs[name] = contents
+			} else {
+				return fmt.Errorf("required output %s is missing and has no default", name)
+			}
+		}
+	}
+
+	return nil
 }
 
 // Driver is capable of running a invocation image
@@ -69,38 +102,4 @@ type Configurable interface {
 	// SetConfig allows setting configuration, where name corresponds to the key in Config, and value is
 	// the value to be set.
 	SetConfig(map[string]string)
-}
-
-// DebugDriver prints the information passed to a driver
-//
-// It does not ever run the image.
-type DebugDriver struct {
-	config map[string]string
-}
-
-// Run executes the operation on the Debug driver
-func (d *DebugDriver) Run(op *Operation) (OperationResult, error) {
-	data, err := json.MarshalIndent(op, "", "  ")
-	if err != nil {
-		return OperationResult{}, err
-	}
-	fmt.Fprintln(op.Out, string(data))
-	return OperationResult{}, nil
-}
-
-// Handles always returns true, effectively claiming to work for any image type
-func (d *DebugDriver) Handles(dt string) bool {
-	return true
-}
-
-// Config returns the configuration help text
-func (d *DebugDriver) Config() map[string]string {
-	return map[string]string{
-		"VERBOSE": "Increase verbosity. true, false are supported values",
-	}
-}
-
-// SetConfig sets configuration for this driver
-func (d *DebugDriver) SetConfig(settings map[string]string) {
-	d.config = settings
 }

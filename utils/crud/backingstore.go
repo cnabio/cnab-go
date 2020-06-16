@@ -69,7 +69,7 @@ func (s *BackingStore) autoClose() error {
 	return nil
 }
 
-func (s *BackingStore) List(itemType string) ([]string, error) {
+func (s *BackingStore) List(itemType string, group string) ([]string, error) {
 	if s.shouldAutoConnect() {
 		defer s.autoClose()
 		if err := s.Connect(); err != nil {
@@ -77,10 +77,10 @@ func (s *BackingStore) List(itemType string) ([]string, error) {
 		}
 	}
 
-	return s.backingStore.List(itemType)
+	return s.backingStore.List(itemType, group)
 }
 
-func (s *BackingStore) Save(itemType string, name string, data []byte) error {
+func (s *BackingStore) Save(itemType string, group string, name string, data []byte) error {
 	if s.shouldAutoConnect() {
 		defer s.autoClose()
 		if err := s.Connect(); err != nil {
@@ -88,7 +88,7 @@ func (s *BackingStore) Save(itemType string, name string, data []byte) error {
 		}
 	}
 
-	return s.backingStore.Save(itemType, name, data)
+	return s.backingStore.Save(itemType, group, name, data)
 }
 
 func (s *BackingStore) Read(itemType string, name string) ([]byte, error) {
@@ -102,8 +102,8 @@ func (s *BackingStore) Read(itemType string, name string) ([]byte, error) {
 	return s.backingStore.Read(itemType, name)
 }
 
-// ReadAll retrieves all the items.
-func (s *BackingStore) ReadAll(itemType string) ([][]byte, error) {
+// ReadAll retrieves all the items with the specified prefix
+func (s *BackingStore) ReadAll(itemType string, group string) ([][]byte, error) {
 	if s.shouldAutoConnect() {
 		defer s.autoClose()
 		if err := s.Connect(); err != nil {
@@ -112,7 +112,7 @@ func (s *BackingStore) ReadAll(itemType string) ([][]byte, error) {
 	}
 
 	results := make([][]byte, 0)
-	list, err := s.List(itemType)
+	list, err := s.List(itemType, group)
 	if err != nil {
 		return results, err
 	}

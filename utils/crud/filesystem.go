@@ -1,12 +1,13 @@
 package crud
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pkg/errors"
 )
 
 // ErrRecordDoesNotExist represents when file path is not found on file system
@@ -14,33 +15,41 @@ var ErrRecordDoesNotExist = errors.New("File does not exist")
 
 // NewFileSystemStore creates a Store backed by a file system directory.
 // Each key is represented by a file in that directory.
-func NewFileSystemStore(baseDirectory string, fileExtension string) Store {
-	return fileSystemStore{
-		baseDirectory: baseDirectory,
-		fileExtension: fileExtension,
+// - baseDirectory: the base directory under which files should be stored, e.g. /Users/carolynvs/.cnab
+// - fileExtensions: map from item types (e.g. "claims") to the file extension that should be used (e.g. ".json")
+func NewFileSystemStore(baseDirectory string, fileExtensions map[string]string) FileSystemStore {
+	return FileSystemStore{
+		baseDirectory:  baseDirectory,
+		fileExtensions: fileExtensions,
 	}
 }
 
-type fileSystemStore struct {
+type FileSystemStore struct {
 	baseDirectory string
-	fileExtension string
+
+	// Lookup of which file extension to use for which item type
+	fileExtensions map[string]string
 }
 
-func (s fileSystemStore) List(itemType string) ([]string, error) {
+func (s FileSystemStore) List(itemType string, group string) ([]string, error) {
 	if err := s.ensure(itemType); err != nil {
 		return nil, err
 	}
 
-	files, err := ioutil.ReadDir(filepath.Join(s.baseDirectory, itemType))
+	files, err := ioutil.ReadDir(filepath.Join(s.baseDirectory, itemType, group))
 	if err != nil {
+		// The group's directory doesn't exist, gracefully handle and continue
+		if os.IsNotExist(err) {
+			return []string{}, ErrRecordDoesNotExist
+		}
 		return []string{}, err
 	}
 
-	return names(s.storageFiles(files)), nil
+	return names(s.storageFiles(itemType, files)), nil
 }
 
-func (s fileSystemStore) Save(itemType string, name string, data []byte) error {
-	filename, err := s.fullyQualifiedName(itemType, name)
+func (s FileSystemStore) Save(itemType string, group string, name string, data []byte) error {
+	filename, err := s.fullyQualifiedName(itemType, group, name)
 	if err != nil {
 		return err
 	}
@@ -48,40 +57,81 @@ func (s fileSystemStore) Save(itemType string, name string, data []byte) error {
 	return ioutil.WriteFile(filename, data, os.ModePerm)
 }
 
-func (s fileSystemStore) Read(itemType string, name string) ([]byte, error) {
-	filename, err := s.fullyQualifiedName(itemType, name)
+func (s FileSystemStore) Read(itemType string, name string) ([]byte, error) {
+	fileName, err := s.resolveFileName(itemType, name)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		return nil, ErrRecordDoesNotExist
-	}
-
-	return ioutil.ReadFile(filename)
+	return ioutil.ReadFile(fileName)
 }
 
-func (s fileSystemStore) Delete(itemType string, name string) error {
-	filename, err := s.fullyQualifiedName(itemType, name)
+func (s FileSystemStore) Delete(itemType string, name string) error {
+	filename, err := s.resolveFileName(itemType, name)
 	if err != nil {
 		return err
 	}
 	return os.Remove(filename)
 }
 
-func (s fileSystemStore) fileNameOf(itemType string, name string) string {
-	return filepath.Join(s.baseDirectory, itemType, fmt.Sprintf("%s.%s", name, s.fileExtension))
-}
-
-func (s fileSystemStore) fullyQualifiedName(itemType string, name string) (string, error) {
-	if err := s.ensure(itemType); err != nil {
+func (s FileSystemStore) resolveFileName(itemType string, name string) (string, error) {
+	// First check for an exact match
+	exactName, err := s.fullyQualifiedName(itemType, "", name)
+	if err != nil {
 		return "", err
 	}
-	return s.fileNameOf(itemType, name), nil
+
+	if _, err := os.Stat(exactName); !os.IsNotExist(err) {
+		return exactName, nil
+	}
+
+	// Fallback to looking in a subdirectory where we don't know the group's value
+	wildName, err := s.fullyQualifiedName(itemType, "*", name)
+	if err != nil {
+		return "", err
+	}
+
+	matches, err := filepath.Glob(wildName)
+	if err != nil {
+		return "", err
+	}
+
+	switch len(matches) {
+	case 0:
+		return "", errors.Wrapf(ErrRecordDoesNotExist, "no file found for %s %s", itemType, name)
+	case 1:
+		fileName := matches[0]
+		if _, err := os.Stat(fileName); err != nil {
+			return "", errors.Wrapf(ErrRecordDoesNotExist, "cannot access %s", fileName)
+		}
+		return fileName, nil
+	default:
+		return "", fmt.Errorf("more than one file matched for %s %s", itemType, name)
+	}
 }
 
-func (s fileSystemStore) ensure(itemType string) error {
-	target := filepath.Join(s.baseDirectory, itemType)
+func (s FileSystemStore) fileNameOf(itemType string, group string, name string) string {
+	fileExt := s.fileExtensions[itemType]
+	return filepath.Join(s.baseDirectory, itemType, group, fmt.Sprintf("%s%s", name, fileExt))
+}
+
+func (s FileSystemStore) fullyQualifiedName(itemType string, group string, name string) (string, error) {
+	// Make sure the base path exists, ignoring wildcard groups
+	var relPath string
+	if group != "*" {
+		relPath = filepath.Join(itemType, group)
+	} else {
+		relPath = itemType
+	}
+	if err := s.ensure(relPath); err != nil {
+		return "", err
+	}
+
+	return s.fileNameOf(itemType, group, name), nil
+}
+
+func (s FileSystemStore) ensure(relPath string) error {
+	target := filepath.Join(s.baseDirectory, relPath)
 	fi, err := os.Stat(target)
 	if err == nil {
 		if fi.IsDir() {
@@ -92,11 +142,11 @@ func (s fileSystemStore) ensure(itemType string) error {
 	return os.MkdirAll(target, os.ModePerm)
 }
 
-func (s fileSystemStore) storageFiles(files []os.FileInfo) []os.FileInfo {
+func (s FileSystemStore) storageFiles(itemType string, files []os.FileInfo) []os.FileInfo {
 	result := make([]os.FileInfo, 0)
-	ext := "." + s.fileExtension
+	ext := s.fileExtensions[itemType]
 	for _, file := range files {
-		if !file.IsDir() && filepath.Ext(file.Name()) == ext {
+		if file.IsDir() || filepath.Ext(file.Name()) == ext {
 			result = append(result, file)
 		}
 	}

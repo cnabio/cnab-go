@@ -849,3 +849,52 @@ func TestBundleSchema(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestBundle_IsOutputSensitive(t *testing.T) {
+	var writeOnly = true
+	b := Bundle{
+		Definitions: map[string]*definition.Schema{
+			"port": {
+				Type: "integer",
+			},
+			"password": {
+				Type:      "string",
+				WriteOnly: &writeOnly,
+			},
+		},
+		Outputs: map[string]Output{
+			"port": {
+				Definition: "port",
+			},
+			"password": {
+				Definition: "password",
+			},
+			"no-def": {
+				Definition: "no-def",
+			},
+		},
+	}
+
+	t.Run("write-only unset", func(t *testing.T) {
+		sensitive, err := b.IsOutputSensitive("port")
+		require.NoError(t, err, "IsOutputSensitive failed")
+		assert.False(t, sensitive, "expected port to NOT be sensitive because write-only is false")
+	})
+
+	t.Run("write-only true", func(t *testing.T) {
+		sensitive, err := b.IsOutputSensitive("password")
+		require.NoError(t, err, "IsOutputSensitive failed")
+		assert.True(t, sensitive, "expected password to be sensitive because write-only is true")
+	})
+
+	t.Run("missing output", func(t *testing.T) {
+		_, err := b.IsOutputSensitive("no-output")
+		require.EqualError(t, err, `output "no-output" not defined`)
+	})
+
+	t.Run("missing definition", func(t *testing.T) {
+		_, err := b.IsOutputSensitive("no-def")
+		require.EqualError(t, err, `output definition "no-def" not found`)
+	})
+
+}
