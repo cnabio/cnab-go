@@ -40,5 +40,5 @@ func TestSecretStore_Resolve_InvalidSource(t *testing.T) {
 	h := &SecretStore{}
 	_, err := h.Resolve("cmd", "kv get something")
 	require.Error(t, err, "expected Resolve to return an error")
-	assert.Equal(t, "invalid credential source: cmd", err.Error())
+	assert.Equal(t, "invalid value source: cmd", err.Error())
 }
