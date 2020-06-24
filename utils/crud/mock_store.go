@@ -2,12 +2,23 @@ package crud
 
 import (
 	"fmt"
+	"path"
 	"strconv"
 )
 
 // The main point of these tests is to catch any case where the interface
 // changes. But we also provide a mock for testing.
 var _ Store = MockStore{}
+
+type item struct {
+	itemType, group, name string
+	data                  []byte
+}
+
+type itemGroup struct {
+	itemType, group string
+	items           map[string]struct{}
+}
 
 const (
 	connectCount  = "connect-count"
@@ -22,11 +33,11 @@ const (
 type MockStore struct {
 	// data stores the mocked data
 	// itemType -> name -> data
-	data map[string]map[string][]byte
+	data map[string]*item
 
 	// groups stores the groupings applied to the mocked data
-	// itemType -> group -> list of names
-	groups map[string]map[string][]string
+	// itemType -> group -> list of keys
+	groups map[string]*itemGroup
 
 	// DeleteMock replaces the default Delete implementation with the specified function.
 	// This allows for simulating failures.
@@ -47,43 +58,35 @@ type MockStore struct {
 
 func NewMockStore() MockStore {
 	return MockStore{
-		groups: map[string]map[string][]string{},
-		data:   map[string]map[string][]byte{},
+		groups: map[string]*itemGroup{},
+		data:   map[string]*item{},
 	}
 }
 
 func (s MockStore) Connect() error {
-	_, ok := s.data[mockStoreType]
-	if !ok {
-		s.data[mockStoreType] = make(map[string][]byte, 1)
-	}
-
 	// Keep track of Connect calls for test asserts later
 	count, err := s.GetConnectCount()
 	if err != nil {
 		return err
 	}
-
-	s.data[mockStoreType][connectCount] = []byte(strconv.Itoa(count + 1))
+	s.setCount(connectCount, count+1)
 
 	return nil
 }
 
 func (s MockStore) Close() error {
-	_, ok := s.data[mockStoreType]
-	if !ok {
-		s.data[mockStoreType] = make(map[string][]byte, 1)
-	}
-
 	// Keep track of Close calls for test asserts later
 	count, err := s.GetCloseCount()
 	if err != nil {
 		return err
 	}
-
-	s.data[mockStoreType][closeCount] = []byte(strconv.Itoa(count + 1))
+	s.setCount(closeCount, count+1)
 
 	return nil
+}
+
+func (s MockStore) key(itemType string, id string) string {
+	return path.Join(itemType, id)
 }
 
 func (s MockStore) List(itemType string, group string) ([]string, error) {
@@ -91,25 +94,13 @@ func (s MockStore) List(itemType string, group string) ([]string, error) {
 		return s.ListMock(itemType, group)
 	}
 
-	if groups, ok := s.groups[itemType]; ok {
-		if names, ok := groups[group]; ok {
-			buf := make([]string, len(names))
-			i := 0
-			for _, name := range names {
-				buf[i] = name
-				i++
-			}
-			return buf, nil
+	// List all items in a group, e.g. claims in an installation
+	if g, ok := s.groups[s.key(itemType, group)]; ok {
+		names := make([]string, 0, len(g.items))
+		for name := range g.items {
+			names = append(names, name)
 		}
-
-		if group == "" {
-			// List all the groups, e.g. if we were listing claims, this would list the installation names
-			names := make([]string, 0, len(groups))
-			for groupName := range groups {
-				names = append(names, groupName)
-			}
-			return names, nil
-		}
+		return names, nil
 	}
 
 	return nil, nil
@@ -120,22 +111,25 @@ func (s MockStore) Save(itemType string, group string, name string, data []byte)
 		return s.SaveMock(itemType, name, data)
 	}
 
-	groupNames, ok := s.groups[itemType]
+	g, ok := s.groups[s.key(itemType, group)]
 	if !ok {
-		groupNames = map[string][]string{
-			group: make([]string, 0, 1),
+		g = &itemGroup{
+			group:    group,
+			itemType: itemType,
+			items:    make(map[string]struct{}, 1),
 		}
-		s.groups[itemType] = groupNames
+		s.groups[s.key(itemType, group)] = g
 	}
-	groupNames[group] = append(groupNames[group], name)
+	g.items[name] = struct{}{}
 
-	itemData, ok := s.data[itemType]
-	if !ok {
-		itemData = make(map[string][]byte, 1)
-		s.data[itemType] = itemData
+	i := &item{
+		itemType: itemType,
+		group:    group,
+		name:     name,
+		data:     data,
 	}
+	s.data[s.key(itemType, name)] = i
 
-	itemData[name] = data
 	return nil
 }
 
@@ -144,10 +138,8 @@ func (s MockStore) Read(itemType string, name string) ([]byte, error) {
 		return s.ReadMock(itemType, name)
 	}
 
-	if itemData, ok := s.data[itemType]; ok {
-		if data, ok := itemData[name]; ok {
-			return data, nil
-		}
+	if i, ok := s.data[s.key(itemType, name)]; ok {
+		return i.data, nil
 	}
 
 	return nil, ErrRecordDoesNotExist
@@ -158,11 +150,16 @@ func (s MockStore) Delete(itemType string, name string) error {
 		return s.DeleteMock(itemType, name)
 	}
 
-	if itemData, ok := s.data[itemType]; ok {
-		if _, ok := itemData[name]; ok {
-			delete(itemData, name)
-			return nil
+	if i, ok := s.data[s.key(itemType, name)]; ok {
+		delete(s.data, s.key(itemType, name))
+
+		if g, ok := s.groups[s.key(itemType, i.group)]; ok {
+			delete(g.items, i.name)
+			if len(g.items) == 0 {
+				delete(s.groups, s.key(itemType, i.group))
+			}
 		}
+		return nil
 	}
 
 	return ErrRecordDoesNotExist
@@ -171,14 +168,14 @@ func (s MockStore) Delete(itemType string, name string) error {
 // GetConnectCount is for tests to safely read the Connect call count
 // without accidentally triggering it by using Read.
 func (s MockStore) GetConnectCount() (int, error) {
-	countB, ok := s.data[mockStoreType][connectCount]
+	countB, ok := s.data[s.key(mockStoreType, connectCount)]
 	if !ok {
-		countB = []byte("0")
+		return 0, nil
 	}
 
-	count, err := strconv.Atoi(string(countB))
+	count, err := strconv.Atoi(string(countB.data))
 	if err != nil {
-		return 0, fmt.Errorf("could not convert connect-count %s to int: %v", string(countB), err)
+		return 0, fmt.Errorf("could not convert connect-count %s to int: %v", string(countB.data), err)
 	}
 
 	return count, nil
@@ -187,15 +184,28 @@ func (s MockStore) GetConnectCount() (int, error) {
 // GetCloseCount is for tests to safely read the Close call count
 // without accidentally triggering it by using Read.
 func (s MockStore) GetCloseCount() (int, error) {
-	countB, ok := s.data[mockStoreType][closeCount]
+	countB, ok := s.data[s.key(mockStoreType, closeCount)]
 	if !ok {
-		countB = []byte("0")
+		return 0, nil
 	}
 
-	count, err := strconv.Atoi(string(countB))
+	count, err := strconv.Atoi(string(countB.data))
 	if err != nil {
-		return 0, fmt.Errorf("could not convert close-count %s to int: %v", string(countB), err)
+		return 0, fmt.Errorf("could not convert close-count %s to int: %v", string(countB.data), err)
 	}
 
 	return count, nil
+}
+
+func (s MockStore) ResetCounts() {
+	s.setCount(connectCount, 0)
+	s.setCount(closeCount, 0)
+}
+
+func (s MockStore) setCount(count string, value int) {
+	s.data[path.Join(mockStoreType, count)] = &item{
+		itemType: mockStoreType,
+		name:     connectCount,
+		data:     []byte(strconv.Itoa(value)),
+	}
 }

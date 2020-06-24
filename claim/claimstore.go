@@ -130,6 +130,12 @@ func (s Store) ListOutputs(resultID string) ([]string, error) {
 }
 
 func (s Store) ReadInstallation(installation string) (Installation, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Installation{}, err
+	}
+
 	claims, err := s.ReadAllClaims(installation)
 	if err != nil {
 		return Installation{}, err
@@ -153,6 +159,12 @@ func (s Store) ReadInstallation(installation string) (Installation, error) {
 }
 
 func (s Store) ReadInstallationStatus(installation string) (Installation, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Installation{}, err
+	}
+
 	claimIds, err := s.ListClaims(installation)
 	if err != nil {
 		return Installation{}, err
@@ -191,6 +203,12 @@ func (s Store) ReadInstallationStatus(installation string) (Installation, error)
 }
 
 func (s Store) ReadAllInstallationStatus() ([]Installation, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return nil, err
+	}
+
 	names, err := s.ListInstallations()
 	if err != nil {
 		return nil, err
@@ -254,6 +272,12 @@ func (s Store) ReadAllClaims(installation string) ([]Claim, error) {
 }
 
 func (s Store) ReadLastClaim(installation string) (Claim, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Claim{}, err
+	}
+
 	claimIds, err := s.backingStore.List(ItemTypeClaims, installation)
 	if err != nil {
 		return Claim{}, s.handleNotExistsError(err, ErrInstallationNotFound)
@@ -306,12 +330,24 @@ func (s Store) ReadAllResults(claimID string) ([]Result, error) {
 // ReadLastOutputs returns the most recent (last) value of each output associated
 // with the installation.
 func (s Store) ReadLastOutputs(installation string) (Outputs, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Outputs{}, err
+	}
+
 	return s.readLastOutputs(installation, "")
 }
 
 // ReadLastOutput returns the most recent value (last) of the specified Output associated
 // with the installation.
 func (s Store) ReadLastOutput(installation string, name string) (Output, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Output{}, err
+	}
+
 	outputs, err := s.readLastOutputs(installation, name)
 	if err != nil {
 		return Output{}, err
@@ -380,6 +416,12 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 }
 
 func (s Store) ReadLastResult(claimID string) (Result, error) {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return Result{}, err
+	}
+
 	resultIDs, err := s.backingStore.List(ItemTypeResults, claimID)
 	if err != nil {
 		return Result{}, s.handleNotExistsError(err, ErrClaimNotFound)
@@ -417,6 +459,12 @@ func (s Store) ReadOutput(c Claim, r Result, outputName string) (Output, error) 
 }
 
 func (s Store) SaveClaim(c Claim) error {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return err
+	}
+
 	bytes, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
 		return err
@@ -466,6 +514,12 @@ func (s Store) SaveOutput(o Output) error {
 }
 
 func (s Store) DeleteInstallation(installation string) error {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return err
+	}
+
 	claimIds, err := s.ListClaims(installation)
 	if err != nil {
 		return err
@@ -483,6 +537,12 @@ func (s Store) DeleteInstallation(installation string) error {
 }
 
 func (s Store) DeleteClaim(claimID string) error {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return err
+	}
+
 	resultIds, err := s.ListResults(claimID)
 	if err != nil {
 		return err
@@ -500,6 +560,12 @@ func (s Store) DeleteClaim(claimID string) error {
 }
 
 func (s Store) DeleteResult(resultID string) error {
+	handleClose, err := s.backingStore.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return err
+	}
+
 	outputNames, err := s.ListOutputs(resultID)
 	if err != nil {
 		return err

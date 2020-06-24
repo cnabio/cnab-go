@@ -19,10 +19,8 @@ func TestBackingStore_Read(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.groups[testItemType] = map[string][]string{
-				testGroup: {"key1"},
-			}
-			s.data[testItemType] = map[string][]byte{"key1": []byte("value1")}
+			s.Save(testItemType, testGroup, "key1", []byte("value1"))
+			s.ResetCounts()
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
@@ -110,13 +108,9 @@ func TestBackingStore_List(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.groups[testItemType] = map[string][]string{
-				testGroup: {"key1"},
-			}
-			s.data[testItemType] = map[string][]byte{
-				"key1": []byte("value1"),
-				"key2": []byte("value2"),
-			}
+			s.Save(testItemType, testGroup, "key1", []byte("value1"))
+			s.Save(testItemType, "", "key2", []byte("value2"))
+			s.ResetCounts()
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
@@ -152,10 +146,8 @@ func TestBackingStore_Delete(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.groups[testItemType] = map[string][]string{
-				testGroup: {"key1"},
-			}
-			s.data[testItemType] = map[string][]byte{"key1": []byte("value1")}
+			s.Save(testItemType, testGroup, "key1", []byte("value1"))
+			s.ResetCounts()
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
@@ -192,13 +184,9 @@ func TestBackingStore_ReadAll(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewMockStore()
-			s.groups[testItemType] = map[string][]string{
-				testGroup: {"key1"},
-			}
-			s.data[testItemType] = map[string][]byte{
-				"key1": []byte("value1"),
-				"key2": []byte("value2"),
-			}
+			s.Save(testItemType, testGroup, "key1", []byte("value1"))
+			s.Save(testItemType, "", "key2", []byte("value2"))
+
 			bs := NewBackingStore(s)
 			bs.AutoClose = tc.autoclose
 
