@@ -1053,7 +1053,7 @@ func TestSaveAction(t *testing.T) {
 
 func Test_expandCredentials(t *testing.T) {
 	t.Run("all creds expanded", func(t *testing.T) {
-		b := &bundle.Bundle{
+		b := bundle.Bundle{
 			Name: "knapsack",
 			Credentials: map[string]bundle.Credential{
 				"first": {
@@ -1095,7 +1095,7 @@ func Test_expandCredentials(t *testing.T) {
 	})
 
 	t.Run("missing required cred", func(t *testing.T) {
-		b := &bundle.Bundle{
+		b := bundle.Bundle{
 			Name: "knapsack",
 			Credentials: map[string]bundle.Credential{
 				"first": {
@@ -1114,7 +1114,7 @@ func Test_expandCredentials(t *testing.T) {
 	})
 
 	t.Run("missing optional cred", func(t *testing.T) {
-		b := &bundle.Bundle{
+		b := bundle.Bundle{
 			Name: "knapsack",
 			Credentials: map[string]bundle.Credential{
 				"first": {
