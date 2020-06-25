@@ -1051,7 +1051,7 @@ func TestSaveAction(t *testing.T) {
 	})
 }
 
-func Test_expandCredentials(t *testing.T) {
+func TestExpandCredentials(t *testing.T) {
 	t.Run("all creds expanded", func(t *testing.T) {
 		b := bundle.Bundle{
 			Name: "knapsack",
