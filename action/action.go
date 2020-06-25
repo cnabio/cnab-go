@@ -14,8 +14,8 @@ import (
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver"
+	"github.com/cnabio/cnab-go/valuesource"
 )
 
 // stateful is there just to make callers of opFromClaims more readable
@@ -52,7 +52,7 @@ func New(d driver.Driver, cp claim.Provider) Action {
 // caller is responsible for persisting the claim records and outputs using the
 // SaveOperationResult function. An error is only returned when the operation could not
 // be executed, otherwise any error is returned in the OperationResult.
-func (a Action) Run(c claim.Claim, creds credentials.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
+func (a Action) Run(c claim.Claim, creds valuesource.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
 	if a.Driver == nil {
 		return driver.OperationResult{}, claim.Result{}, errors.New("the action driver is not set")
 	}
@@ -365,8 +365,8 @@ func getImageMap(b bundle.Bundle) ([]byte, error) {
 	return json.Marshal(imgs)
 }
 
-func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds credentials.Set) (*driver.Operation, error) {
-	env, files, err := creds.Expand(c.Bundle, stateless)
+func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds valuesource.Set) (*driver.Operation, error) {
+	env, files, err := expandCredentials(c.Bundle, creds, stateless)
 	if err != nil {
 		return nil, err
 	}
@@ -472,4 +472,29 @@ func injectParameters(c claim.Claim, env, files map[string]string) error {
 		}
 	}
 	return nil
+}
+
+// expandCredentials expands the given set into env vars and paths per the spec in the bundle.
+//
+// This matches the credentials required by the bundle to the credentials present
+// in the Set, and then expands them per the definition in the Bundle.
+func expandCredentials(b bundle.Bundle, set valuesource.Set, stateless bool) (env, files map[string]string, err error) {
+	env, files = map[string]string{}, map[string]string{}
+	for name, val := range b.Credentials {
+		src, ok := set[name]
+		if !ok {
+			if stateless || !val.Required {
+				continue
+			}
+			err = fmt.Errorf("credential %q is missing from the user-supplied credentials", name)
+			return
+		}
+		if val.EnvironmentVariable != "" {
+			env[val.EnvironmentVariable] = src
+		}
+		if val.Path != "" {
+			files[val.Path] = src
+		}
+	}
+	return
 }

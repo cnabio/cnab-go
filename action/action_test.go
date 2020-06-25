@@ -8,14 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cnabio/cnab-go/utils/crud"
-
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/debug"
+	"github.com/cnabio/cnab-go/utils/crud"
+	"github.com/cnabio/cnab-go/valuesource"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	return d.Result, d.Error
 }
 
-var mockSet = credentials.Set{
+var mockSet = valuesource.Set{
 	"secret_one": "I'm a secret",
 	"secret_two": "I'm also a secret",
 }
@@ -1049,5 +1048,86 @@ func TestSaveAction(t *testing.T) {
 
 		_, err = cp.ReadOutput(c, r, "some-output")
 		assert.Error(t, err, "the output should NOT be persisted")
+	})
+}
+
+func TestExpandCredentials(t *testing.T) {
+	t.Run("all creds expanded", func(t *testing.T) {
+		b := bundle.Bundle{
+			Name: "knapsack",
+			Credentials: map[string]bundle.Credential{
+				"first": {
+					Location: bundle.Location{
+						EnvironmentVariable: "FIRST_VAR",
+					},
+				},
+				"second": {
+					Location: bundle.Location{
+						Path: "/second/path",
+					},
+				},
+				"third": {
+					Location: bundle.Location{
+						EnvironmentVariable: "/THIRD_VAR",
+						Path:                "/third/path",
+					},
+				},
+			},
+		}
+
+		set := valuesource.Set{
+			"first":  "first",
+			"second": "second",
+			"third":  "third",
+		}
+
+		env, path, err := expandCredentials(b, set, false)
+		is := assert.New(t)
+		is.NoError(err)
+		for k, v := range b.Credentials {
+			if v.EnvironmentVariable != "" {
+				is.Equal(env[v.EnvironmentVariable], set[k])
+			}
+			if v.Path != "" {
+				is.Equal(path[v.Path], set[k])
+			}
+		}
+	})
+
+	t.Run("missing required cred", func(t *testing.T) {
+		b := bundle.Bundle{
+			Name: "knapsack",
+			Credentials: map[string]bundle.Credential{
+				"first": {
+					Location: bundle.Location{
+						EnvironmentVariable: "FIRST_VAR",
+					},
+					Required: true,
+				},
+			},
+		}
+		set := valuesource.Set{}
+		_, _, err := expandCredentials(b, set, false)
+		assert.EqualError(t, err, `credential "first" is missing from the user-supplied credentials`)
+		_, _, err = expandCredentials(b, set, true)
+		assert.NoError(t, err)
+	})
+
+	t.Run("missing optional cred", func(t *testing.T) {
+		b := bundle.Bundle{
+			Name: "knapsack",
+			Credentials: map[string]bundle.Credential{
+				"first": {
+					Location: bundle.Location{
+						EnvironmentVariable: "FIRST_VAR",
+					},
+				},
+			},
+		}
+		set := valuesource.Set{}
+		_, _, err := expandCredentials(b, set, false)
+		assert.NoError(t, err)
+		_, _, err = expandCredentials(b, set, true)
+		assert.NoError(t, err)
 	})
 }

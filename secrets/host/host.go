@@ -46,7 +46,7 @@ func (h *SecretStore) Resolve(keyName string, keyValue string) (string, error) {
 	case SourceValue:
 		return keyValue, nil
 	default:
-		return "", fmt.Errorf("invalid credential source: %s", keyName)
+		return "", fmt.Errorf("invalid value source: %s", keyName)
 	}
 }
 

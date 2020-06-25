@@ -8,9 +8,9 @@ import (
 
 	"github.com/cnabio/cnab-go/action"
 	"github.com/cnabio/cnab-go/claim"
-	"github.com/cnabio/cnab-go/credentials"
 	"github.com/cnabio/cnab-go/driver/lookup"
 	"github.com/cnabio/cnab-go/utils/crud"
+	"github.com/cnabio/cnab-go/valuesource"
 )
 
 // appendFailedResult creates a failed result from the operation error and accumulates
@@ -74,7 +74,7 @@ func Example_runningStatus() {
 	a.SaveAllOutputs = true
 
 	// Pass an empty set of credentials
-	var creds credentials.Set
+	var creds valuesource.Set
 
 	// Save the upgrade claim in the Running Status
 	err = a.SaveInitialClaim(c, claim.StatusRunning)
