@@ -107,6 +107,7 @@ func (s Store) ListResults(claimID string) ([]string, error) {
 		return nil, err
 	}
 
+	sort.Strings(results)
 	return results, nil
 }
 
@@ -125,7 +126,7 @@ func (s Store) ListOutputs(resultID string) ([]string, error) {
 	for i, fullName := range outputNames {
 		outputNames[i] = strings.TrimLeft(fullName, resultID+"-")
 	}
-
+	sort.Strings(outputNames)
 	return outputNames, nil
 }
 
