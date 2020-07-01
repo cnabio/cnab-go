@@ -7,11 +7,6 @@ import (
 )
 
 func TestMockStoreWithGroups(t *testing.T) {
-	// This is the structure used with claims
-	// claims/
-	// - INSTALLATION/
-	//   - CLAIMID.json
-
 	s := NewMockStore()
 	is := assert.New(t)
 	is.NoError(s.Save(testItemType, testGroup, "test", []byte("data")))
@@ -22,15 +17,11 @@ func TestMockStoreWithGroups(t *testing.T) {
 
 	data, err := s.Read(testItemType, "test")
 	is.NoError(err)
-	is.Equal(data, []byte("data"))
+	is.Equal([]byte("data"), data)
 
 	data, err = s.Read(testItemType, "not-exist")
 	is.EqualError(err, ErrRecordDoesNotExist.Error())
 	is.Empty(data)
-
-	groups, err := s.List(testItemType, "")
-	is.NoError(err)
-	is.Equal(groups, []string{testGroup})
 }
 
 func TestMockStoreWithoutGroups(t *testing.T) {

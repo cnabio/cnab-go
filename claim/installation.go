@@ -7,8 +7,7 @@ import (
 	"time"
 )
 
-// Installation is a non-storage construct representing an installation of a
-// bundle.
+// Installation represents the installation of a bundle.
 type Installation struct {
 	Name string
 	Claims

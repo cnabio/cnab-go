@@ -16,10 +16,10 @@ const (
 	// Deprecated: ItemType has been replaced by ItemTypeClaims.
 	ItemType = "claims"
 
-	// ItemTypeClaims
-	ItemTypeClaims  = "claims"
-	ItemTypeResults = "results"
-	ItemTypeOutputs = "outputs"
+	ItemTypeInstallations = "installations"
+	ItemTypeClaims        = "claims"
+	ItemTypeResults       = "results"
+	ItemTypeOutputs       = "outputs"
 )
 
 var (
@@ -81,13 +81,19 @@ var noOpEncryptionHandler = func(data []byte) ([]byte, error) {
 }
 
 func (s Store) ListInstallations() ([]string, error) {
-	names, err := s.backingStore.List(ItemTypeClaims, "")
+	names, err := s.backingStore.List(ItemTypeInstallations, "")
 	sort.Strings(names)
 	return names, err
 }
 
 func (s Store) ListClaims(installation string) ([]string, error) {
 	claims, err := s.backingStore.List(ItemTypeClaims, installation)
+	// Depending on the underlying store, we either could not get
+	// any claims, or an error, so handle either
+	if len(claims) == 0 {
+		return nil, ErrInstallationNotFound
+	}
+	sort.Strings(claims)
 	return claims, s.handleNotExistsError(err, ErrInstallationNotFound)
 }
 
@@ -175,10 +181,13 @@ func (s Store) ReadInstallationStatus(installation string) (Installation, error)
 			}
 			c.results = &Results{r}
 		}
+
 		claims = append(claims, c)
+
+		return NewInstallation(installation, claims), nil
 	}
 
-	return NewInstallation(installation, claims), nil
+	return Installation{}, ErrInstallationNotFound
 }
 
 func (s Store) ReadAllInstallationStatus() ([]Installation, error) {
@@ -221,6 +230,10 @@ func (s Store) ReadAllClaims(installation string) ([]Claim, error) {
 		return nil, s.handleNotExistsError(err, ErrInstallationNotFound)
 	}
 
+	if len(items) == 0 {
+		return nil, ErrInstallationNotFound
+	}
+
 	claims := make(Claims, len(items))
 	for i, bytes := range items {
 		bytes, err = s.decrypt(bytes)
@@ -247,7 +260,7 @@ func (s Store) ReadLastClaim(installation string) (Claim, error) {
 	}
 
 	if len(claimIds) == 0 {
-		return Claim{}, ErrClaimNotFound
+		return Claim{}, ErrInstallationNotFound
 	}
 
 	sort.Strings(claimIds)
@@ -414,7 +427,12 @@ func (s Store) SaveClaim(c Claim) error {
 		return errors.Wrapf(err, "error encrypting claim %s of installation %s", c.ID, c.Installation)
 	}
 
-	return s.backingStore.Save(ItemTypeClaims, c.Installation, c.ID, bytes)
+	err = s.backingStore.Save(ItemTypeClaims, c.Installation, c.ID, bytes)
+	if err != nil {
+		return err
+	}
+
+	return s.backingStore.Save(ItemTypeInstallations, "", c.Installation, nil)
 }
 
 func (s Store) SaveResult(r Result) error {
@@ -460,7 +478,8 @@ func (s Store) DeleteInstallation(installation string) error {
 		}
 	}
 
-	return nil
+	err = s.backingStore.Delete(ItemTypeInstallations, installation)
+	return s.handleNotExistsError(err, ErrInstallationNotFound)
 }
 
 func (s Store) DeleteClaim(claimID string) error {

@@ -169,24 +169,35 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	storeDir := filepath.Join(tempDir, "claimstore")
-	store := NewClaimStore(crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions()), nil, nil)
+	datastore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
+	store := NewClaimStore(datastore, nil, nil)
 
 	err = store.SaveClaim(c1)
-	must.NoError(err, "Failed to store: %s", err)
+	must.NoError(err, "SaveClaim failed")
+	_, err = datastore.Read(ItemTypeInstallations, c1.Installation)
+	must.NoError(err, "A file representing the installation should have been created")
 
 	c2, err := store.ReadLastClaim("foo")
-	must.NoError(err, "Failed to read: %s", err)
+	must.NoError(err, "ReadLastClaim failed")
 	is.Equal(c2.Bundle, c1.Bundle, "Expected to read back bundle %s, got %s", c1.Bundle.Name, c2.Bundle.Name)
 
 	installations, err := store.ListInstallations()
-	must.NoError(err, "Failed to list: %s", err)
+	must.NoError(err, "ListInstallations failed")
 	is.Len(installations, 1)
 	is.Equal(installations[0], c1.Installation)
 
-	must.NoError(store.DeleteClaim(c2.ID))
+	must.NoError(store.DeleteInstallation(c2.Installation))
 
 	_, err = store.ReadClaim(c2.ID)
-	is.Error(err, "Should have had error reading after deletion but did not")
+	is.Error(err, "Claims associated with the installation should have been deleted")
+
+	installations, err = store.ListInstallations()
+	must.NoError(err, "ListInstallations failed")
+	is.Empty(installations, "The installation should have been deleted")
+
+	_, err = datastore.Read(ItemTypeInstallations, c1.Installation)
+	must.Error(err, "Installation should have been deleted")
+	is.Contains(err.Error(), crud.ErrRecordDoesNotExist.Error(), "Installation should have been deleted")
 }
 
 func TestCanUpdate(t *testing.T) {
@@ -283,6 +294,21 @@ func TestClaimStore_Installations(t *testing.T) {
 		require.EqualError(t, err, "Installation does not exist")
 		assert.Empty(t, foo)
 	})
+}
+
+func TestClaimStore_DeleteInstallation(t *testing.T) {
+	cp, cleanup := generateClaimData(t)
+	defer cleanup()
+
+	err := cp.DeleteInstallation("foo")
+	require.NoError(t, err, "DeleteInstallation failed")
+
+	names, err := cp.ListInstallations()
+	require.NoError(t, err, "ListInstallations failed")
+	assert.Equal(t, []string{"bar", "baz"}, names, "expected foo to be deleted completely")
+
+	_, err = cp.ReadLastClaim("foo")
+	require.EqualError(t, err, "Installation does not exist")
 }
 
 func TestClaimStore_Claims(t *testing.T) {
