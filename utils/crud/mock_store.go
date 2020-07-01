@@ -205,7 +205,7 @@ func (s MockStore) ResetCounts() {
 func (s MockStore) setCount(count string, value int) {
 	s.data[path.Join(mockStoreType, count)] = &item{
 		itemType: mockStoreType,
-		name:     connectCount,
+		name:     count,
 		data:     []byte(strconv.Itoa(value)),
 	}
 }
