@@ -66,13 +66,8 @@ var b64decode = func(src []byte) ([]byte, error) {
 //   RESULT_ID_2/
 //     RESULT_ID_2_OUTPUT_1
 //     RESULT_ID_2_OUTPUT_2
-func generateClaimData(t *testing.T) (Provider, func() error) {
-	tempDir, err := ioutil.TempDir("", "cnabtest")
-	require.NoError(t, err, "Failed to create temp dir")
-	cleanup := func() error { return os.RemoveAll(tempDir) }
-
-	storeDir := filepath.Join(tempDir, "claimstore")
-	backingStore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
+func generateClaimData(t *testing.T) (Provider, crud.MockStore) {
+	backingStore := crud.NewMockStore()
 	cp := NewClaimStore(backingStore, nil, nil)
 
 	bun := bundle.Bundle{
@@ -117,7 +112,7 @@ func generateClaimData(t *testing.T) (Provider, func() error) {
 	createOutput := func(c Claim, r Result, name string) Output {
 		o := NewOutput(c, r, name, []byte(c.Action+" "+name))
 
-		err = cp.SaveOutput(o)
+		err := cp.SaveOutput(o)
 		require.NoError(t, err, "SaveOutput failed")
 
 		return o
@@ -153,7 +148,20 @@ func generateClaimData(t *testing.T) (Provider, func() error) {
 
 	createClaim(baz, ActionInstall)
 
-	return cp, cleanup
+	backingStore.ResetCounts()
+	return cp, backingStore
+}
+
+func assertSingleConnection(t *testing.T, datastore crud.MockStore) {
+	t.Helper()
+
+	connects, err := datastore.GetConnectCount()
+	require.NoError(t, err, "GetConnectCount failed")
+	assert.Equal(t, 1, connects, "expected a single connect")
+
+	closes, err := datastore.GetCloseCount()
+	require.NoError(t, err, "GetCloseCount failed")
+	assert.Equal(t, 1, closes, "expected a single close")
 }
 
 func TestCanSaveReadAndDelete(t *testing.T) {
@@ -230,18 +238,21 @@ func TestCanUpdate(t *testing.T) {
 }
 
 func TestClaimStore_Installations(t *testing.T) {
-	cp, cleanup := generateClaimData(t)
-	defer cleanup()
+	cp, datastore := generateClaimData(t)
 
 	t.Run("ListInstallations", func(t *testing.T) {
+		datastore.ResetCounts()
 		installations, err := cp.ListInstallations()
 		require.NoError(t, err, "ListInstallations failed")
 
 		require.Len(t, installations, 3, "Expected 3 installations")
 		assert.Equal(t, []string{"bar", "baz", "foo"}, installations)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadAllInstallationStatus", func(t *testing.T) {
+		datastore.ResetCounts()
 		installations, err := cp.ReadAllInstallationStatus()
 		require.NoError(t, err, "ReadAllInstallationStatus failed")
 
@@ -254,9 +265,12 @@ func TestClaimStore_Installations(t *testing.T) {
 		assert.Equal(t, "bar", bar.Name)
 		assert.Equal(t, "baz", baz.Name)
 		assert.Equal(t, "foo", foo.Name)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadInstallationStatus", func(t *testing.T) {
+		datastore.ResetCounts()
 		foo, err := cp.ReadInstallationStatus("foo")
 		require.NoError(t, err, "ReadInstallationStatus failed")
 
@@ -267,6 +281,8 @@ func TestClaimStore_Installations(t *testing.T) {
 		lastClaim, err := foo.GetLastClaim()
 		require.NoError(t, err, "GetLastClaim failed")
 		assert.Equal(t, ActionUninstall, lastClaim.Action)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadInstallationStatus - invalid installation", func(t *testing.T) {
@@ -276,6 +292,7 @@ func TestClaimStore_Installations(t *testing.T) {
 	})
 
 	t.Run("ReadInstallation", func(t *testing.T) {
+		datastore.ResetCounts()
 		foo, err := cp.ReadInstallation("foo")
 		require.NoError(t, err, "ReadInstallation failed")
 
@@ -287,6 +304,8 @@ func TestClaimStore_Installations(t *testing.T) {
 		assert.Equal(t, ActionUpgrade, foo.Claims[1].Action)
 		assert.Equal(t, "test", foo.Claims[2].Action)
 		assert.Equal(t, ActionUninstall, foo.Claims[3].Action)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadInstallation - invalid installation", func(t *testing.T) {
@@ -297,11 +316,12 @@ func TestClaimStore_Installations(t *testing.T) {
 }
 
 func TestClaimStore_DeleteInstallation(t *testing.T) {
-	cp, cleanup := generateClaimData(t)
-	defer cleanup()
+	cp, datastore := generateClaimData(t)
 
 	err := cp.DeleteInstallation("foo")
 	require.NoError(t, err, "DeleteInstallation failed")
+
+	assertSingleConnection(t, datastore)
 
 	names, err := cp.ListInstallations()
 	require.NoError(t, err, "ListInstallations failed")
@@ -312,10 +332,10 @@ func TestClaimStore_DeleteInstallation(t *testing.T) {
 }
 
 func TestClaimStore_Claims(t *testing.T) {
-	cp, cleanup := generateClaimData(t)
-	defer cleanup()
+	cp, datastore := generateClaimData(t)
 
 	t.Run("ReadAllClaims", func(t *testing.T) {
+		datastore.ResetCounts()
 		claims, err := cp.ReadAllClaims("foo")
 		require.NoError(t, err, "Failed to read claims: %s", err)
 
@@ -324,6 +344,8 @@ func TestClaimStore_Claims(t *testing.T) {
 		assert.Equal(t, ActionUpgrade, claims[1].Action)
 		assert.Equal(t, "test", claims[2].Action)
 		assert.Equal(t, ActionUninstall, claims[3].Action)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadAllClaims - invalid installation", func(t *testing.T) {
@@ -333,10 +355,13 @@ func TestClaimStore_Claims(t *testing.T) {
 	})
 
 	t.Run("ListClaims", func(t *testing.T) {
+		datastore.ResetCounts()
 		claims, err := cp.ListClaims("foo")
 		require.NoError(t, err, "Failed to read claims: %s", err)
 
 		require.Len(t, claims, 4, "Expected 4 claims")
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ListClaims - invalid installation", func(t *testing.T) {
@@ -352,11 +377,14 @@ func TestClaimStore_Claims(t *testing.T) {
 		assert.NotEmpty(t, claims, "no claims were found")
 		claimID := claims[0]
 
+		datastore.ResetCounts()
 		c, err := cp.ReadClaim(claimID)
 		require.NoError(t, err, "ReadClaim failed")
 
 		assert.Equal(t, "foo", c.Installation)
 		assert.Equal(t, ActionInstall, c.Action)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadClaim - invalid claim", func(t *testing.T) {
@@ -365,11 +393,14 @@ func TestClaimStore_Claims(t *testing.T) {
 	})
 
 	t.Run("ReadLastClaim", func(t *testing.T) {
+		datastore.ResetCounts()
 		c, err := cp.ReadLastClaim("bar")
 		require.NoError(t, err, "ReadLastClaim failed")
 
 		assert.Equal(t, "bar", c.Installation)
 		assert.Equal(t, ActionInstall, c.Action)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadLastClaim - invalid installation", func(t *testing.T) {
@@ -380,8 +411,7 @@ func TestClaimStore_Claims(t *testing.T) {
 }
 
 func TestClaimStore_Results(t *testing.T) {
-	cp, cleanup := generateClaimData(t)
-	defer cleanup()
+	cp, datastore := generateClaimData(t)
 
 	barClaims, err := cp.ListClaims("bar")
 	require.NoError(t, err, "ListClaims failed")
@@ -394,9 +424,13 @@ func TestClaimStore_Results(t *testing.T) {
 	unfinishedClaimID := bazClaims[1] // this claim doesn't have any results yet
 
 	t.Run("ListResults", func(t *testing.T) {
+		datastore.ResetCounts()
+
 		results, err := cp.ListResults(claimID)
 		require.NoError(t, err, "ListResults failed")
 		assert.Len(t, results, 2, "expected 2 results")
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ListResults - unfinished claim", func(t *testing.T) {
@@ -406,12 +440,16 @@ func TestClaimStore_Results(t *testing.T) {
 	})
 
 	t.Run("ReadAllResults", func(t *testing.T) {
+		datastore.ResetCounts()
+
 		results, err := cp.ReadAllResults(claimID)
 		require.NoError(t, err, "ReadAllResults failed")
 		assert.Len(t, results, 2, "expected 2 results")
 
 		assert.Equal(t, StatusRunning, results[0].Status)
 		assert.Equal(t, StatusSucceeded, results[1].Status)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadAllResults - unfinished claim", func(t *testing.T) {
@@ -421,10 +459,14 @@ func TestClaimStore_Results(t *testing.T) {
 	})
 
 	t.Run("ReadLastResult", func(t *testing.T) {
+		datastore.ResetCounts()
+
 		r, err := cp.ReadLastResult(claimID)
 		require.NoError(t, err, "ReadLastResult failed")
 
 		assert.Equal(t, StatusSucceeded, r.Status)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadLastResult - unfinished claim", func(t *testing.T) {
@@ -439,10 +481,13 @@ func TestClaimStore_Results(t *testing.T) {
 
 		resultID := results[0]
 
+		datastore.ResetCounts()
 		r, err := cp.ReadResult(resultID)
 		require.NoError(t, err, "ReadResult failed")
 
 		assert.Equal(t, StatusRunning, r.Status)
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadResult - invalid result", func(t *testing.T) {
@@ -453,8 +498,7 @@ func TestClaimStore_Results(t *testing.T) {
 }
 
 func TestClaimStore_Outputs(t *testing.T) {
-	cp, cleanup := generateClaimData(t)
-	defer cleanup()
+	cp, datastore := generateClaimData(t)
 
 	fooClaims, err := cp.ReadAllClaims("foo")
 	require.NoError(t, err, "ReadAllClaims failed")
@@ -477,12 +521,15 @@ func TestClaimStore_Outputs(t *testing.T) {
 	resultIDWithoutOutputs := barResult.ID
 
 	t.Run("ListOutputs", func(t *testing.T) {
+		datastore.ResetCounts()
 		outputs, err := cp.ListOutputs(resultID)
 		require.NoError(t, err, "ListResults failed")
 		assert.Len(t, outputs, 2, "expected 2 outputs")
 
 		assert.Equal(t, "output1", outputs[0])
 		assert.Equal(t, "output2", outputs[1])
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ListOutputs - no outputs", func(t *testing.T) {
@@ -492,6 +539,7 @@ func TestClaimStore_Outputs(t *testing.T) {
 	})
 
 	t.Run("ReadLastOutputs", func(t *testing.T) {
+		datastore.ResetCounts()
 		outputs, err := cp.ReadLastOutputs("foo")
 
 		require.NoError(t, err, "GetLastOutputs failed")
@@ -504,6 +552,8 @@ func TestClaimStore_Outputs(t *testing.T) {
 		gotOutput2, hasOutput2 := outputs.GetByName("output2")
 		assert.True(t, hasOutput2, "should have found output2")
 		assert.Equal(t, "upgrade output2", string(gotOutput2.Value), "did not find the most recent value for output2")
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadLastOutputs - invalid installation", func(t *testing.T) {
@@ -513,10 +563,13 @@ func TestClaimStore_Outputs(t *testing.T) {
 	})
 
 	t.Run("ReadLastOutput", func(t *testing.T) {
+		datastore.ResetCounts()
 		o, err := cp.ReadLastOutput("foo", "output1")
 
 		require.NoError(t, err, "GetLastOutputs failed")
 		assert.Equal(t, "upgrade output1", string(o.Value), "did not find the most recent value for output1")
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadLastOutput - invalid installation", func(t *testing.T) {
@@ -531,6 +584,8 @@ func TestClaimStore_Outputs(t *testing.T) {
 		installResult, err := cp.ReadLastResult(installClaim.ID)
 		require.NoError(t, err, "ReadLastResult failed")
 
+		datastore.ResetCounts()
+
 		o, err := cp.ReadOutput(installClaim, installResult, "output1")
 		require.NoError(t, err, "ReadOutput failed")
 
@@ -538,6 +593,8 @@ func TestClaimStore_Outputs(t *testing.T) {
 		assert.Equal(t, installResult.ID, o.result.ID, "output.Result is not set")
 		assert.Equal(t, installClaim.ID, o.result.claim.ID, "output.Result.Claim is not set")
 		assert.Equal(t, "install output1", string(o.Value))
+
+		assertSingleConnection(t, datastore)
 	})
 
 	t.Run("ReadOutput - no outputs", func(t *testing.T) {
