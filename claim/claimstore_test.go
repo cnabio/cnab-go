@@ -163,6 +163,7 @@ func assertSingleConnection(t *testing.T, datastore crud.MockStore) {
 	require.NoError(t, err, "GetCloseCount failed")
 	assert.Equal(t, 1, closes, "expected a single close")
 }
+
 func TestCanSaveReadAndDelete(t *testing.T) {
 	is := assert.New(t)
 	must := require.New(t)
