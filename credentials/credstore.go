@@ -22,10 +22,15 @@ type Store struct {
 
 // NewCredentialStore creates a persistent store for credential sets using the specified
 // backing key-blob store.
-func NewCredentialStore(store crud.Store) Store {
+func NewCredentialStore(store *crud.BackingStore) Store {
 	return Store{
-		backingStore: crud.NewBackingStore(store),
+		backingStore: store,
 	}
+}
+
+// GetBackingStore returns the data store behind this credentials store.
+func (s Store) GetBackingStore() *crud.BackingStore {
+	return s.backingStore
 }
 
 // List lists the names of the stored credential sets.

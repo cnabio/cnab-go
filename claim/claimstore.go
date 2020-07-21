@@ -45,7 +45,7 @@ type Store struct {
 
 // NewClaimStore creates a persistent store for claims using the specified
 // backing key-blob store.
-func NewClaimStore(store crud.Store, encrypt EncryptionHandler, decrypt EncryptionHandler) Store {
+func NewClaimStore(store *crud.BackingStore, encrypt EncryptionHandler, decrypt EncryptionHandler) Store {
 	if encrypt == nil {
 		encrypt = noOpEncryptionHandler
 	}
@@ -55,7 +55,7 @@ func NewClaimStore(store crud.Store, encrypt EncryptionHandler, decrypt Encrypti
 	}
 
 	return Store{
-		backingStore: crud.NewBackingStore(store),
+		backingStore: store,
 		encrypt:      encrypt,
 		decrypt:      decrypt,
 	}
@@ -78,6 +78,11 @@ type EncryptionHandler func([]byte) ([]byte, error)
 // noOpEncryptHandler is used when no handler is specified.
 var noOpEncryptionHandler = func(data []byte) ([]byte, error) {
 	return data, nil
+}
+
+// GetBackingStore returns the data store behind this claim store.
+func (s Store) GetBackingStore() *crud.BackingStore {
+	return s.backingStore
 }
 
 func (s Store) ListInstallations() ([]string, error) {

@@ -68,7 +68,7 @@ var b64decode = func(src []byte) ([]byte, error) {
 //     RESULT_ID_2_OUTPUT_2
 func generateClaimData(t *testing.T) (Provider, crud.MockStore) {
 	backingStore := crud.NewMockStore()
-	cp := NewClaimStore(backingStore, nil, nil)
+	cp := NewClaimStore(crud.NewBackingStore(backingStore), nil, nil)
 
 	bun := bundle.Bundle{
 		Definitions: map[string]*definition.Schema{
@@ -178,7 +178,7 @@ func TestCanSaveReadAndDelete(t *testing.T) {
 
 	storeDir := filepath.Join(tempDir, "claimstore")
 	datastore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
-	store := NewClaimStore(datastore, nil, nil)
+	store := NewClaimStore(crud.NewBackingStore(datastore), nil, nil)
 
 	err = store.SaveClaim(c1)
 	must.NoError(err, "SaveClaim failed")
@@ -219,7 +219,8 @@ func TestCanUpdate(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	storeDir := filepath.Join(tempDir, "claimstore")
-	store := NewClaimStore(crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions()), nil, nil)
+	datastore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
+	store := NewClaimStore(crud.NewBackingStore(datastore), nil, nil)
 
 	err = store.SaveClaim(c1)
 	require.NoError(t, err)
@@ -616,7 +617,8 @@ func TestCanUpdateOutputs(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	storeDir := filepath.Join(tempDir, "claimstore")
-	store := NewClaimStore(crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions()), nil, nil)
+	fsStore := crud.NewFileSystemStore(storeDir, NewClaimStoreFileExtensions())
+	store := NewClaimStore(crud.NewBackingStore(fsStore), nil, nil)
 
 	err = store.SaveClaim(claim)
 	must.NoError(err, "Failed to store claim")
@@ -657,8 +659,8 @@ func TestCanUpdateOutputs(t *testing.T) {
 }
 
 func TestStore_EncryptClaims(t *testing.T) {
-	backingStore := crud.NewMockStore()
-	s := NewClaimStore(backingStore, b64encode, b64decode)
+	s := NewMockStore(b64encode, b64decode)
+	backingStore := s.GetBackingStore()
 
 	err := s.SaveClaim(exampleClaim)
 	require.NoError(t, err, "SaveClaim failed")
@@ -683,8 +685,8 @@ func TestStore_EncryptOutputs(t *testing.T) {
 	writeOnly := func(value bool) *bool {
 		return &value
 	}
-	backingStore := crud.NewMockStore()
-	s := NewClaimStore(backingStore, b64encode, b64decode)
+	s := NewMockStore(b64encode, b64decode)
+	backingStore := s.GetBackingStore()
 
 	b := bundle.Bundle{
 		Definitions: map[string]*definition.Schema{

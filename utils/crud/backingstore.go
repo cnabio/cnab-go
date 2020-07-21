@@ -23,13 +23,13 @@ type BackingStore struct {
 	close func() error
 
 	// backingStore being wrapped.
-	backingStore Store
+	datastore Store
 }
 
 func NewBackingStore(store Store) *BackingStore {
 	backingStore := BackingStore{
-		AutoClose:    true,
-		backingStore: store,
+		AutoClose: true,
+		datastore: store,
 	}
 
 	if connectable, ok := store.(HasConnect); ok {
@@ -41,6 +41,12 @@ func NewBackingStore(store Store) *BackingStore {
 	}
 
 	return &backingStore
+}
+
+// GetStore returns the data store, e.g. filesystem, mongodb, managed by this
+// wrapper.
+func (s *BackingStore) GetDataStore() Store {
+	return s.datastore
 }
 
 func (s *BackingStore) Connect() error {
@@ -76,7 +82,7 @@ func (s *BackingStore) List(itemType string, group string) ([]string, error) {
 		return nil, err
 	}
 
-	return s.backingStore.List(itemType, group)
+	return s.datastore.List(itemType, group)
 }
 
 func (s *BackingStore) Save(itemType string, group string, name string, data []byte) error {
@@ -86,7 +92,7 @@ func (s *BackingStore) Save(itemType string, group string, name string, data []b
 		return err
 	}
 
-	return s.backingStore.Save(itemType, group, name, data)
+	return s.datastore.Save(itemType, group, name, data)
 }
 
 func (s *BackingStore) Read(itemType string, name string) ([]byte, error) {
@@ -96,7 +102,7 @@ func (s *BackingStore) Read(itemType string, name string) ([]byte, error) {
 		return nil, err
 	}
 
-	return s.backingStore.Read(itemType, name)
+	return s.datastore.Read(itemType, name)
 }
 
 // ReadAll retrieves all the items with the specified prefix
@@ -131,7 +137,7 @@ func (s *BackingStore) Delete(itemType string, name string) error {
 		return err
 	}
 
-	return s.backingStore.Delete(itemType, name)
+	return s.datastore.Delete(itemType, name)
 }
 
 func (s *BackingStore) shouldAutoConnect() bool {
