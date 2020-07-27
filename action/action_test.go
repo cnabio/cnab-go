@@ -13,7 +13,6 @@ import (
 	"github.com/cnabio/cnab-go/claim"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/debug"
-	"github.com/cnabio/cnab-go/utils/crud"
 	"github.com/cnabio/cnab-go/valuesource"
 
 	"github.com/hashicorp/go-multierror"
@@ -993,7 +992,7 @@ func TestGetOutputsGeneratedByAction(t *testing.T) {
 
 func TestSaveAction(t *testing.T) {
 	t.Run("save output", func(t *testing.T) {
-		cp := claim.NewClaimStore(crud.NewMockStore(), nil, nil)
+		cp := claim.NewMockStore(nil, nil)
 		c := newClaim(claim.ActionInstall)
 		r, err := c.NewResult(claim.StatusSucceeded)
 		require.NoError(t, err, "NewResult failed")
@@ -1023,7 +1022,7 @@ func TestSaveAction(t *testing.T) {
 	})
 
 	t.Run("do not save output", func(t *testing.T) {
-		cp := claim.NewClaimStore(crud.NewMockStore(), nil, nil)
+		cp := claim.NewMockStore(nil, nil)
 		c := newClaim(claim.ActionInstall)
 		r, err := c.NewResult(claim.StatusSucceeded)
 		require.NoError(t, err, "NewResult failed")

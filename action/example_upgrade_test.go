@@ -8,7 +8,6 @@ import (
 	"github.com/cnabio/cnab-go/claim"
 	"github.com/cnabio/cnab-go/driver"
 	"github.com/cnabio/cnab-go/driver/lookup"
-	"github.com/cnabio/cnab-go/utils/crud"
 	"github.com/cnabio/cnab-go/valuesource"
 )
 
@@ -22,7 +21,7 @@ func Example_upgrade() {
 	}
 
 	// Use an in-memory store with no encryption
-	cp := claim.NewClaimStore(crud.NewMockStore(), nil, nil)
+	cp := claim.NewMockStore(nil, nil)
 
 	// Save an existing claim for the install action which has already taken place
 	// This sets up data for us to use during our upgrade example
