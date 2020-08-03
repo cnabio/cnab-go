@@ -378,6 +378,7 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 	}
 
 	for _, c := range claims {
+		scopedClaim := c
 		resultIds, err := s.ListResults(c.ID)
 		if err != nil {
 			return Outputs{}, err
@@ -386,7 +387,7 @@ func (s Store) readLastOutputs(installation string, filterOutput string) (Output
 			results = append(results, Result{
 				ID:      resultID,
 				ClaimID: c.ID,
-				claim:   &c,
+				claim:   &scopedClaim,
 			})
 		}
 	}
