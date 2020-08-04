@@ -7,6 +7,7 @@ import (
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
 )
 
@@ -82,5 +83,44 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		hostCfg, err = d.GetContainerHostConfig()
 		is.NoError(err)
 		is.Equal(expectedHostCfg, hostCfg)
+	})
+}
+
+func TestDriver_ValidateImageDigest(t *testing.T) {
+	repoDigests := []string{
+		"myreg/myimg@sha256:deadbeef",
+	}
+
+	t.Run("no image digest", func(t *testing.T) {
+		d := &Driver{}
+
+		image := bundle.InvocationImage{}
+		image.Image = "myreg/myimg"
+
+		err := d.validateImageDigest(image, repoDigests)
+		assert.NoError(t, err)
+	})
+
+	t.Run("image digest exists - no match exists", func(t *testing.T) {
+		d := &Driver{}
+
+		image := bundle.InvocationImage{}
+		image.Image = "myreg/myimg"
+		image.Digest = "sha256:livebeef"
+
+		err := d.validateImageDigest(image, repoDigests)
+		assert.EqualError(t, err,
+			"content digest mismatch: image myreg/myimg has digest(s) [sha256:deadbeef] but the digest should be sha256:livebeef according to the bundle file")
+	})
+
+	t.Run("image digest exists - a match exists", func(t *testing.T) {
+		d := &Driver{}
+
+		image := bundle.InvocationImage{}
+		image.Image = "myreg/myimg"
+		image.Digest = "sha256:deadbeef"
+
+		err := d.validateImageDigest(image, repoDigests)
+		assert.NoError(t, err)
 	})
 }

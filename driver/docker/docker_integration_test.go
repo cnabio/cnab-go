@@ -4,6 +4,7 @@ package docker
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 
@@ -13,6 +14,11 @@ import (
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/driver"
 )
+
+var defaultBaseImage = bundle.BaseImage{
+	Image:  "pvtlmc/example-outputs",
+	Digest: "sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e",
+}
 
 func TestDriver_Run(t *testing.T) {
 	imageFromEnv, ok := os.LookupEnv("DOCKER_INTEGRATION_TEST_IMAGE")
@@ -26,10 +32,7 @@ func TestDriver_Run(t *testing.T) {
 		}
 	} else {
 		image = bundle.InvocationImage{
-			BaseImage: bundle.BaseImage{
-				Image:  "pvtlmc/example-outputs",
-				Digest: "sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e",
-			},
+			BaseImage: defaultBaseImage,
 		}
 	}
 
@@ -75,4 +78,41 @@ func TestDriver_Run(t *testing.T) {
 		"output1": "SOME INSTALL CONTENT 1\n",
 		"output2": "SOME INSTALL CONTENT 2\n",
 	}, opResult.Outputs)
+}
+
+func TestDriver_ValidateImageDigestFail(t *testing.T) {
+	imageFromEnv, ok := os.LookupEnv("DOCKER_INTEGRATION_TEST_IMAGE")
+	var image bundle.InvocationImage
+
+	badDigest := "sha256:deadbeef"
+
+	if ok {
+		image = bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:  imageFromEnv,
+				Digest: badDigest,
+			},
+		}
+	} else {
+		image = bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{
+				Image:  defaultBaseImage.Image,
+				Digest: badDigest,
+			},
+		}
+	}
+
+	op := &driver.Operation{
+		Image: image,
+	}
+
+	docker := &Driver{}
+
+	_, err := docker.Run(op)
+	assert.Error(t, err)
+	// Not asserting actual image digests to support arbitrary integration test images
+	assert.Contains(t, err.Error(),
+		fmt.Sprintf("content digest mismatch: image %s has digest(s)", op.Image.Image))
+	assert.Contains(t, err.Error(),
+		fmt.Sprintf("but the digest should be %s according to the bundle file", badDigest))
 }

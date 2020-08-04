@@ -61,5 +61,9 @@ endif
 	git checkout go.mod go.sum
 
 .PHONY: coverage
-coverage:
+coverage: compile-integration-tests
 	./e2e-kind.sh
+
+.PHONY: compile-integration-tests
+compile-integration-tests:
+	@go test -tags=integration -run nothing ./...

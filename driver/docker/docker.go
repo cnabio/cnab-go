@@ -3,12 +3,12 @@ package docker
 import (
 	"archive/tar"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	unix_path "path"
+	"strings"
 
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -22,6 +22,9 @@ import (
 	"github.com/docker/docker/registry"
 	"github.com/mitchellh/copystructure"
 
+	"github.com/pkg/errors"
+
+	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
 )
 
@@ -187,6 +190,17 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 			return driver.OperationResult{}, err
 		}
 	}
+
+	ii, err := d.inspectImage(ctx, op.Image)
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
+	err = d.validateImageDigest(op.Image, ii.RepoDigests)
+	if err != nil {
+		return driver.OperationResult{}, errors.Wrap(err, "image digest validation failed")
+	}
+
 	var env []string
 	for k, v := range op.Environment {
 		env = append(env, fmt.Sprintf("%s=%v", k, v))
@@ -206,16 +220,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	resp, err := cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, "")
-	switch {
-	case client.IsErrNotFound(err):
-		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", op.Image.Image)
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
-			return driver.OperationResult{}, err
-		}
-		if resp, err = cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, ""); err != nil {
-			return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
-		}
-	case err != nil:
+	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
 
@@ -385,3 +390,52 @@ func generateTar(files map[string]string) (io.Reader, error) {
 
 // ConfigurationOption is an option used to customize docker driver container and host config
 type ConfigurationOption func(*container.Config, *container.HostConfig) error
+
+// inspectImage inspects the operation image and returns an object of types.ImageInspect,
+// pulling the image if not found locally
+func (d *Driver) inspectImage(ctx context.Context, image bundle.InvocationImage) (types.ImageInspect, error) {
+	ii, _, err := d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image)
+	switch {
+	case client.IsErrNotFound(err):
+		fmt.Fprintf(d.dockerCli.Err(), "Unable to find image '%s' locally\n", image.Image)
+		if err := pullImage(ctx, d.dockerCli, image.Image); err != nil {
+			return ii, err
+		}
+		if ii, _, err = d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image); err != nil {
+			return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+		}
+	case err != nil:
+		return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+	}
+
+	return ii, nil
+}
+
+// validateImageDigest validates the operation image digest, if exists, against
+// the supplied repoDigests
+// TODO: or is it only acceptable for repoDigests to have one, exact match?
+func (d *Driver) validateImageDigest(image bundle.InvocationImage, repoDigests []string) error {
+	if image.Digest != "" {
+		// RepoDigests are in the form of imageName@sha256:<sha256>
+		// We parse out the digest itself and keep track of all of them to display in the error case
+		digests := make([]string, 0, len(repoDigests))
+		for _, repoDigest := range repoDigests {
+			// TODO: is there a better (i.e. via docker api) way to extract the digest?
+			parts := strings.Split(repoDigest, "@")
+			if len(parts) != 2 {
+				return fmt.Errorf("unable to parse repo digest %s", repoDigest)
+			}
+			digest := parts[1]
+
+			if digest == image.Digest {
+				return nil
+			}
+			digests = append(digests, digest)
+		}
+
+		return fmt.Errorf("content digest mismatch: image %s has digest(s) %s but the digest should be %s according to the bundle file", image.Image, digests, image.Digest)
+	}
+	// TODO: if digest empty, do we want to provide a warning somehow? Spec says:
+	// If the contentDigest is not present, the runtime SHOULD report an error so the user is aware that there is no contentDigest provided.
+	return nil
+}
