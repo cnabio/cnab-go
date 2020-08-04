@@ -747,3 +747,43 @@ func TestStore_EncryptOutputs(t *testing.T) {
 	require.NoError(t, err, "ReadOutput failed")
 	assert.Equal(t, string(port.Value), string(gotPort.Value), "output doesn't match the original output")
 }
+
+func TestStore_GetLastOutputs_OutputDefinitionRemoved(t *testing.T) {
+	cp, _ := generateClaimData(t)
+
+	foo, err := cp.ReadInstallation("foo")
+	require.NoError(t, err, "ReadInstallation failed")
+
+	// Remove output1 from the bundle definition
+	installClaim := foo.Claims[0]
+	b := bundle.Bundle{
+		Definitions: map[string]*definition.Schema{
+			"output2": {
+				Type: "string",
+			},
+		},
+		Outputs: map[string]bundle.Output{
+			"output2": {
+				Definition: "output2",
+				ApplyTo:    []string{"upgrade"},
+			},
+		},
+	}
+	upgradeClaim, err := installClaim.NewClaim(ActionUpgrade, b, nil)
+	require.NoError(t, err, "NewClaim failed")
+	err = cp.SaveClaim(upgradeClaim)
+	require.NoError(t, err, "SaveClaim failed")
+	upgradeResult, err := upgradeClaim.NewResult(StatusRunning)
+	require.NoError(t, err, "NewResult failed")
+	err = cp.SaveResult(upgradeResult)
+	require.NoError(t, err, "SaveResult failed")
+	upgradeOutput := NewOutput(upgradeClaim, upgradeResult, "output2", []byte("upgrade output"))
+	err = cp.SaveOutput(upgradeOutput)
+	require.NoError(t, err, "SaveOutput failed")
+
+	// Read the outputs from the installation
+	outputs, err := cp.ReadLastOutputs("foo")
+	require.NoError(t, err, "ReadLastOutputs failed")
+
+	assert.Equal(t, outputs.Len(), 2)
+}
