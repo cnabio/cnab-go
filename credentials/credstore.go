@@ -17,19 +17,19 @@ var ErrNotFound = errors.New("Credential set does not exist")
 
 // Store is a persistent store for credential sets.
 type Store struct {
-	backingStore *crud.BackingStore
+	backingStore crud.ManagedStore
 }
 
 // NewCredentialStore creates a persistent store for credential sets using the specified
 // backing key-blob store.
-func NewCredentialStore(store *crud.BackingStore) Store {
+func NewCredentialStore(store crud.ManagedStore) Store {
 	return Store{
 		backingStore: store,
 	}
 }
 
 // GetBackingStore returns the data store behind this credentials store.
-func (s Store) GetBackingStore() *crud.BackingStore {
+func (s Store) GetBackingStore() crud.ManagedStore {
 	return s.backingStore
 }
 
