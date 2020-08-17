@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cnabio/cnab-go/secrets/host"
 )
@@ -25,6 +26,10 @@ func TestCredentialSet_ResolveCredentials(t *testing.T) {
 	}
 	credset, err := Load(fmt.Sprintf("testdata/staging-%s.yaml", goos))
 	is.NoError(err)
+
+	version, err := GetDefaultSchemaVersion()
+	require.NoError(t, err, "GetDefaultSchemaVersion failed")
+	is.Equal(version, credset.SchemaVersion)
 
 	h := &host.SecretStore{}
 	results, err := credset.ResolveCredentials(h)

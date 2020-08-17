@@ -8,12 +8,20 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/schema"
 	"github.com/cnabio/cnab-go/secrets"
 	"github.com/cnabio/cnab-go/valuesource"
 )
 
+// CNABSpecVersion represents the CNAB Spec version of the Credentials
+// that this library implements
+// This value is prefixed with e.g. `cnab-credentials-` so isn't itself valid semver.
+var CNABSpecVersion string = "cnab-credentialsets-1.0.0-DRAFT-b6c701f"
+
 // CredentialSet represents a collection of credentials
 type CredentialSet struct {
+	// SchemaVersion is the version of the claim schema.
+	SchemaVersion schema.Version `json:"schemaVersion" yaml:"schemaVersion"`
 	// Name is the name of the credentialset.
 	Name string `json:"name" yaml:"name"`
 	// Created timestamp of the credentialset.
@@ -22,6 +30,16 @@ type CredentialSet struct {
 	Modified time.Time `json:"modified" yaml:"modified"`
 	// Credentials is a list of credential specs.
 	Credentials []valuesource.Strategy `json:"credentials" yaml:"credentials"`
+}
+
+// GetDefaultSchemaVersion returns the default semver CNAB schema version of the CredentialSet
+// that this library implements
+func GetDefaultSchemaVersion() (schema.Version, error) {
+	ver, err := schema.GetSemver(CNABSpecVersion)
+	if err != nil {
+		return "", err
+	}
+	return ver, nil
 }
 
 // Load a CredentialSet from a file at a given path.
