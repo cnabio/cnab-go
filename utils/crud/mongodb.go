@@ -69,6 +69,19 @@ func (s *mongoDBStore) getCollection(itemType string) *mgo.Collection {
 	return c
 }
 
+func (s *mongoDBStore) Count(itemType string, group string) (int, error) {
+	collection := s.getCollection(itemType)
+
+	var query map[string]string
+	if group != "" {
+		query = map[string]string{
+			"group": group,
+		}
+	}
+	n, err := collection.Find(query).Count()
+	return n, wrapErr(err)
+}
+
 func (s *mongoDBStore) List(itemType string, group string) ([]string, error) {
 	collection := s.getCollection(itemType)
 

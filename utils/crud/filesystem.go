@@ -31,6 +31,11 @@ type FileSystemStore struct {
 	fileExtensions map[string]string
 }
 
+func (s FileSystemStore) Count(itemType string, group string) (int, error) {
+	names, err := s.List(itemType, group)
+	return len(names), err
+}
+
 func (s FileSystemStore) List(itemType string, group string) ([]string, error) {
 	if err := s.ensure(itemType); err != nil {
 		return nil, err

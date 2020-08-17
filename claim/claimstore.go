@@ -38,14 +38,14 @@ var (
 
 // Store is a persistent store for claims.
 type Store struct {
-	backingStore *crud.BackingStore
+	backingStore crud.ManagedStore
 	encrypt      EncryptionHandler
 	decrypt      EncryptionHandler
 }
 
 // NewClaimStore creates a persistent store for claims using the specified
-// backing key-blob store.
-func NewClaimStore(store *crud.BackingStore, encrypt EncryptionHandler, decrypt EncryptionHandler) Store {
+// backing datastore.
+func NewClaimStore(store crud.ManagedStore, encrypt EncryptionHandler, decrypt EncryptionHandler) Store {
 	if encrypt == nil {
 		encrypt = noOpEncryptionHandler
 	}
@@ -81,7 +81,7 @@ var noOpEncryptionHandler = func(data []byte) ([]byte, error) {
 }
 
 // GetBackingStore returns the data store behind this claim store.
-func (s Store) GetBackingStore() *crud.BackingStore {
+func (s Store) GetBackingStore() crud.ManagedStore {
 	return s.backingStore
 }
 

@@ -89,6 +89,11 @@ func (s MockStore) key(itemType string, id string) string {
 	return path.Join(itemType, id)
 }
 
+func (s MockStore) Count(itemType string, group string) (int, error) {
+	names, err := s.List(itemType, group)
+	return len(names), err
+}
+
 func (s MockStore) List(itemType string, group string) ([]string, error) {
 	if s.ListMock != nil {
 		return s.ListMock(itemType, group)

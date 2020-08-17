@@ -1,13 +1,12 @@
 package crud
 
-var _ Store = &BackingStore{}
+var _ ManagedStore = &BackingStore{}
 
 // BackingStore wraps another store that may have Connect/Close methods that
 // need to be called.
 // - Connect is called before a method when the connection is closed.
 // - Close is called after each method when AutoClose is true (default).
 type BackingStore struct {
-
 	// AutoClose specifies if the connection should be automatically
 	// closed when done accessing the backing store.
 	AutoClose bool
@@ -73,6 +72,16 @@ func (s *BackingStore) autoClose() error {
 		return s.Close()
 	}
 	return nil
+}
+
+func (s *BackingStore) Count(itemType string, group string) (int, error) {
+	handleClose, err := s.HandleConnect()
+	defer handleClose()
+	if err != nil {
+		return 0, err
+	}
+
+	return s.datastore.Count(itemType, group)
 }
 
 func (s *BackingStore) List(itemType string, group string) ([]string, error) {

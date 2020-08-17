@@ -209,3 +209,25 @@ func TestBackingStore_ReadAll(t *testing.T) {
 		})
 	}
 }
+
+func TestBackingStore_Count(t *testing.T) {
+	s := NewMockStore()
+
+	count, err := s.Count(testItemType, testGroup)
+	require.NoError(t, err, "Count failed")
+	assert.Equal(t, 0, count, "Count should be 0 for an empty datastore")
+
+	err = s.Save(testItemType, testGroup, "key1", []byte("value1"))
+	require.NoError(t, err, "Save failed")
+
+	count, err = s.Count(testItemType, testGroup)
+	require.NoError(t, err, "Count failed")
+	assert.Equal(t, 1, count, "Count should be 1 after adding an item")
+
+	err = s.Delete(testItemType, "key1")
+	require.NoError(t, err, "Delete failed")
+
+	count, err = s.Count(testItemType, testGroup)
+	require.NoError(t, err, "Count failed")
+	assert.Equal(t, 0, count, "Count should be 0 after deleting the item")
+}
