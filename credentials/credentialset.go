@@ -20,7 +20,7 @@ var CNABSpecVersion string = "cnab-credentialsets-1.0.0-DRAFT-b6c701f"
 
 // CredentialSet represents a collection of credentials
 type CredentialSet struct {
-	// SchemaVersion is the version of the claim schema.
+	// SchemaVersion is the version of the credential-set schema.
 	SchemaVersion schema.Version `json:"schemaVersion" yaml:"schemaVersion"`
 	// Name is the name of the credentialset.
 	Name string `json:"name" yaml:"name"`
