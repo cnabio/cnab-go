@@ -13,10 +13,17 @@ import (
 	"github.com/cnabio/cnab-go/valuesource"
 )
 
-// CNABSpecVersion represents the CNAB Spec version of the Credentials
-// that this library implements
-// This value is prefixed with e.g. `cnab-credentials-` so isn't itself valid semver.
-var CNABSpecVersion string = "cnab-credentialsets-1.0.0-DRAFT-b6c701f"
+const (
+	// DefaultSchemaVersion is the default SchemaVersion value
+	// set on new CredentialSet instances, and is the semver portion
+	// of CNABSpecVersion.
+	DefaultSchemaVersion = schema.Version("1.0.0-DRAFT+b6c701f")
+
+	// CNABSpecVersion represents the CNAB Spec version of the Credentials
+	// that this library implements
+	// This value is prefixed with e.g. `cnab-credentials-` so isn't itself valid semver.
+	CNABSpecVersion string = "cnab-credentialsets-" + string(DefaultSchemaVersion)
+)
 
 // CredentialSet represents a collection of credentials
 type CredentialSet struct {
@@ -32,14 +39,18 @@ type CredentialSet struct {
 	Credentials []valuesource.Strategy `json:"credentials" yaml:"credentials"`
 }
 
-// GetDefaultSchemaVersion returns the default semver CNAB schema version of the CredentialSet
-// that this library implements
-func GetDefaultSchemaVersion() (schema.Version, error) {
-	ver, err := schema.GetSemver(CNABSpecVersion)
-	if err != nil {
-		return "", err
+// NewCredentialSet creates a new CredentialSet with the required fields initialized.
+func NewCredentialSet(name string, creds ...valuesource.Strategy) CredentialSet {
+	now := time.Now()
+	cs := CredentialSet{
+		SchemaVersion: DefaultSchemaVersion,
+		Name:          name,
+		Created:       now,
+		Modified:      now,
+		Credentials:   creds,
 	}
-	return ver, nil
+
+	return cs
 }
 
 // Load a CredentialSet from a file at a given path.
