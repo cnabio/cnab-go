@@ -2,6 +2,7 @@ package crud
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -76,7 +77,13 @@ func (s FileSystemStore) Delete(itemType string, name string) error {
 	if err != nil {
 		return err
 	}
-	return os.Remove(filename)
+
+	err = os.RemoveAll(filename)
+	if err != nil {
+		return err
+	}
+
+	return removeGroupDir(itemType, filename)
 }
 
 func (s FileSystemStore) resolveFileName(itemType string, name string) (string, error) {
@@ -113,6 +120,25 @@ func (s FileSystemStore) resolveFileName(itemType string, name string) (string, 
 	default:
 		return "", fmt.Errorf("more than one file matched for %s %s", itemType, name)
 	}
+}
+
+func removeGroupDir(itemType string, filename string) error {
+	// Determine if parent directory represents a group dir
+	if dir, _ := filepath.Split(filename); dir != itemType {
+		// If so, read contents
+		f, err := os.Open(dir)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		// If empty, delete this group dir
+		_, err = f.Readdir(1)
+		if err == io.EOF {
+			return os.RemoveAll(dir)
+		}
+	}
+	return nil
 }
 
 func (s FileSystemStore) fileNameOf(itemType string, group string, name string) string {
