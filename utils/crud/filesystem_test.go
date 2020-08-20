@@ -63,7 +63,7 @@ func TestFilesystemStore(t *testing.T) {
 
 			// Verify that the group/parent dir remains
 			groupDir, err := os.Stat(filepath.Join(tmdir, testItemType, tc.group))
-			require.NoError(t, err, "expected the group directory to exist")
+			require.NoError(t, err, "expected the group/parent directory to exist")
 			require.True(t, groupDir.IsDir())
 
 			// Delete last record
@@ -72,7 +72,7 @@ func TestFilesystemStore(t *testing.T) {
 			// Verify group/parent dir removed
 			if tc.group != "" {
 				_, err := os.Stat(filepath.Join(tmdir, testItemType, tc.group))
-				require.Contains(t, err.Error(), "no such file or directory",
+				require.True(t, os.IsNotExist(err),
 					"expected the parent group directory to be removed")
 			}
 
@@ -80,7 +80,7 @@ func TestFilesystemStore(t *testing.T) {
 			// or list is empty
 			list, err = s.List(testItemType, tc.group)
 			if tc.group != "" {
-				require.EqualError(t, err, "File does not exist",
+				require.Equal(t, ErrRecordDoesNotExist, err,
 					"expected an error when listing from a removed group directory")
 			} else {
 				require.NoError(t, err, "expected no error when listing directly from the item type directory")
