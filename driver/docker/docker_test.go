@@ -110,7 +110,7 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 
 		err := d.validateImageDigest(image, repoDigests)
 		assert.EqualError(t, err,
-			"content digest mismatch: image myreg/myimg has digest(s) [sha256:deadbeef] but the digest should be sha256:livebeef according to the bundle file")
+			"content digest mismatch: image myreg/myimg has digest sha256:deadbeef but the value should be sha256:livebeef according to the bundle file")
 	})
 
 	t.Run("image digest exists - a match exists", func(t *testing.T) {

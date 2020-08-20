@@ -112,7 +112,7 @@ func TestDriver_ValidateImageDigestFail(t *testing.T) {
 	assert.Error(t, err)
 	// Not asserting actual image digests to support arbitrary integration test images
 	assert.Contains(t, err.Error(),
-		fmt.Sprintf("content digest mismatch: image %s has digest(s)", op.Image.Image))
+		fmt.Sprintf("content digest mismatch: image %s has digest", op.Image.Image))
 	assert.Contains(t, err.Error(),
-		fmt.Sprintf("but the digest should be %s according to the bundle file", badDigest))
+		fmt.Sprintf("but the value should be %s according to the bundle file", badDigest))
 }
