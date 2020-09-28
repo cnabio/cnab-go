@@ -88,7 +88,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 
 func TestDriver_ValidateImageDigest(t *testing.T) {
 	repoDigests := []string{
-		"myreg/myimg@sha256:deadbeef",
+		"myreg/myimg@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a",
 	}
 
 	t.Run("no image digest", func(t *testing.T) {
@@ -106,11 +106,11 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 
 		image := bundle.InvocationImage{}
 		image.Image = "myreg/myimg"
-		image.Digest = "sha256:livebeef"
+		image.Digest = "sha256:185518070891758909c9f839cf4ca393ee977ac378609f700f60a771a2dfe321"
 
 		err := d.validateImageDigest(image, repoDigests)
-		assert.EqualError(t, err,
-			"content digest mismatch: image myreg/myimg has digest sha256:deadbeef but the value should be sha256:livebeef according to the bundle file")
+		assert.NotNil(t, err, "expected an error")
+		assert.Contains(t, err.Error(), "content digest mismatch")
 	})
 
 	t.Run("image digest exists - a match exists", func(t *testing.T) {
@@ -118,9 +118,24 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 
 		image := bundle.InvocationImage{}
 		image.Image = "myreg/myimg"
-		image.Digest = "sha256:deadbeef"
+		image.Digest = "sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
 
 		err := d.validateImageDigest(image, repoDigests)
 		assert.NoError(t, err)
+	})
+
+	t.Run("image digest exists - more than one repo digest exists", func(t *testing.T) {
+		d := &Driver{}
+
+		image := bundle.InvocationImage{}
+		image.Image = "myreg/myimg"
+		image.Digest = "sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
+
+		repoDigests = append(repoDigests,
+			"myreg/myimg@sha256:185518070891758909c9f839cf4ca393ee977ac378609f700f60a771a2dfe321")
+
+		err := d.validateImageDigest(image, repoDigests)
+		assert.NotNil(t, err, "expected an error")
+		assert.EqualError(t, err, "image myreg/myimg has more than one repo digest")
 	})
 }

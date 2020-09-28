@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	unix_path "path"
-	"strings"
 
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -414,29 +413,31 @@ func (d *Driver) inspectImage(ctx context.Context, image bundle.InvocationImage)
 // validateImageDigest validates the operation image digest, if exists, against
 // the supplied repoDigests
 func (d *Driver) validateImageDigest(image bundle.InvocationImage, repoDigests []string) error {
-	if image.Digest != "" {
-		switch count := len(repoDigests); {
-		case count == 0:
-			return fmt.Errorf("image %s has no repo digests", image.Image)
-		case count > 1:
-			return fmt.Errorf("image %s has more than one repo digest", image.Image)
-		}
-
-		repoDigest := repoDigests[0]
-		// RepoDigests are of the form 'imageName@sha256:<sha256>'; we parse out the digest itself for comparison
-		// TODO: is there a better (i.e. via docker api) way to extract the digest?
-		parts := strings.Split(repoDigest, "@")
-		if len(parts) != 2 {
-			return fmt.Errorf("unable to parse repo digest %s", repoDigest)
-		}
-		digest := parts[1]
-
-		if digest == image.Digest {
-			return nil
-		}
-		return fmt.Errorf("content digest mismatch: image %s has digest %s but the value should be %s according to the bundle file", image.Image, digest, image.Digest)
+	if image.Digest == "" {
+		return nil
 	}
-	// TODO: if digest empty, do we want to provide a warning somehow? Spec says:
-	// If the contentDigest is not present, the runtime SHOULD report an error so the user is aware that there is no contentDigest provided.
-	return nil
+
+	switch count := len(repoDigests); {
+	case count == 0:
+		return fmt.Errorf("image %s has no repo digests", image.Image)
+	case count > 1:
+		return fmt.Errorf("image %s has more than one repo digest", image.Image)
+	}
+
+	// RepoDigests are of the form 'imageName@sha256:<sha256>'; we parse out the digest itself for comparison
+	repoDigest := repoDigests[0]
+	ref, err := reference.ParseNormalizedNamed(repoDigest)
+	if err != nil {
+		return err
+	}
+	digestRef, ok := ref.(reference.Digested)
+	if !ok {
+		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
+	}
+	digest := digestRef.Digest().String()
+
+	if digest == image.Digest {
+		return nil
+	}
+	return fmt.Errorf("content digest mismatch: image %s has digest %s but the value should be %s according to the bundle file", image.Image, digest, image.Digest)
 }
