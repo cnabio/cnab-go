@@ -428,7 +428,7 @@ func (d *Driver) validateImageDigest(image bundle.InvocationImage, repoDigests [
 	repoDigest := repoDigests[0]
 	ref, err := reference.ParseNormalizedNamed(repoDigest)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
 	}
 	digestRef, ok := ref.(reference.Digested)
 	if !ok {
