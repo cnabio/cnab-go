@@ -3,6 +3,7 @@ package crud
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,24 +13,86 @@ import (
 var _ Store = FileSystemStore{}
 
 func TestFilesystemStore(t *testing.T) {
-	is := assert.New(t)
-	tmdir, err := ioutil.TempDir("", "cnab-test-")
-	is.NoError(err)
-	defer os.RemoveAll(tmdir)
-	s := NewFileSystemStore(tmdir, map[string]string{testItemType: ".json"})
-	key := "testkey"
-	val := []byte("testval")
-	is.NoError(s.Save(testItemType, testGroup, key, val))
-	list, err := s.List(testItemType, testGroup)
-	is.NoError(err)
-	is.Len(list, 1)
-	d, err := s.Read(testItemType, "testkey")
-	is.NoError(err)
-	is.Equal([]byte("testval"), d)
-	is.NoError(s.Delete(testItemType, key))
-	list, err = s.List(testItemType, testGroup)
-	is.NoError(err)
-	is.Len(list, 0)
+	testcases := []struct {
+		name  string
+		group string
+	}{
+		{
+			name:  "no group supplied",
+			group: "",
+		}, {
+			name:  "group supplied",
+			group: testGroup,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			tmdir, err := ioutil.TempDir("", "cnab-test-")
+			require.NoError(t, err)
+			defer os.RemoveAll(tmdir)
+
+			s := NewFileSystemStore(tmdir, map[string]string{testItemType: ".json"})
+			keys := []string{"testkey1", "testkey2"}
+			val := []byte("testval")
+
+			// Save some records
+			for _, key := range keys {
+				require.NoError(t, s.Save(testItemType, tc.group, key, val))
+			}
+
+			// List the records
+			list, err := s.List(testItemType, tc.group)
+			require.NoError(t, err)
+			require.Len(t, list, len(keys))
+
+			// Read each record
+			for _, key := range keys {
+				d, err := s.Read(testItemType, key)
+				require.NoError(t, err)
+				require.Equal(t, []byte("testval"), d)
+			}
+
+			// Delete a record
+			require.NoError(t, s.Delete(testItemType, keys[0]))
+
+			// Verify list count
+			list, err = s.List(testItemType, tc.group)
+			require.NoError(t, err, "expected no error when listing directly from the item type directory")
+			require.Len(t, list, len(keys)-1)
+
+			// Verify that the group/parent dir remains
+			groupDir, err := os.Stat(filepath.Join(tmdir, testItemType, tc.group))
+			require.NoError(t, err, "expected the group/parent directory to exist")
+			require.True(t, groupDir.IsDir())
+
+			// Delete last record
+			require.NoError(t, s.Delete(testItemType, keys[1]))
+
+			// Verify group/parent dir removed
+			if tc.group != "" {
+				_, err := os.Stat(filepath.Join(tmdir, testItemType, tc.group))
+				require.True(t, os.IsNotExist(err),
+					"expected the parent group directory to be removed")
+			}
+
+			// Verify group/parent dir removed and error received
+			// or list is empty
+			list, err = s.List(testItemType, tc.group)
+			if tc.group != "" {
+				require.Equal(t, ErrRecordDoesNotExist, err,
+					"expected an error when listing from a removed group directory")
+			} else {
+				require.NoError(t, err, "expected no error when listing directly from the item type directory")
+				require.Len(t, list, 0)
+			}
+
+			// Verify the item type dir still exists
+			itemTypeDir, err := os.Stat(filepath.Join(tmdir, testItemType))
+			require.NoError(t, err, "expected the item type directory to exist")
+			require.True(t, itemTypeDir.IsDir())
+		})
+	}
 }
 
 func TestFileSystemStore_Count(t *testing.T) {
