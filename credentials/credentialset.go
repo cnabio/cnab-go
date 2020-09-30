@@ -8,12 +8,27 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/cnabio/cnab-go/bundle"
+	"github.com/cnabio/cnab-go/schema"
 	"github.com/cnabio/cnab-go/secrets"
 	"github.com/cnabio/cnab-go/valuesource"
 )
 
+const (
+	// DefaultSchemaVersion is the default SchemaVersion value
+	// set on new CredentialSet instances, and is the semver portion
+	// of CNABSpecVersion.
+	DefaultSchemaVersion = schema.Version("1.0.0-DRAFT+b6c701f")
+
+	// CNABSpecVersion represents the CNAB Spec version of the Credentials
+	// that this library implements
+	// This value is prefixed with e.g. `cnab-credentials-` so isn't itself valid semver.
+	CNABSpecVersion string = "cnab-credentialsets-" + string(DefaultSchemaVersion)
+)
+
 // CredentialSet represents a collection of credentials
 type CredentialSet struct {
+	// SchemaVersion is the version of the credential-set schema.
+	SchemaVersion schema.Version `json:"schemaVersion" yaml:"schemaVersion"`
 	// Name is the name of the credentialset.
 	Name string `json:"name" yaml:"name"`
 	// Created timestamp of the credentialset.
@@ -22,6 +37,20 @@ type CredentialSet struct {
 	Modified time.Time `json:"modified" yaml:"modified"`
 	// Credentials is a list of credential specs.
 	Credentials []valuesource.Strategy `json:"credentials" yaml:"credentials"`
+}
+
+// NewCredentialSet creates a new CredentialSet with the required fields initialized.
+func NewCredentialSet(name string, creds ...valuesource.Strategy) CredentialSet {
+	now := time.Now()
+	cs := CredentialSet{
+		SchemaVersion: DefaultSchemaVersion,
+		Name:          name,
+		Created:       now,
+		Modified:      now,
+		Credentials:   creds,
+	}
+
+	return cs
 }
 
 // Load a CredentialSet from a file at a given path.
