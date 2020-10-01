@@ -3,7 +3,6 @@ package docker
 import (
 	"archive/tar"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -22,6 +21,9 @@ import (
 	"github.com/docker/docker/registry"
 	"github.com/mitchellh/copystructure"
 
+	"github.com/pkg/errors"
+
+	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
 )
 
@@ -187,6 +189,17 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 			return driver.OperationResult{}, err
 		}
 	}
+
+	ii, err := d.inspectImage(ctx, op.Image)
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
+	err = d.validateImageDigest(op.Image, ii.RepoDigests)
+	if err != nil {
+		return driver.OperationResult{}, errors.Wrap(err, "image digest validation failed")
+	}
+
 	var env []string
 	for k, v := range op.Environment {
 		env = append(env, fmt.Sprintf("%s=%v", k, v))
@@ -206,16 +219,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	resp, err := cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, "")
-	switch {
-	case client.IsErrNotFound(err):
-		fmt.Fprintf(cli.Err(), "Unable to find image '%s' locally\n", op.Image.Image)
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
-			return driver.OperationResult{}, err
-		}
-		if resp, err = cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, ""); err != nil {
-			return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
-		}
-	case err != nil:
+	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
 
@@ -385,3 +389,55 @@ func generateTar(files map[string]string) (io.Reader, error) {
 
 // ConfigurationOption is an option used to customize docker driver container and host config
 type ConfigurationOption func(*container.Config, *container.HostConfig) error
+
+// inspectImage inspects the operation image and returns an object of types.ImageInspect,
+// pulling the image if not found locally
+func (d *Driver) inspectImage(ctx context.Context, image bundle.InvocationImage) (types.ImageInspect, error) {
+	ii, _, err := d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image)
+	switch {
+	case client.IsErrNotFound(err):
+		fmt.Fprintf(d.dockerCli.Err(), "Unable to find image '%s' locally\n", image.Image)
+		if err := pullImage(ctx, d.dockerCli, image.Image); err != nil {
+			return ii, err
+		}
+		if ii, _, err = d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image); err != nil {
+			return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+		}
+	case err != nil:
+		return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+	}
+
+	return ii, nil
+}
+
+// validateImageDigest validates the operation image digest, if exists, against
+// the supplied repoDigests
+func (d *Driver) validateImageDigest(image bundle.InvocationImage, repoDigests []string) error {
+	if image.Digest == "" {
+		return nil
+	}
+
+	switch count := len(repoDigests); {
+	case count == 0:
+		return fmt.Errorf("image %s has no repo digests", image.Image)
+	case count > 1:
+		return fmt.Errorf("image %s has more than one repo digest", image.Image)
+	}
+
+	// RepoDigests are of the form 'imageName@sha256:<sha256>'; we parse out the digest itself for comparison
+	repoDigest := repoDigests[0]
+	ref, err := reference.ParseNormalizedNamed(repoDigest)
+	if err != nil {
+		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
+	}
+	digestRef, ok := ref.(reference.Digested)
+	if !ok {
+		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
+	}
+	digest := digestRef.Digest().String()
+
+	if digest == image.Digest {
+		return nil
+	}
+	return fmt.Errorf("content digest mismatch: image %s has digest %s but the value should be %s according to the bundle file", image.Image, digest, image.Digest)
+}
