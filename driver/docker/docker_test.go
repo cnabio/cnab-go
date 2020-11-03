@@ -6,6 +6,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
@@ -87,8 +88,12 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 }
 
 func TestDriver_ValidateImageDigest(t *testing.T) {
+	// Mimic the digests created when a bundle is pushed with cnab-to-oci
+	// there is one for the original invocation image and another
+	// for the relocated invocation image inside the bundle repository
 	repoDigests := []string{
-		"myreg/myimg@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a",
+		"myreg/mybun-installer:v1.0.0",
+		"myreg/mybun@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a",
 	}
 
 	t.Run("no image digest", func(t *testing.T) {
@@ -101,15 +106,15 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("image digest exists - no match exists", func(t *testing.T) {
+	t.Run("image digest exists - no match found", func(t *testing.T) {
 		d := &Driver{}
 
 		image := bundle.InvocationImage{}
-		image.Image = "myreg/myimg"
+		image.Image = "myreg/mybun@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
 		image.Digest = "sha256:185518070891758909c9f839cf4ca393ee977ac378609f700f60a771a2dfe321"
 
 		err := d.validateImageDigest(image, repoDigests)
-		assert.NotNil(t, err, "expected an error")
+		require.NotNil(t, err, "expected an error")
 		assert.Contains(t, err.Error(), "content digest mismatch")
 	})
 
@@ -117,39 +122,24 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 		d := &Driver{}
 
 		image := bundle.InvocationImage{}
-		image.Image = "myreg/myimg"
+		image.Image = "myreg/mybun@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
 		image.Digest = "sha256:185518070891758909c9f839cf4ca393ee977ac378609f700f60a771a2dfe321"
 
-		badRepoDigests := []string{"myreg/myimg@sha256:deadbeef"}
+		badRepoDigests := []string{"myreg/mybun@sha256:deadbeef"}
 
 		err := d.validateImageDigest(image, badRepoDigests)
-		assert.NotNil(t, err, "expected an error")
-		assert.EqualError(t, err, "unable to parse repo digest myreg/myimg@sha256:deadbeef")
+		require.NotNil(t, err, "expected an error")
+		assert.Contains(t, err.Error(), "unable to parse repo digest")
 	})
 
-	t.Run("image digest exists - more than one repo digest exists", func(t *testing.T) {
+	t.Run("image digest exists - match found", func(t *testing.T) {
 		d := &Driver{}
 
 		image := bundle.InvocationImage{}
-		image.Image = "myreg/myimg"
-		image.Digest = "sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
-
-		multipleRepoDigests := append(repoDigests,
-			"myreg/myimg@sha256:185518070891758909c9f839cf4ca393ee977ac378609f700f60a771a2dfe321")
-
-		err := d.validateImageDigest(image, multipleRepoDigests)
-		assert.NotNil(t, err, "expected an error")
-		assert.EqualError(t, err, "image myreg/myimg has more than one repo digest")
-	})
-
-	t.Run("image digest exists - an exact match exists", func(t *testing.T) {
-		d := &Driver{}
-
-		image := bundle.InvocationImage{}
-		image.Image = "myreg/myimg"
+		image.Image = "myreg/mybun@sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
 		image.Digest = "sha256:d366a4665ab44f0648d7a00ae3fae139d55e32f9712c67accd604bb55df9d05a"
 
 		err := d.validateImageDigest(image, repoDigests)
-		assert.NoError(t, err)
+		require.NoError(t, err, "validateImageDigest failed")
 	})
 }

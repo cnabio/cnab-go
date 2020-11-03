@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
@@ -109,10 +110,8 @@ func TestDriver_ValidateImageDigestFail(t *testing.T) {
 	docker := &Driver{}
 
 	_, err := docker.Run(op)
-	assert.Error(t, err)
+	require.Error(t, err, "expected an error")
 	// Not asserting actual image digests to support arbitrary integration test images
 	assert.Contains(t, err.Error(),
-		fmt.Sprintf("content digest mismatch: image %s has digest", op.Image.Image))
-	assert.Contains(t, err.Error(),
-		fmt.Sprintf("but the value should be %s according to the bundle file", badDigest))
+		fmt.Sprintf("content digest mismatch: invocation image %s was defined in the bundle with the digest %s but no matching repoDigest was found upon inspecting the image", op.Image.Image, badDigest))
 }

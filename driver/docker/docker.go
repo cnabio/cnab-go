@@ -417,27 +417,31 @@ func (d *Driver) validateImageDigest(image bundle.InvocationImage, repoDigests [
 		return nil
 	}
 
-	switch count := len(repoDigests); {
-	case count == 0:
+	if len(repoDigests) == 0 {
 		return fmt.Errorf("image %s has no repo digests", image.Image)
-	case count > 1:
-		return fmt.Errorf("image %s has more than one repo digest", image.Image)
 	}
 
-	// RepoDigests are of the form 'imageName@sha256:<sha256>'; we parse out the digest itself for comparison
-	repoDigest := repoDigests[0]
-	ref, err := reference.ParseNormalizedNamed(repoDigest)
-	if err != nil {
-		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
-	}
-	digestRef, ok := ref.(reference.Digested)
-	if !ok {
-		return fmt.Errorf("unable to parse repo digest %s", repoDigest)
-	}
-	digest := digestRef.Digest().String()
+	for _, repoDigest := range repoDigests {
+		// RepoDigests are of the form 'imageName@sha256:<sha256>' or imageName:<tag>
+		// We only care about the ones in digest form
+		ref, err := reference.ParseNormalizedNamed(repoDigest)
+		if err != nil {
+			return fmt.Errorf("unable to parse repo digest %s", repoDigest)
+		}
 
-	if digest == image.Digest {
-		return nil
+		digestRef, ok := ref.(reference.Digested)
+		if !ok {
+			continue
+		}
+
+		digest := digestRef.Digest().String()
+
+		// image.Digest is the digest of the original invocation image defined in the bundle.
+		// It persists even when the bundle's invocation image has been relocated.
+		if digest == image.Digest {
+			return nil
+		}
 	}
-	return fmt.Errorf("content digest mismatch: image %s has digest %s but the value should be %s according to the bundle file", image.Image, digest, image.Digest)
+
+	return fmt.Errorf("content digest mismatch: invocation image %s was defined in the bundle with the digest %s but no matching repoDigest was found upon inspecting the image", image.Image, image.Digest)
 }
