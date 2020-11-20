@@ -10,11 +10,12 @@ import (
 
 // CheckDriverExists checks to see if the named driver exists
 func (d *Driver) CheckDriverExists() bool {
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("command -v %s", d.cliName()))
-	cmd.Env = os.Environ()
-	if err := cmd.Run(); err != nil {
-		return false
+	if d.Path != "" {
+		_, err := os.Stat(d.Path)
+		return err == nil
 	}
 
-	return true
+	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("command -v %s", d.cmd()))
+	err := cmd.Run()
+	return err == nil
 }

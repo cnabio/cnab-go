@@ -9,11 +9,12 @@ import (
 
 // CheckDriverExists checks to see if the named driver exists
 func (d *Driver) CheckDriverExists() bool {
-	cmd := exec.Command("where", d.cliName())
-	cmd.Env = os.Environ()
-	if err := cmd.Run(); err != nil {
-		return false
+	if d.Path != "" {
+		_, err := os.Stat(d.Path)
+		return err == nil
 	}
 
-	return true
+	cmd := exec.Command("where", d.cmd())
+	err := cmd.Run()
+	return err == nil
 }
