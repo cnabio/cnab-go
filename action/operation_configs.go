@@ -25,9 +25,12 @@ func (cfgs OperationConfigs) ApplyConfig(op *driver.Operation) error {
 		}
 	}
 
-	// If out wasn't configured, default it
+	// If outputs weren't configured, default them
 	if op.Out == nil {
 		op.Out = os.Stdout
+	}
+	if op.Err == nil {
+		op.Err = os.Stderr
 	}
 
 	return nil
