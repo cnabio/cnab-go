@@ -1,6 +1,7 @@
 package definition
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ type ValidationError struct {
 
 // ValidateSchema validates that the Schema is valid JSON Schema.
 // If no errors occur, the validated jsonschema.Schema is returned.
-func (s *Schema) ValidateSchema() (*jsonschema.RootSchema, error) {
+func (s *Schema) ValidateSchema() (*jsonschema.Schema, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to load schema")
@@ -43,7 +44,7 @@ func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to process data")
 	}
-	valErrs, err := def.ValidateBytes(payload)
+	valErrs, err := def.ValidateBytes(context.Background(), payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to perform validation")
 	}

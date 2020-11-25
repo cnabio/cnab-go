@@ -80,8 +80,8 @@ func TestObjectValidationValid_CustomValidator_ContentEncoding_base64(t *testing
 		File: "SGVsbG8gV29ybGQhCg===",
 	}
 	valErrors, err = definition.Validate(invalidVal)
-	assert.NoError(t, err)
-	assert.Len(t, valErrors, 1, "expected 1 validation error")
+	require.NoError(t, err)
+	require.Len(t, valErrors, 1, "expected 1 validation error")
 	assert.Equal(t, "invalid base64 value: SGVsbG8gV29ybGQhCg===", valErrors[0].Error)
 }
 
@@ -146,7 +146,7 @@ func TestObjectValidationInValidMinimum(t *testing.T) {
 	valErr := valErrors[0]
 	assert.NotNil(t, valErr, "expected the obtain the validation error")
 	assert.Equal(t, "/port", valErr.Path, "expected validation error to reference port")
-	assert.Equal(t, "must be greater than or equal to 100.000000", valErr.Error, "expected validation error to reference port")
+	assert.Equal(t, "must be greater than or equal to 100", valErr.Error, "expected validation error to reference port")
 }
 
 func TestObjectValidationPropertyRequired(t *testing.T) {
@@ -229,7 +229,7 @@ func TestObjectValidationNoAdditionalPropertiesAllowed(t *testing.T) {
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	assert.NoError(t, err)
 	assert.Equal(t, "/badActor", valErrors[0].Path, "expected the error to be on badActor")
-	assert.Equal(t, "cannot match schema", valErrors[0].Error)
+	assert.Equal(t, "additional properties are not allowed", valErrors[0].Error)
 }
 
 func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
@@ -276,5 +276,5 @@ func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
 	valErrors, err := definition.Validate(val)
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	assert.NoError(t, err)
-	assert.Equal(t, "type should be string", valErrors[0].Error)
+	assert.Equal(t, "type should be string, got boolean", valErrors[0].Error)
 }
