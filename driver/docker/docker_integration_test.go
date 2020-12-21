@@ -70,6 +70,7 @@ func TestDriver_Run(t *testing.T) {
 
 	docker := &Driver{}
 	docker.SetContainerOut(op.Out) // Docker driver writes container stdout to driver.containerOut.
+	docker.SetContainerOut(op.Err)
 	opResult, err := docker.Run(op)
 
 	assert.NoError(t, err)
@@ -79,6 +80,38 @@ func TestDriver_Run(t *testing.T) {
 		"output1": "SOME INSTALL CONTENT 1\n",
 		"output2": "SOME INSTALL CONTENT 2\n",
 	}, opResult.Outputs)
+}
+
+func TestDriver_Run_CaptureOutput(t *testing.T) {
+	image := bundle.InvocationImage{
+		BaseImage: bundle.BaseImage{
+			Image:  "carolynvs/cnab-bad-invocation-image:v1",
+			Digest: "sha256:0705cbb5fdeec6752a0a0f707b8e1f7ad63070bf64713a4d23b69ca452fe3d37",
+		},
+	}
+
+	op := &driver.Operation{
+		Installation: "example",
+		Action:       "install",
+		Image:        image,
+		Bundle:       &bundle.Bundle{},
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	op.Out = &stdout
+	op.Err = &stderr
+	op.Environment = map[string]string{
+		"CNAB_ACTION":            op.Action,
+		"CNAB_INSTALLATION_NAME": op.Installation,
+	}
+
+	docker := &Driver{}
+	_, err := docker.Run(op)
+
+	assert.NoError(t, err)
+	assert.Equal(t, "installing bundle...\n", stdout.String())
+	assert.Equal(t, "cat: can't open 'missing-file.txt': No such file or directory\n", stderr.String())
 }
 
 func TestDriver_ValidateImageDigestFail(t *testing.T) {

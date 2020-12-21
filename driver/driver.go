@@ -37,6 +37,8 @@ type Operation struct {
 	Outputs map[string]string `json:"outputs"`
 	// Output stream for log messages from the driver
 	Out io.Writer `json:"-"`
+	// Output stream for error messages from the driver
+	Err io.Writer `json:"-"`
 	// Bundle represents the bundle information for use by the operation
 	Bundle *bundle.Bundle
 }

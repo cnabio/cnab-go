@@ -2,6 +2,7 @@ package action
 
 import (
 	"errors"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,6 +19,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 		err := a.ApplyConfig(op)
 		assert.NoError(t, err, "ApplyConfig should not have returned an error")
 		assert.Equal(t, os.Stdout, op.Out, "write to stdout when output is undefined")
+		assert.Equal(t, os.Stderr, op.Err, "write to stderr when output is undefined")
 	})
 
 	t.Run("all config is persisted", func(t *testing.T) {
@@ -30,7 +32,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 				return nil
 			},
 			func(op *driver.Operation) error {
-				op.Out = os.Stdout
+				op.Out = ioutil.Discard
 				return nil
 			},
 		}
@@ -38,7 +40,8 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 		err := a.ApplyConfig(op)
 		require.NoError(t, err, "ApplyConfig should not have returned an error")
 		assert.Contains(t, op.Files, "a", "Changes from the first config function were not persisted")
-		assert.Equal(t, os.Stdout, op.Out, "Changes from the second config function were not persisted")
+		assert.Equal(t, ioutil.Discard, op.Out, "Changes from the second config function were not persisted")
+		assert.Equal(t, os.Stderr, op.Err, "Changes from the second config function were not persisted")
 	})
 
 	t.Run("error is returned immediately", func(t *testing.T) {
@@ -47,7 +50,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 				return errors.New("oops")
 			},
 			func(op *driver.Operation) error {
-				op.Out = os.Stdout
+				op.Out = ioutil.Discard
 				return nil
 			},
 		}

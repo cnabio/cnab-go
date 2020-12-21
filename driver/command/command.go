@@ -109,7 +109,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 
 		// Errors not handled here as they only prevent output from the driver being shown, errors in the command execution are handled when command is executed
 
-		io.Copy(op.Out, stderr)
+		io.Copy(op.Err, stderr)
 	}()
 
 	if err = cmd.Start(); err != nil {
