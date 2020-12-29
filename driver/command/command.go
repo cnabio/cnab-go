@@ -16,7 +16,12 @@ import (
 
 // Driver relies upon a system command to provide a driver implementation
 type Driver struct {
-	Name          string
+	Name string
+
+	// Path is the absolute path to the driver executable.
+	// If unset, the executable is expected to be named "cnab-NAME" and be on the PATH.
+	Path string
+
 	outputDirName string
 }
 
@@ -27,9 +32,8 @@ func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 
 // Handles executes the driver with `--handles` and parses the results
 func (d *Driver) Handles(dt string) bool {
-	out, err := exec.Command(d.cliName(), "--handles").CombinedOutput()
+	out, err := exec.Command(d.cmd(), "--handles").CombinedOutput()
 	if err != nil {
-		fmt.Printf("%s --handles: %s", d.cliName(), err)
 		return false
 	}
 	types := strings.Split(string(out), ",")
@@ -41,7 +45,15 @@ func (d *Driver) Handles(dt string) bool {
 	return false
 }
 
-func (d *Driver) cliName() string {
+// cmd is the command to run to execute the driver.
+//
+// When the driver does not have the path to the executable set,
+// automatically prepend "cnab-" to the name of the driver
+// so it can be found in PATH.
+func (d *Driver) cmd() string {
+	if d.Path != "" {
+		return d.Path
+	}
 	return "cnab-" + strings.ToLower(d.Name)
 }
 
@@ -81,7 +93,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	args := []string{}
-	cmd := exec.Command(d.cliName(), args...)
+	cmd := exec.Command(d.cmd(), args...)
 	cmd.Dir, err = os.Getwd()
 	if err != nil {
 		return driver.OperationResult{}, err
@@ -126,6 +138,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 	return result, nil
 }
+
 func (d *Driver) getOperationResult(op *driver.Operation) (driver.OperationResult, error) {
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
