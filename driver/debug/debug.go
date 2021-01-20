@@ -42,6 +42,7 @@ func (d *Driver) Config() map[string]string {
 }
 
 // SetConfig sets configuration for this driver
-func (d *Driver) SetConfig(settings map[string]string) {
+func (d *Driver) SetConfig(settings map[string]string) error {
 	d.config = settings
+	return nil
 }

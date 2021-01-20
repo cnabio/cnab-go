@@ -103,5 +103,5 @@ type Configurable interface {
 	Config() map[string]string
 	// SetConfig allows setting configuration, where name corresponds to the key in Config, and value is
 	// the value to be set.
-	SetConfig(map[string]string)
+	SetConfig(map[string]string) error
 }

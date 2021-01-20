@@ -7,9 +7,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDriver_Run_Integration(t *testing.T) {
@@ -84,4 +86,15 @@ func TestDriver_Run_Integration(t *testing.T) {
 			assert.Equal(t, tc.output, output.String())
 		})
 	}
+}
+
+func TestDriver_SetConfig(t *testing.T) {
+	t.Run("kubeconfig", func(t *testing.T) {
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"KUBECONFIG": os.Getenv("KUBECONFIG"),
+		})
+		require.NoError(t, err)
+	})
 }

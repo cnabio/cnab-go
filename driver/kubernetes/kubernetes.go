@@ -87,7 +87,7 @@ func (k *Driver) Config() map[string]string {
 }
 
 // SetConfig sets Kubernetes driver configuration.
-func (k *Driver) SetConfig(settings map[string]string) {
+func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
@@ -101,12 +101,9 @@ func (k *Driver) SetConfig(settings map[string]string) {
 
 	conf, err := clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
 	if err != nil {
-		panic(err)
+		return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
 	}
-	err = k.setClient(conf)
-	if err != nil {
-		panic(err)
-	}
+	return k.setClient(conf)
 }
 
 func (k *Driver) setDefaults() {
@@ -120,11 +117,11 @@ func (k *Driver) setDefaults() {
 func (k *Driver) setClient(conf *rest.Config) error {
 	coreClient, err := coreclientv1.NewForConfig(conf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating CoreClient for Kubernetes Driver")
 	}
 	batchClient, err := batchclientv1.NewForConfig(conf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating BatchClient for Kubernetes Driver")
 	}
 	k.jobs = batchClient.Jobs(k.Namespace)
 	k.secrets = coreClient.Secrets(k.Namespace)

@@ -87,6 +87,56 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 	})
 }
 
+func TestDriver_SetConfig(t *testing.T) {
+	testcases := []struct {
+		name      string
+		settings  map[string]string
+		wantError string
+	}{
+		{
+			name: "valid settings",
+			settings: map[string]string{
+				"VERBOSE": "true",
+			},
+			wantError: "",
+		},
+		{
+			name: "cleanup containers: true",
+			settings: map[string]string{
+				"CLEANUP_CONTAINERS": "true",
+			},
+			wantError: "",
+		},
+		{
+			name: "cleanup containers: false",
+			settings: map[string]string{
+				"CLEANUP_CONTAINERS": "false",
+			},
+			wantError: "",
+		},
+		{
+			name: "cleanup containers - invalid",
+			settings: map[string]string{
+				"CLEANUP_CONTAINERS": "1",
+			},
+			wantError: "environment variable CLEANUP_CONTAINERS has unexpected value",
+		},
+	}
+
+	for _, tc := range testcases {
+		d := Driver{}
+		err := d.SetConfig(tc.settings)
+
+		if tc.wantError == "" {
+			require.NoError(t, err, "expected SetConfig to succeed")
+			assert.Equal(t, tc.settings, d.config, "expected all of the specified settings to be copied")
+		} else {
+			require.Error(t, err, "expected SetConfig to fail")
+			assert.Contains(t, err.Error(), tc.wantError)
+		}
+	}
+}
+
 func TestDriver_ValidateImageDigest(t *testing.T) {
 	// Mimic the digests created when a bundle is pushed with cnab-to-oci
 	// there is one for the original invocation image and another

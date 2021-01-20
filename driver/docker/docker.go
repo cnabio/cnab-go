@@ -19,7 +19,6 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/docker/registry"
 	"github.com/mitchellh/copystructure"
-
 	"github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle"
@@ -98,16 +97,17 @@ func (d *Driver) Config() map[string]string {
 }
 
 // SetConfig sets Docker driver configuration
-func (d *Driver) SetConfig(settings map[string]string) {
+func (d *Driver) SetConfig(settings map[string]string) error {
 	// Set default and provide feedback on acceptable input values.
 	value, ok := settings["CLEANUP_CONTAINERS"]
 	if !ok {
 		settings["CLEANUP_CONTAINERS"] = "true"
 	} else if value != "true" && value != "false" {
-		fmt.Printf("CLEANUP_CONTAINERS environment variable has unexpected value %q. Supported values are 'true', 'false', or unset.", value)
+		return fmt.Errorf("environment variable CLEANUP_CONTAINERS has unexpected value %q. Supported values are 'true', 'false', or unset", value)
 	}
 
 	d.config = settings
+	return nil
 }
 
 // SetDockerCli makes the driver use an already initialized cli

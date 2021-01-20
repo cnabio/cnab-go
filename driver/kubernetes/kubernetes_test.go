@@ -162,3 +162,16 @@ func TestGenerateNameTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestDriver_SetConfig_Fails(t *testing.T) {
+	t.Run("kubeconfig invalid", func(t *testing.T) {
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"KUBECONFIG": "invalid",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error retrieving external kubernetes configuration using configuration")
+	})
+
+}
