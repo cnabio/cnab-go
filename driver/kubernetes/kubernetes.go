@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,6 +80,7 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
+		"IN_CLUSTER":      "Connect to the ambient cluster",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
 		"KUBECONFIG":      "Absolute path to the kubeconfig file",
@@ -92,17 +94,27 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
 
-	var kubeconfig string
-	if kpath := settings["KUBECONFIG"]; kpath != "" {
-		kubeconfig = kpath
-	} else if home := homeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
+	var conf *rest.Config
+	var err error
+	if incluster, _ := strconv.ParseBool(settings["IN_CLUSTER"]); incluster {
+		conf, err = rest.InClusterConfig()
+		if err != nil {
+			return errors.Wrap(err, "error retrieving in-cluster kubernetes configuration")
+		}
+	} else {
+		var kubeconfig string
+		if kpath := settings["KUBECONFIG"]; kpath != "" {
+			kubeconfig = kpath
+		} else if home := homeDir(); home != "" {
+			kubeconfig = filepath.Join(home, ".kube", "config")
+		}
+
+		conf, err = clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
+		if err != nil {
+			return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
+		}
 	}
 
-	conf, err := clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
-	if err != nil {
-		return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
-	}
 	return k.setClient(conf)
 }
 
