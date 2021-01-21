@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	// load credential helpers
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
+	"github.com/docker/distribution/reference"
+	"github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -20,6 +20,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	batchclientv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
+
+	// load credential helpers
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -166,9 +169,14 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			},
 		},
 	}
+	img, err := imageWithDigest(op.Image)
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
 	container := v1.Container{
 		Name:    k8sContainerName,
-		Image:   imageWithDigest(op.Image),
+		Image:   img,
 		Command: []string{"/cnab/app/run"},
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
@@ -228,7 +236,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	job.Spec.Template.Spec.Containers = []v1.Container{container}
-	job, err := k.jobs.Create(job)
+	job, err = k.jobs.Create(job)
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
@@ -445,9 +453,32 @@ func homeDir() string {
 	return os.Getenv("USERPROFILE") // windows
 }
 
-func imageWithDigest(img bundle.InvocationImage) string {
-	if img.Digest == "" {
-		return img.Image
+func imageWithDigest(img bundle.InvocationImage) (string, error) {
+	// img.Image can be just the name, name:tag or name@digest
+	ref, err := reference.ParseNormalizedNamed(img.Image)
+	if err != nil {
+		return "", errors.Wrapf(err, "could not parse %s as an OCI reference", img.Image)
 	}
-	return img.Image + "@" + img.Digest
+
+	var d digest.Digest
+	if v, ok := ref.(reference.Digested); ok {
+		// Check that the digests match since it's provided twice
+		if img.Digest != "" && img.Digest != v.Digest().String() {
+			return "", errors.Errorf("The digest %s for the image %s doesn't match the one specified in the image", img.Digest, img.Image)
+		}
+		d = v.Digest()
+	} else if img.Digest != "" {
+		d, err = digest.Parse(img.Digest)
+		if err != nil {
+			return "", errors.Wrapf(err, "invalid digest %s specified for invocation image %s", img.Digest, img.Image)
+		}
+	}
+
+	// Digest was not supplied anywhere
+	if d == "" {
+		return img.Image, nil
+	}
+
+	digestedRef, err := reference.WithDigest(ref, d)
+	return reference.FamiliarString(digestedRef), errors.Wrapf(err, "invalid image digest %s", d.String())
 }
