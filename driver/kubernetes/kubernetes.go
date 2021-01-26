@@ -81,6 +81,7 @@ func (k *Driver) Handles(imagetype string) bool {
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
 		"IN_CLUSTER":      "Connect to the ambient cluster",
+		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
 		"KUBECONFIG":      "Absolute path to the kubeconfig file",
@@ -94,8 +95,12 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
 
+	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
+	if err != nil {
+		k.SkipCleanup = !cleanup
+	}
+
 	var conf *rest.Config
-	var err error
 	if incluster, _ := strconv.ParseBool(settings["IN_CLUSTER"]); incluster {
 		conf, err = rest.InClusterConfig()
 		if err != nil {
