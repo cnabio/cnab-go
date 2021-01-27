@@ -80,7 +80,7 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
-		"IN_CLUSTER":      "Connect to the ambient cluster",
+		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
 		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
