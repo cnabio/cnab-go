@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 
@@ -25,6 +26,7 @@ func TestDriver_Run(t *testing.T) {
 	}
 	op := driver.Operation{
 		Action: "install",
+		Image:  bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
 		Out:    os.Stdout,
 		Environment: map[string]string{
 			"foo": "bar",
@@ -58,24 +60,62 @@ func TestImageWithDigest(t *testing.T) {
 				Image: "foo/bar:baz",
 			},
 		},
-		"foo/bar:baz@sha:a1b2c3": {
+		"foo/bar:baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
 			BaseImage: bundle.BaseImage{
 				Image:  "foo/bar:baz",
-				Digest: "sha:a1b2c3",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
 			},
 		},
-		"foo/bar@sha:a1b2c3": {
+		"foo/fun@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
 			BaseImage: bundle.BaseImage{
-				Image:  "foo/bar",
-				Digest: "sha:a1b2c3",
+				Image:  "foo/fun@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+				Digest: "",
+			},
+		},
+		"taco/truck@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: bundle.BaseImage{
+				Image:  "taco/truck",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+			},
+		},
+		"foo/baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: bundle.BaseImage{
+				Image:  "foo/baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
 			},
 		},
 	}
 
 	for expectedImageRef, img := range testCases {
 		t.Run(expectedImageRef, func(t *testing.T) {
-			assert.Equal(t, expectedImageRef, imageWithDigest(img))
+			img, err := imageWithDigest(img)
+			require.NoError(t, err)
+			assert.Equal(t, expectedImageRef, img)
 		})
+	}
+}
+
+func TestImageWithDigest_Failures(t *testing.T) {
+	testcases := []struct {
+		image     string
+		digest    string
+		wantError string
+	}{
+		{"foo/bar@sha:invalid", "",
+			"could not parse foo/bar@sha:invalid as an OCI reference"},
+		{"foo/bar:baz", "sha:invalid",
+			"invalid digest sha:invalid specified for invocation image foo/bar:baz"},
+		{"foo/bar@sha256:276f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e", "sha256:176f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e",
+			"The digest sha256:176f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e for the image foo/bar@sha256:276f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e doesn't match the one specified in the image"},
+	}
+
+	for _, tc := range testcases {
+		input := bundle.InvocationImage{}
+		input.Image = tc.image
+		input.Digest = tc.digest
+		_, err := imageWithDigest(input)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), tc.wantError)
 	}
 }
 
