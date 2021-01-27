@@ -108,7 +108,7 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	k.JobVolumeName = settings["JOB_VOLUME_NAME"]
 
 	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
-	if err != nil {
+	if err == nil {
 		k.SkipCleanup = !cleanup
 	}
 

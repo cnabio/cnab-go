@@ -89,8 +89,14 @@ func TestDriver_Run_Integration(t *testing.T) {
 }
 
 func TestDriver_SetConfig(t *testing.T) {
+	t.Run("cleanup_jobs", func(t *testing.T) {
+		d := Driver{}
+		d.SetConfig(map[string]string{
+			"CLEANUP_JOBS": "false",
+		})
+		assert.True(t, d.SkipCleanup)
+	})
 	t.Run("kubeconfig", func(t *testing.T) {
-
 		d := Driver{}
 		err := d.SetConfig(map[string]string{
 			"KUBECONFIG": os.Getenv("KUBECONFIG"),
