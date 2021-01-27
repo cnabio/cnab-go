@@ -162,3 +162,29 @@ func TestGenerateNameTemplate(t *testing.T) {
 		})
 	}
 }
+
+func TestDriver_SetConfig_Fails(t *testing.T) {
+	t.Run("kubeconfig invalid", func(t *testing.T) {
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"KUBECONFIG": "invalid",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error retrieving external kubernetes configuration using configuration")
+	})
+
+	t.Run("use in-cluster outside cluster", func(t *testing.T) {
+		// Force this to fail even when the tests are run inside brigade
+		orig := os.Getenv("KUBERNETES_SERVICE_HOST")
+		os.Unsetenv("KUBERNETES_SERVICE_HOST")
+		defer os.Setenv("KUBERNETES_SERVICE_HOST", orig)
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"IN_CLUSTER": "true",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "error retrieving in-cluster kubernetes configuration")
+	})
+}

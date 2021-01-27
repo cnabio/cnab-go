@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,6 +80,8 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
+		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
+		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
 		"KUBECONFIG":      "Absolute path to the kubeconfig file",
@@ -87,26 +90,37 @@ func (k *Driver) Config() map[string]string {
 }
 
 // SetConfig sets Kubernetes driver configuration.
-func (k *Driver) SetConfig(settings map[string]string) {
+func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
 
-	var kubeconfig string
-	if kpath := settings["KUBECONFIG"]; kpath != "" {
-		kubeconfig = kpath
-	} else if home := homeDir(); home != "" {
-		kubeconfig = filepath.Join(home, ".kube", "config")
+	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
+	if err != nil {
+		k.SkipCleanup = !cleanup
 	}
 
-	conf, err := clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
-	if err != nil {
-		panic(err)
+	var conf *rest.Config
+	if incluster, _ := strconv.ParseBool(settings["IN_CLUSTER"]); incluster {
+		conf, err = rest.InClusterConfig()
+		if err != nil {
+			return errors.Wrap(err, "error retrieving in-cluster kubernetes configuration")
+		}
+	} else {
+		var kubeconfig string
+		if kpath := settings["KUBECONFIG"]; kpath != "" {
+			kubeconfig = kpath
+		} else if home := homeDir(); home != "" {
+			kubeconfig = filepath.Join(home, ".kube", "config")
+		}
+
+		conf, err = clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
+		if err != nil {
+			return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
+		}
 	}
-	err = k.setClient(conf)
-	if err != nil {
-		panic(err)
-	}
+
+	return k.setClient(conf)
 }
 
 func (k *Driver) setDefaults() {
@@ -120,11 +134,11 @@ func (k *Driver) setDefaults() {
 func (k *Driver) setClient(conf *rest.Config) error {
 	coreClient, err := coreclientv1.NewForConfig(conf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating CoreClient for Kubernetes Driver")
 	}
 	batchClient, err := batchclientv1.NewForConfig(conf)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "error creating BatchClient for Kubernetes Driver")
 	}
 	k.jobs = batchClient.Jobs(k.Namespace)
 	k.secrets = coreClient.Secrets(k.Namespace)
