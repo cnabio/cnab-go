@@ -50,6 +50,7 @@ type Driver struct {
 	Namespace             string
 	ServiceAccountName    string
 	Annotations           map[string]string
+	Labels                []string
 	LimitCPU              resource.Quantity
 	LimitMemory           resource.Quantity
 	JobVolumePath         string
@@ -87,6 +88,7 @@ func (k *Driver) Config() map[string]string {
 	return map[string]string{
 		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
 		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		"LABELS":          "Labels to apply to cluster resources created by the driver, separated by whitespace.",
 		"JOB_VOLUME_PATH": "Path where the JOB_VOLUME_NAME is mounted locally",
 		"JOB_VOLUME_NAME": "Name of the PersistentVolumeClaim to mount with the invocation image to persist the bundle outputs.",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
@@ -101,6 +103,7 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
+	k.Labels = strings.Split(settings["LABELS"], " ")
 	k.JobVolumePath = settings["JOB_VOLUME_PATH"]
 	k.JobVolumeName = settings["JOB_VOLUME_NAME"]
 
@@ -170,6 +173,15 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		},
 		Annotations: generateMergedAnnotations(op, k.Annotations),
 	}
+
+	// Apply custom labels
+	for _, l := range k.Labels {
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) > 1 {
+			meta.Labels[parts[0]] = parts[1]
+		}
+	}
+
 	// Mount SA token if a non-zero value for ServiceAccountName has been specified
 	mountServiceAccountToken := k.ServiceAccountName != ""
 	job := &batchv1.Job{
