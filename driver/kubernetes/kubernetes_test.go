@@ -1,7 +1,9 @@
 package kubernetes
 
 import (
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +28,7 @@ func TestDriver_Run(t *testing.T) {
 	}
 	op := driver.Operation{
 		Action: "install",
+		Bundle: &bundle.Bundle{},
 		Image:  bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
 		Out:    os.Stdout,
 		Environment: map[string]string{
@@ -41,6 +44,60 @@ func TestDriver_Run(t *testing.T) {
 
 	secretList, _ := k.secrets.List(metav1.ListOptions{})
 	assert.Equal(t, len(secretList.Items), 1, "expected one secret to be created")
+}
+
+func TestDriver_RunWithOutputs(t *testing.T) {
+	// Simulate that the bundle generated output "foo"
+	outputs, err := ioutil.TempDir("", "cnab-go")
+	require.NoError(t, err, "could not create test directory")
+	defer os.RemoveAll(outputs)
+
+	err = ioutil.WriteFile(filepath.Join(outputs, "foo"), []byte("foobar"), 0644)
+	require.NoError(t, err, "could not write output foo")
+
+	client := fake.NewSimpleClientset()
+	namespace := "default"
+	k := Driver{
+		Namespace:          namespace,
+		jobs:               client.BatchV1().Jobs(namespace),
+		secrets:            client.CoreV1().Secrets(namespace),
+		pods:               client.CoreV1().Pods(namespace),
+		JobVolumePath:      outputs,
+		JobVolumeName:      "outputs",
+		SkipCleanup:        true,
+		skipJobStatusCheck: true,
+	}
+	op := driver.Operation{
+		Action: "install",
+		Image:  bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
+		Bundle: &bundle.Bundle{
+			Outputs: map[string]bundle.Output{
+				"foo": {
+					Definition: "foo",
+					Path:       "/cnab/app/outputs/foo",
+				},
+			},
+		},
+		Out: os.Stdout,
+		Outputs: map[string]string{
+			"/cnab/app/outputs/foo": "foo",
+		},
+		Environment: map[string]string{
+			"foo": "bar",
+		},
+	}
+
+	opResult, err := k.Run(&op)
+	require.NoError(t, err)
+
+	jobList, _ := k.jobs.List(metav1.ListOptions{})
+	assert.Equal(t, len(jobList.Items), 1, "expected one job to be created")
+
+	secretList, _ := k.secrets.List(metav1.ListOptions{})
+	assert.Equal(t, len(secretList.Items), 1, "expected one secret to be created")
+
+	require.Contains(t, opResult.Outputs, "foo", "expected the foo output to be collected")
+	assert.Equal(t, "foobar", opResult.Outputs["foo"], "invalid output value for foo ")
 }
 
 func TestImageWithDigest(t *testing.T) {

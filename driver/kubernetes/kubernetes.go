@@ -3,8 +3,10 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -49,6 +52,8 @@ type Driver struct {
 	Annotations           map[string]string
 	LimitCPU              resource.Quantity
 	LimitMemory           resource.Quantity
+	JobVolumePath         string
+	JobVolumeName         string
 	Tolerations           []v1.Toleration
 	ActiveDeadlineSeconds int64
 	BackoffLimit          int32
@@ -82,6 +87,8 @@ func (k *Driver) Config() map[string]string {
 	return map[string]string{
 		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
 		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		"JOB_VOLUME_PATH": "Path where the JOB_VOLUME_NAME is mounted locally",
+		"JOB_VOLUME_NAME": "Name of the PersistentVolumeClaim to mount with the invocation image to persist the bundle outputs.",
 		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
 		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
 		"KUBECONFIG":      "Absolute path to the kubeconfig file",
@@ -94,6 +101,8 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
 	k.Namespace = settings["KUBE_NAMESPACE"]
 	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
+	k.JobVolumePath = settings["JOB_VOLUME_PATH"]
+	k.JobVolumeName = settings["JOB_VOLUME_NAME"]
 
 	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
 	if err != nil {
@@ -246,10 +255,33 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 				},
 			},
 		})
-		container.VolumeMounts = mounts
+		container.VolumeMounts = append(container.VolumeMounts, mounts...)
+	}
+
+	// Mount a volume to store the bundle outputs
+	if k.JobVolumeName != "" {
+		if k.JobVolumePath == "" {
+			return driver.OperationResult{}, errors.New("no JobVolumePath was specified but JobVolumeName was provided")
+		}
+
+		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
+			Name: "outputs",
+			VolumeSource: v1.VolumeSource{
+				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+					ClaimName: k.JobVolumeName,
+				},
+			},
+		})
+		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+			Name:      "outputs",
+			MountPath: "/cnab/app/outputs",
+		})
+	} else if len(op.Bundle.Outputs) > 0 {
+		return driver.OperationResult{}, errors.New("no PersistentVolumeClaim was specified for JobVolumeName but the bundle defines outputs")
 	}
 
 	job.Spec.Template.Spec.Containers = []v1.Container{container}
+
 	job, err = k.jobs.Create(job)
 	if err != nil {
 		return driver.OperationResult{}, err
@@ -258,24 +290,70 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		defer k.deleteJob(job.ObjectMeta.Name)
 	}
 
-	// Return early for unit testing purposes (the fake k8s client implementation just
+	// Skip waiting for the job in unit tests (the fake k8s client implementation just
 	// hangs during watch because no events are ever created on the Job)
-	if k.skipJobStatusCheck {
-		return driver.OperationResult{}, nil
+	var opErr *multierror.Error
+	if !k.skipJobStatusCheck {
+		// Create a selector to detect the job just created
+		jobSelector := metav1.ListOptions{
+			LabelSelector: labels.Set(job.ObjectMeta.Labels).String(),
+			FieldSelector: newSingleFieldSelector("metadata.name", job.ObjectMeta.Name),
+		}
+
+		// Prevent detecting pods from prior jobs by adding the job name to the labels
+		podSelector := metav1.ListOptions{
+			LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
+		}
+
+		err = k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
+		if err != nil {
+			opErr = multierror.Append(opErr, errors.Wrapf(err, "job %s failed", job.Name))
+		}
 	}
 
-	// Create a selector to detect the job just created
-	jobSelector := metav1.ListOptions{
-		LabelSelector: labels.Set(job.ObjectMeta.Labels).String(),
-		FieldSelector: newSingleFieldSelector("metadata.name", job.ObjectMeta.Name),
+	opResult, err := k.fetchOutputs(op)
+	if err != nil {
+		opErr = multierror.Append(opErr, err)
 	}
 
-	// Prevent detecting pods from prior jobs by adding the job name to the labels
-	podSelector := metav1.ListOptions{
-		LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
+	return opResult, opErr.ErrorOrNil()
+}
+
+// fetchOutputs collects any outputs created by the job that were persisted to JobVolumeName (which is mounted locally
+// at JobVolumePath).
+//
+// The goal is to collect all the files in the directory (recursively) and put them in a flat map of path to contents.
+// This map will be inside the OperationResult. When fetchOutputs returns an error, it may also return partial results.
+func (k *Driver) fetchOutputs(op *driver.Operation) (driver.OperationResult, error) {
+	opResult := driver.OperationResult{
+		Outputs: map[string]string{},
 	}
 
-	return driver.OperationResult{}, k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
+	if len(op.Bundle.Outputs) == 0 {
+		return opResult, nil
+	}
+
+	err := filepath.Walk(k.JobVolumePath, func(path string, info os.FileInfo, err error) error {
+		// skip directories because we're gathering file contents
+		if info.IsDir() {
+			return nil
+		}
+
+		var contents []byte
+		pathInContainer := path.Join("/cnab/app/outputs", info.Name())
+		outputName, shouldCapture := op.Outputs[pathInContainer]
+		if shouldCapture {
+			contents, err = ioutil.ReadFile(path)
+			if err != nil {
+				return errors.Wrapf(err, "error while reading %q from outputs", pathInContainer)
+			}
+			opResult.Outputs[outputName] = string(contents)
+		}
+
+		return nil
+	})
+
+	return opResult, err
 }
 
 func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelector metav1.ListOptions, out io.Writer) error {
