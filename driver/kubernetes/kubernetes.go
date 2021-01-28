@@ -35,10 +35,18 @@ import (
 )
 
 const (
-	k8sContainerName    = "invocation"
-	k8sFileSecretVolume = "files"
-	numBackoffLoops     = 6
-	cnabPrefix          = "cnab.io/"
+	k8sContainerName      = "invocation"
+	numBackoffLoops       = 6
+	cnabPrefix            = "cnab.io/"
+	SettingInCluster      = "IN_CLUSTER"
+	SettingCleanupJobs    = "CLEANUP_JOBS"
+	SettingLabels         = "LABELS"
+	SettingJobVolumePath  = "JOB_VOLUME_PATH"
+	SettingJobVolumeName  = "JOB_VOLUME_NAME"
+	SettingKubeNamespace  = "KUBE_NAMESPACE"
+	SettingServiceAccount = "SERVICE_ACCOUNT"
+	SettingKubeconfig     = "KUBECONFIG"
+	SettingMasterUrl      = "MASTER_URL"
 )
 
 var (
@@ -86,47 +94,54 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
-		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
-		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
-		"LABELS":          "Labels to apply to cluster resources created by the driver, separated by whitespace.",
-		"JOB_VOLUME_PATH": "Path where the JOB_VOLUME_NAME is mounted locally",
-		"JOB_VOLUME_NAME": "Name of the PersistentVolumeClaim to mount with the invocation image to persist the bundle outputs.",
-		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
-		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
-		"KUBECONFIG":      "Absolute path to the kubeconfig file",
-		"MASTER_URL":      "Kubernetes master endpoint",
+		SettingInCluster:      "Connect to the cluster using in-cluster environment variables",
+		SettingCleanupJobs:    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		SettingLabels:         "Labels to apply to cluster resources created by the driver, separated by whitespace.",
+		SettingJobVolumePath:  "Path where the persistent volume is mounted",
+		SettingJobVolumeName:  "Name of the PersistentVolumeClaim to mount which enables the driver to share files with the invocation image",
+		SettingKubeNamespace:  "Kubernetes namespace in which to run the invocation image",
+		SettingServiceAccount: "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
+		SettingKubeconfig:     "Absolute path to the kubeconfig file",
+		SettingMasterUrl:      "Kubernetes master endpoint",
 	}
 }
 
 // SetConfig sets Kubernetes driver configuration.
 func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
-	k.Namespace = settings["KUBE_NAMESPACE"]
-	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
-	k.Labels = strings.Split(settings["LABELS"], " ")
-	k.JobVolumePath = settings["JOB_VOLUME_PATH"]
-	k.JobVolumeName = settings["JOB_VOLUME_NAME"]
+	k.Namespace = settings[SettingKubeNamespace]
+	k.ServiceAccountName = settings[SettingServiceAccount]
+	k.Labels = strings.Split(settings[SettingLabels], " ")
 
-	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
+	k.JobVolumePath = settings[SettingJobVolumePath]
+	if k.JobVolumePath == "" {
+		return errors.Errorf("setting %s is required", SettingJobVolumePath)
+	}
+	k.JobVolumeName = settings[SettingJobVolumeName]
+	if k.JobVolumeName == "" {
+		return errors.Errorf("setting %s is required", SettingJobVolumeName)
+	}
+
+	cleanup, err := strconv.ParseBool(settings[SettingCleanupJobs])
 	if err == nil {
 		k.SkipCleanup = !cleanup
 	}
 
 	var conf *rest.Config
-	if incluster, _ := strconv.ParseBool(settings["IN_CLUSTER"]); incluster {
+	if incluster, _ := strconv.ParseBool(settings[SettingInCluster]); incluster {
 		conf, err = rest.InClusterConfig()
 		if err != nil {
 			return errors.Wrap(err, "error retrieving in-cluster kubernetes configuration")
 		}
 	} else {
 		var kubeconfig string
-		if kpath := settings["KUBECONFIG"]; kpath != "" {
+		if kpath := settings[SettingKubeconfig]; kpath != "" {
 			kubeconfig = kpath
 		} else if home := homeDir(); home != "" {
 			kubeconfig = filepath.Join(home, ".kube", "config")
 		}
 
-		conf, err = clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
+		conf, err = clientcmd.BuildConfigFromFlags(settings[SettingMasterUrl], kubeconfig)
 		if err != nil {
 			return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
 		}
@@ -165,6 +180,12 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, fmt.Errorf("KUBE_NAMESPACE is required")
 	}
 
+	const sharedVolumeName = "cnab-driver-share"
+	err = k.initJobVolumes(err)
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
 	meta := metav1.ObjectMeta{
 		Namespace:    k.Namespace,
 		GenerateName: generateNameTemplate(op),
@@ -184,6 +205,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 
 	// Mount SA token if a non-zero value for ServiceAccountName has been specified
 	mountServiceAccountToken := k.ServiceAccountName != ""
+
 	job := &batchv1.Job{
 		ObjectMeta: meta,
 		Spec: batchv1.JobSpec{
@@ -200,6 +222,17 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 					AutomountServiceAccountToken: &mountServiceAccountToken,
 					RestartPolicy:                v1.RestartPolicyNever,
 					Tolerations:                  k.Tolerations,
+					Volumes: []v1.Volume{
+						// This is a shared volume between the driver and the job so that files be shared
+						{
+							Name: sharedVolumeName,
+							VolumeSource: v1.VolumeSource{
+								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+									ClaimName: k.JobVolumeName,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -220,6 +253,13 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			},
 		},
 		ImagePullPolicy: v1.PullIfNotPresent,
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      sharedVolumeName,
+				MountPath: "/cnab/app/outputs",
+				SubPath:   "outputs",
+			},
+		},
 	}
 
 	if len(op.Environment) > 0 {
@@ -248,48 +288,24 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	if len(op.Files) > 0 {
-		secret, mounts := generateFileSecret(op.Files)
-		secret.ObjectMeta = meta
-		secret.ObjectMeta.GenerateName += "files-"
-		secret, err := k.secrets.Create(secret)
-		if err != nil {
-			return driver.OperationResult{}, err
-		}
-		if !k.SkipCleanup {
-			defer k.deleteSecret(secret.ObjectMeta.Name)
-		}
+		// Write the files to the inputs directory on the shared volume and mount them individually to the desired location in the invocation image
+		for inputRelPath, contents := range op.Files {
+			inputPath := filepath.Join(k.JobVolumePath, "inputs", inputRelPath)
+			err = os.MkdirAll(filepath.Dir(inputPath), 0700)
+			if err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error creating directory for file %s on the shared job volume %s", inputPath, k.JobVolumeName)
+			}
+			err = ioutil.WriteFile(inputPath, []byte(contents), 0600)
+			if err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error writing file %s to the shared job volume %s", inputPath, k.JobVolumeName)
+			}
 
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: k8sFileSecretVolume,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: secret.ObjectMeta.Name,
-				},
-			},
-		})
-		container.VolumeMounts = append(container.VolumeMounts, mounts...)
-	}
-
-	// Mount a volume to store the bundle outputs
-	if k.JobVolumeName != "" {
-		if k.JobVolumePath == "" {
-			return driver.OperationResult{}, errors.New("no JobVolumePath was specified but JobVolumeName was provided")
+			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+				Name:      sharedVolumeName,
+				MountPath: inputRelPath,
+				SubPath:   path.Join("inputs", inputRelPath),
+			})
 		}
-
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: "outputs",
-			VolumeSource: v1.VolumeSource{
-				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-					ClaimName: k.JobVolumeName,
-				},
-			},
-		})
-		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
-			Name:      "outputs",
-			MountPath: "/cnab/app/outputs",
-		})
-	} else if len(op.Bundle.Outputs) > 0 {
-		return driver.OperationResult{}, errors.New("no PersistentVolumeClaim was specified for JobVolumeName but the bundle defines outputs")
 	}
 
 	job.Spec.Template.Spec.Containers = []v1.Container{container}
@@ -331,6 +347,24 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	return opResult, opErr.ErrorOrNil()
 }
 
+func (k *Driver) initJobVolumes(err error) error {
+	// Store all job input files in ./inputs and outputs in ./outputs on the shared volume
+
+	inputsDir := filepath.Join(k.JobVolumePath, "inputs")
+	err = os.Mkdir(inputsDir, 0700)
+	if err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "error creating inputs directory %s on shared job volume %s", inputsDir, k.JobVolumeName)
+	}
+
+	outputsDir := filepath.Join(k.JobVolumePath, "outputs")
+	err = os.Mkdir(outputsDir, 0700)
+	if err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "error creating outputs directory %s on shared job volume %s", outputsDir, k.JobVolumeName)
+	}
+
+	return nil
+}
+
 // fetchOutputs collects any outputs created by the job that were persisted to JobVolumeName (which is mounted locally
 // at JobVolumePath).
 //
@@ -345,7 +379,8 @@ func (k *Driver) fetchOutputs(op *driver.Operation) (driver.OperationResult, err
 		return opResult, nil
 	}
 
-	err := filepath.Walk(k.JobVolumePath, func(path string, info os.FileInfo, err error) error {
+	outputsDir := filepath.Join(k.JobVolumePath, "outputs")
+	err := filepath.Walk(outputsDir, func(currentPath string, info os.FileInfo, err error) error {
 		// skip directories because we're gathering file contents
 		if info.IsDir() {
 			return nil
@@ -355,7 +390,7 @@ func (k *Driver) fetchOutputs(op *driver.Operation) (driver.OperationResult, err
 		pathInContainer := path.Join("/cnab/app/outputs", info.Name())
 		outputName, shouldCapture := op.Outputs[pathInContainer]
 		if shouldCapture {
-			contents, err = ioutil.ReadFile(path)
+			contents, err = ioutil.ReadFile(currentPath)
 			if err != nil {
 				return errors.Wrapf(err, "error while reading %q from outputs", pathInContainer)
 			}
@@ -518,30 +553,6 @@ func generateMergedAnnotations(op *driver.Operation, mergeWith map[string]string
 	}
 
 	return anno
-}
-
-func generateFileSecret(files map[string]string) (*v1.Secret, []v1.VolumeMount) {
-	size := len(files)
-	data := make(map[string]string, size)
-	mounts := make([]v1.VolumeMount, size)
-
-	i := 0
-	for path, contents := range files {
-		key := strings.Replace(filepath.ToSlash(path), "/", "_", -1)
-		data[key] = contents
-		mounts[i] = v1.VolumeMount{
-			Name:      k8sFileSecretVolume,
-			MountPath: path,
-			SubPath:   key,
-		}
-		i++
-	}
-
-	secret := &v1.Secret{
-		StringData: data,
-	}
-
-	return secret, mounts
 }
 
 func newSingleFieldSelector(k, v string) string {

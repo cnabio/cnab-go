@@ -16,6 +16,11 @@ import (
 )
 
 func TestDriver_Run(t *testing.T) {
+	// Simulate the shared volume
+	sharedDir, err := ioutil.TempDir("", "cnab-go")
+	require.NoError(t, err, "could not create test directory")
+	defer os.RemoveAll(sharedDir)
+
 	client := fake.NewSimpleClientset()
 	namespace := "default"
 	k := Driver{
@@ -23,6 +28,8 @@ func TestDriver_Run(t *testing.T) {
 		jobs:               client.BatchV1().Jobs(namespace),
 		secrets:            client.CoreV1().Secrets(namespace),
 		pods:               client.CoreV1().Pods(namespace),
+		JobVolumePath:      sharedDir,
+		JobVolumeName:      "cnab-driver-shared",
 		SkipCleanup:        true,
 		skipJobStatusCheck: true,
 	}
@@ -36,7 +43,7 @@ func TestDriver_Run(t *testing.T) {
 		},
 	}
 
-	_, err := k.Run(&op)
+	_, err = k.Run(&op)
 	assert.NoError(t, err)
 
 	jobList, _ := k.jobs.List(metav1.ListOptions{})
@@ -46,13 +53,16 @@ func TestDriver_Run(t *testing.T) {
 	assert.Equal(t, len(secretList.Items), 1, "expected one secret to be created")
 }
 
-func TestDriver_RunWithOutputs(t *testing.T) {
-	// Simulate that the bundle generated output "foo"
-	outputs, err := ioutil.TempDir("", "cnab-go")
+func TestDriver_RunWithSharedFiles(t *testing.T) {
+	// Simulate the shared volume
+	sharedDir, err := ioutil.TempDir("", "cnab-go")
 	require.NoError(t, err, "could not create test directory")
-	defer os.RemoveAll(outputs)
+	defer os.RemoveAll(sharedDir)
 
-	err = ioutil.WriteFile(filepath.Join(outputs, "foo"), []byte("foobar"), 0644)
+	// Simulate that the bundle generated output "foo"
+	err = os.Mkdir(filepath.Join(sharedDir, "outputs"), 0755)
+	require.NoError(t, err, "could not create outputs directory")
+	err = ioutil.WriteFile(filepath.Join(sharedDir, "outputs/foo"), []byte("foobar"), 0644)
 	require.NoError(t, err, "could not write output foo")
 
 	client := fake.NewSimpleClientset()
@@ -62,8 +72,8 @@ func TestDriver_RunWithOutputs(t *testing.T) {
 		jobs:               client.BatchV1().Jobs(namespace),
 		secrets:            client.CoreV1().Secrets(namespace),
 		pods:               client.CoreV1().Pods(namespace),
-		JobVolumePath:      outputs,
-		JobVolumeName:      "outputs",
+		JobVolumePath:      sharedDir,
+		JobVolumeName:      "cnab-driver-shared",
 		SkipCleanup:        true,
 		skipJobStatusCheck: true,
 	}
@@ -85,6 +95,9 @@ func TestDriver_RunWithOutputs(t *testing.T) {
 		Environment: map[string]string{
 			"foo": "bar",
 		},
+		Files: map[string]string{
+			"/cnab/app/someinput": "input value",
+		},
 	}
 
 	opResult, err := k.Run(&op)
@@ -98,6 +111,11 @@ func TestDriver_RunWithOutputs(t *testing.T) {
 
 	require.Contains(t, opResult.Outputs, "foo", "expected the foo output to be collected")
 	assert.Equal(t, "foobar", opResult.Outputs["foo"], "invalid output value for foo ")
+
+	wantInputFile := filepath.Join(sharedDir, "inputs/cnab/app/someinput")
+	inputContents, err := ioutil.ReadFile(wantInputFile)
+	require.NoErrorf(t, err, "could not read generated input file %s on shared volume", wantInputFile)
+	assert.Equal(t, "input value", string(inputContents), "invalid input file contents")
 }
 
 func TestImageWithDigest(t *testing.T) {
@@ -221,11 +239,33 @@ func TestGenerateNameTemplate(t *testing.T) {
 }
 
 func TestDriver_SetConfig_Fails(t *testing.T) {
+	t.Run("job volume name missing", func(t *testing.T) {
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"JOB_VOLUME_PATH": "/tmp",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "setting JOB_VOLUME_NAME is required")
+	})
+
+	t.Run("job volume path missing", func(t *testing.T) {
+
+		d := Driver{}
+		err := d.SetConfig(map[string]string{
+			"JOB_VOLUME_Name": "cnab-driver-shared",
+		})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "setting JOB_VOLUME_PATH is required")
+	})
+
 	t.Run("kubeconfig invalid", func(t *testing.T) {
 
 		d := Driver{}
 		err := d.SetConfig(map[string]string{
-			"KUBECONFIG": "invalid",
+			"KUBECONFIG":      "invalid",
+			"JOB_VOLUME_NAME": "cnab-driver-shared",
+			"JOB_VOLUME_PATH": "/tmp",
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error retrieving external kubernetes configuration using configuration")
@@ -239,7 +279,9 @@ func TestDriver_SetConfig_Fails(t *testing.T) {
 
 		d := Driver{}
 		err := d.SetConfig(map[string]string{
-			"IN_CLUSTER": "true",
+			"IN_CLUSTER":      "true",
+			"JOB_VOLUME_NAME": "cnab-driver-shared",
+			"JOB_VOLUME_PATH": "/tmp",
 		})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "error retrieving in-cluster kubernetes configuration")
