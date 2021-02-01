@@ -72,7 +72,6 @@ type Driver struct {
 	secrets               coreclientv1.SecretInterface
 	pods                  coreclientv1.PodInterface
 	deletionPolicy        metav1.DeletionPropagation
-	requiredCompletions   int32
 }
 
 // New initializes a Kubernetes driver.
@@ -154,7 +153,6 @@ func (k *Driver) setDefaults() {
 	k.SkipCleanup = false
 	k.BackoffLimit = 0
 	k.ActiveDeadlineSeconds = 300
-	k.requiredCompletions = 1
 	k.deletionPolicy = metav1.DeletePropagationBackground
 }
 
@@ -210,7 +208,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		ObjectMeta: meta,
 		Spec: batchv1.JobSpec{
 			ActiveDeadlineSeconds: &k.ActiveDeadlineSeconds,
-			Completions:           &k.requiredCompletions,
+			Completions:           defaultInt32Ptr(1),
 			BackoffLimit:          &k.BackoffLimit,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -438,9 +436,7 @@ func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelect
 	}
 
 	// Wait for pod logs to finish printing
-	for i := 0; i < int(k.requiredCompletions); i++ {
-		<-logsStreamingComplete
-	}
+	<-logsStreamingComplete
 
 	return err
 }
