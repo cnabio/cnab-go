@@ -238,52 +238,148 @@ func TestGenerateNameTemplate(t *testing.T) {
 	}
 }
 
-func TestDriver_SetConfig_Fails(t *testing.T) {
-	t.Run("job volume name missing", func(t *testing.T) {
+func TestDriver_ConfigureJob(t *testing.T) {
+	// Simulate the shared volume
+	sharedDir, err := ioutil.TempDir("", "cnab-go")
+	require.NoError(t, err, "could not create test directory")
+	defer os.RemoveAll(sharedDir)
 
+	client := fake.NewSimpleClientset()
+	namespace := "myns"
+	k := Driver{
+		Namespace:             namespace,
+		ActiveDeadlineSeconds: 0,
+		Annotations:           map[string]string{"b": "2"},
+		Labels:                []string{"a=1"},
+		jobs:                  client.BatchV1().Jobs(namespace),
+		secrets:               client.CoreV1().Secrets(namespace),
+		pods:                  client.CoreV1().Pods(namespace),
+		JobVolumePath:         sharedDir,
+		JobVolumeName:         "cnab-driver-shared",
+		SkipCleanup:           true,
+		skipJobStatusCheck:    true,
+	}
+	op := driver.Operation{
+		Action:       "install",
+		Installation: "mybundle",
+		Revision:     "abc123",
+		Bundle:       &bundle.Bundle{},
+		Image:        bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
+	}
+
+	_, err = k.Run(&op)
+	assert.NoError(t, err)
+
+	jobList, _ := k.jobs.List(metav1.ListOptions{})
+	assert.Len(t, jobList.Items, 1, "expected one job to be created")
+
+	job := jobList.Items[0]
+	assert.Nil(t, job.Spec.ActiveDeadlineSeconds, "incorrect Job ActiveDeadlineSeconds")
+	assert.Equal(t, int32(1), *job.Spec.Completions, "incorrect Job Completions")
+	assert.Equal(t, int32(0), *job.Spec.BackoffLimit, "incorrect Job BackoffLimit")
+
+	wantLabels := map[string]string{
+		"a":              "1",
+		"cnab.io/driver": "kubernetes"}
+	assert.Equal(t, wantLabels, job.Labels, "Incorrect Job Labels")
+
+	wantAnnotations := map[string]string{
+		"b":                    "2",
+		"cnab.io/action":       "install",
+		"cnab.io/installation": "mybundle",
+		"cnab.io/revision":     "abc123"}
+	assert.Equal(t, wantAnnotations, job.Annotations, "Incorrect Job Annotations")
+
+	pod := job.Spec.Template
+	assert.Equal(t, wantLabels, pod.Labels, "incorrect Pod Labels")
+	assert.Equal(t, wantAnnotations, pod.Annotations, "incorrect Pod Annotations")
+	assert.Len(t, pod.Spec.Containers, 1, "expected one container in the pod")
+
+	container := pod.Spec.Containers[0]
+	assert.Empty(t, container.Resources.Limits, "incorrect Limits")
+}
+
+func TestDriver_SetConfig(t *testing.T) {
+	validSettings := func() map[string]string {
+		return map[string]string{
+			SettingInCluster:      "true",
+			SettingKubeconfig:     "/tmp/kube.config",
+			SettingMasterURL:      "http://example.com",
+			SettingKubeNamespace:  "default",
+			SettingJobVolumeName:  "cnab-driver-shared",
+			SettingJobVolumePath:  "/tmp",
+			SettingCleanupJobs:    "false",
+			SettingLabels:         "a=1 b=2",
+			SettingServiceAccount: "myacct",
+		}
+	}
+
+	t.Run("valid config", func(t *testing.T) {
 		d := Driver{}
-		err := d.SetConfig(map[string]string{
-			"JOB_VOLUME_PATH": "/tmp",
-		})
+		err := d.SetConfig(validSettings())
+		require.NoError(t, err)
+
+		assert.Equal(t, d.Namespace, "default", "incorrect Namespace value")
+		assert.Equal(t, d.JobVolumeName, "cnab-driver-shared", "incorrect JobVolumeName value")
+		assert.Equal(t, d.JobVolumePath, "/tmp", "incorrect JobVolumePath value")
+		assert.True(t, d.SkipCleanup, "incorrect SkipCleanup value")
+		assert.Equal(t, []string{"a=1", "b=2"}, d.Labels, "incorrect Labels value")
+		assert.Equal(t, "myacct", d.ServiceAccountName, "incorrect ServiceAccountName")
+		assert.Equal(t, int64(0), d.ActiveDeadlineSeconds, "ActiveDeadlineSeconds should be defaulted to 0 so bundle runs are not cut off")
+	})
+
+	t.Run("incluster config", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingInCluster] = "true"
+		err := d.SetConfig(settings)
+		require.NoError(t, err)
+
+		assert.True(t, d.InCluster, "incorrect InCluster value")
+		assert.Empty(t, d.Kubeconfig, "incorrect Kubeconfig value")
+		assert.Empty(t, d.MasterURL, "incorrect MasterUrl value")
+	})
+
+	t.Run("kubeconfig", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingInCluster] = "false"
+		err := d.SetConfig(settings)
+		require.NoError(t, err)
+
+		assert.False(t, d.InCluster, "incorrect InCluster value")
+		assert.Equal(t, "/tmp/kube.config", d.Kubeconfig, "incorrect Kubeconfig value")
+		assert.Equal(t, "http://example.com", d.MasterURL, "incorrect MasterUrl value")
+	})
+
+	t.Run("master url optional", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingInCluster] = "false"
+		settings[SettingMasterURL] = ""
+		err := d.SetConfig(settings)
+		require.NoError(t, err)
+
+		assert.False(t, d.InCluster, "incorrect InCluster value")
+		assert.Equal(t, "/tmp/kube.config", d.Kubeconfig, "incorrect Kubeconfig value")
+		assert.Empty(t, d.MasterURL, "incorrect MasterUrl value")
+	})
+
+	t.Run("job volume name missing", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingJobVolumeName] = ""
+		err := d.SetConfig(settings)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "setting JOB_VOLUME_NAME is required")
 	})
 
 	t.Run("job volume path missing", func(t *testing.T) {
-
 		d := Driver{}
-		err := d.SetConfig(map[string]string{
-			"JOB_VOLUME_Name": "cnab-driver-shared",
-		})
+		settings := validSettings()
+		settings[SettingJobVolumePath] = ""
+		err := d.SetConfig(settings)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "setting JOB_VOLUME_PATH is required")
-	})
-
-	t.Run("kubeconfig invalid", func(t *testing.T) {
-
-		d := Driver{}
-		err := d.SetConfig(map[string]string{
-			"KUBECONFIG":      "invalid",
-			"JOB_VOLUME_NAME": "cnab-driver-shared",
-			"JOB_VOLUME_PATH": "/tmp",
-		})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error retrieving external kubernetes configuration using configuration")
-	})
-
-	t.Run("use in-cluster outside cluster", func(t *testing.T) {
-		// Force this to fail even when the tests are run inside brigade
-		orig := os.Getenv("KUBERNETES_SERVICE_HOST")
-		os.Unsetenv("KUBERNETES_SERVICE_HOST")
-		defer os.Setenv("KUBERNETES_SERVICE_HOST", orig)
-
-		d := Driver{}
-		err := d.SetConfig(map[string]string{
-			"IN_CLUSTER":      "true",
-			"JOB_VOLUME_NAME": "cnab-driver-shared",
-			"JOB_VOLUME_PATH": "/tmp",
-		})
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "error retrieving in-cluster kubernetes configuration")
 	})
 }

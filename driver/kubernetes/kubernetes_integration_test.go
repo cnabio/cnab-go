@@ -135,19 +135,12 @@ func createTestPVC(t *testing.T) (string, func()) {
 	}
 }
 
-func TestDriver_SetConfig(t *testing.T) {
-	t.Run("cleanup_jobs", func(t *testing.T) {
-		d := Driver{}
-		d.SetConfig(map[string]string{
-			"CLEANUP_JOBS": "false",
-		})
-		assert.True(t, d.SkipCleanup)
-	})
+func TestDriver_InitClient(t *testing.T) {
 	t.Run("kubeconfig", func(t *testing.T) {
-		d := Driver{}
-		err := d.SetConfig(map[string]string{
-			"KUBECONFIG": os.Getenv("KUBECONFIG"),
-		})
+		d := Driver{
+			Kubeconfig: os.Getenv("KUBECONFIG"),
+		}
+		err := d.initClient()
 		require.NoError(t, err)
 	})
 }
