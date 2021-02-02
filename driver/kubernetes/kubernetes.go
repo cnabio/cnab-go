@@ -75,7 +75,7 @@ type Driver struct {
 	// Set to zero to not use a limit. Defaults to zero.
 	LimitCPU resource.Quantity
 
-	// LimitMemory is amount of memory to request and the limit for the bundle's job.
+	// LimitMemory is the amount of memory to request and the limit for the bundle's job.
 	// Set to zero to not use a limit. Defaults to zero.
 	LimitMemory resource.Quantity
 
@@ -261,7 +261,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	const sharedVolumeName = "cnab-driver-share"
-	err = k.initJobVolumes(err)
+	err = k.initJobVolumes()
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
@@ -429,11 +429,10 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	return opResult, opErr.ErrorOrNil()
 }
 
-func (k *Driver) initJobVolumes(err error) error {
-	// Store all job input files in ./inputs and outputs in ./outputs on the shared volume
-
+// Store all job input files in ./inputs and outputs in ./outputs on the shared volume
+func (k *Driver) initJobVolumes() error {
 	inputsDir := filepath.Join(k.JobVolumePath, "inputs")
-	err = os.Mkdir(inputsDir, 0700)
+	err := os.Mkdir(inputsDir, 0700)
 	if err != nil && !os.IsExist(err) {
 		return errors.Wrapf(err, "error creating inputs directory %s on shared job volume %s", inputsDir, k.JobVolumeName)
 	}
