@@ -1,6 +1,6 @@
 # cnab-go
 
-[![Build Status](https://dev.azure.com/deislabs/cnab-go/_apis/build/status/cnab-go?branchName=master)](https://dev.azure.com/deislabs/cnab-go/_build/latest?definitionId=27&branchName=master) ![Azure Pipelines coverage](https://img.shields.io/azure-devops/coverage/deislabs/cnab-go/27/master?logo=Azure%20Pipelines)
+[![Build Status](https://dev.azure.com/deislabs/cnab-go/_apis/build/status/cnab-go?branchName=main)](https://dev.azure.com/deislabs/cnab-go/_build/latest?definitionId=27&branchName=main) ![Azure Pipelines coverage](https://img.shields.io/azure-devops/coverage/deislabs/cnab-go/27/main?logo=Azure%20Pipelines)
 
 cnab-go is a library for building [CNAB](https://github.com/cnabio/cnab-spec) clients. It provides the building blocks relevant to the CNAB specification so that you may build tooling without needing to implement all aspects of the CNAB specification.
 
