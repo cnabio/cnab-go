@@ -56,10 +56,10 @@ When you are asked to cut a new release, here is the process:
    [Release naming scheme][release-name] explains the meaning behind the
    release names.
 
-1. Ensure that the master CI build is passing, then make the tag and push it.
+1. Ensure that the CI build is passing, then make the tag and push it.
 
    ```
-   git checkout master
+   git checkout main
    git pull
    git tag VERSION -a -m ""
    git push --tags
