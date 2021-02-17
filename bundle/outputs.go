@@ -11,18 +11,15 @@ type Output struct {
 	Path        string   `json:"path" yaml:"path"`
 }
 
+// GetApplyTo returns the list of actions that the Output applies to.
+func (o Output) GetApplyTo() []string {
+	return o.ApplyTo
+}
+
 // AppliesTo returns a boolean value specifying whether or not
 // the Output applies to the provided action
-func (output *Output) AppliesTo(action string) bool {
-	if len(output.ApplyTo) == 0 {
-		return true
-	}
-	for _, act := range output.ApplyTo {
-		if action == act {
-			return true
-		}
-	}
-	return false
+func (o Output) AppliesTo(action string) bool {
+	return AppliesTo(o, action)
 }
 
 // IsOutputSensitive is a convenience function that determines if an output's

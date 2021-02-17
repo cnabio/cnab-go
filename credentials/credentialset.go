@@ -70,11 +70,16 @@ func Load(path string) (*CredentialSet, error) {
 // This will result in an error only when the following conditions are true:
 // - a credential in the spec is not present in the given set
 // - the credential is required
+// - the credential applies to the specified action
 //
 // It is allowed for spec to specify both an env var and a file. In such case, if
 // the given set provides either, it will be considered valid.
-func Validate(given valuesource.Set, spec map[string]bundle.Credential) error {
+func Validate(given valuesource.Set, spec map[string]bundle.Credential, action string) error {
 	for name, cred := range spec {
+		if !cred.AppliesTo(action) {
+			continue
+		}
+
 		if !valuesource.IsValid(given, name) && cred.Required {
 			return fmt.Errorf("bundle requires credential for %s", name)
 		}
