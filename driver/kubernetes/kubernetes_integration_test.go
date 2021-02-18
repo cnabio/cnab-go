@@ -83,7 +83,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tc.output, output.String())
+			assert.Contains(t, output.String(), tc.output)
 		})
 	}
 }

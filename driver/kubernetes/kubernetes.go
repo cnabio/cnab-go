@@ -351,6 +351,7 @@ func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done c
 				if err != nil {
 					// There was an error connecting to the pod, so continue the loop and attempt streaming
 					// the logs again.
+					fmt.Fprintln(out, errors.Wrapf(err, "Could not stream logs for pod %s. Retrying...", podName))
 					continue
 				}
 
@@ -358,6 +359,7 @@ func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done c
 				bytesRead, err := io.Copy(out, reader)
 				reader.Close()
 				if err != nil {
+					fmt.Fprintln(out, errors.Wrapf(err, "Could not copy logs for pod %s. Retrying...", podName))
 					continue
 				}
 				if bytesRead == 0 {
