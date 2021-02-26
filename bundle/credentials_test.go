@@ -13,7 +13,8 @@ func TestCompleteCredDefinition(t *testing.T) {
 			"something": { 
 				"description" : "wicked this way comes",
 				"path" : "/cnab/app/a/credential",
-				"required" : true
+				"required" : true,
+				"applyTo" : ["install"]
 			}
 		}
 	}`
@@ -26,7 +27,8 @@ func TestCompleteCredDefinition(t *testing.T) {
 
 	assert.Equal(t, "/cnab/app/a/credential", something.Path, "did not contain the expected path")
 	assert.Equal(t, "wicked this way comes", something.Description, "did not contain the expected description")
-
+	assert.True(t, something.Required, "did not contain the expected required")
+	assert.Equal(t, []string{"install"}, something.ApplyTo, "did not contain the expected applyTo")
 }
 
 func TestHandleMultipleCreds(t *testing.T) {

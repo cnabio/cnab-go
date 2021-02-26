@@ -11,18 +11,15 @@ type Parameter struct {
 	Required    bool      `json:"required,omitempty" yaml:"required,omitempty"`
 }
 
+// GetApplyTo returns the list of actions that the Parameter applies to.
+func (p *Parameter) GetApplyTo() []string {
+	return p.ApplyTo
+}
+
 // AppliesTo returns a boolean value specifying whether or not
 // the Parameter applies to the provided action
 func (p *Parameter) AppliesTo(action string) bool {
-	if len(p.ApplyTo) == 0 {
-		return true
-	}
-	for _, act := range p.ApplyTo {
-		if action == act {
-			return true
-		}
-	}
-	return false
+	return AppliesTo(p, action)
 }
 
 // Validate a Parameter

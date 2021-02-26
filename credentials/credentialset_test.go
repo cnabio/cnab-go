@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/schema"
 	"github.com/cnabio/cnab-go/secrets/host"
 	"github.com/cnabio/cnab-go/valuesource"
@@ -76,4 +77,45 @@ func TestNewCredentialSet(t *testing.T) {
 	assert.Equal(t, cs.Created, cs.Modified, "Created and Modified should have the same timestamp")
 	assert.Equal(t, DefaultSchemaVersion, cs.SchemaVersion, "SchemaVersion was not set")
 	assert.Len(t, cs.Credentials, 1, "Credentials should be initialized with 1 value")
+}
+
+func TestValidate(t *testing.T) {
+	t.Run("valid - credential specified", func(t *testing.T) {
+		spec := map[string]bundle.Credential{
+			"kubeconfig": {},
+		}
+		values := valuesource.Set{
+			"kubeconfig": "top secret creds",
+		}
+		err := Validate(values, spec, "install")
+		require.NoError(t, err, "expected Validate to pass because the credential was specified")
+	})
+
+	t.Run("valid - credential not required", func(t *testing.T) {
+		spec := map[string]bundle.Credential{
+			"kubeconfig": {ApplyTo: []string{"install"}, Required: false},
+		}
+		values := valuesource.Set{}
+		err := Validate(values, spec, "install")
+		require.NoError(t, err, "expected Validate to pass because the credential isn't required")
+	})
+
+	t.Run("valid - missing inapplicable credential", func(t *testing.T) {
+		spec := map[string]bundle.Credential{
+			"kubeconfig": {ApplyTo: []string{"install"}, Required: true},
+		}
+		values := valuesource.Set{}
+		err := Validate(values, spec, "custom")
+		require.NoError(t, err, "expected Validate to pass because the credential isn't applicable to the custom action")
+	})
+
+	t.Run("invalid - missing required credential", func(t *testing.T) {
+		spec := map[string]bundle.Credential{
+			"kubeconfig": {ApplyTo: []string{"install"}, Required: true},
+		}
+		values := valuesource.Set{}
+		err := Validate(values, spec, "install")
+		require.Error(t, err, "expected Validate to fail because the credential applies to the specified action and is required")
+		assert.Contains(t, err.Error(), "bundle requires credential")
+	})
 }
