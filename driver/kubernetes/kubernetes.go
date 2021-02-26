@@ -3,8 +3,10 @@ package kubernetes
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -12,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/distribution/reference"
+	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	batchv1 "k8s.io/api/batch/v1"
@@ -32,10 +35,18 @@ import (
 )
 
 const (
-	k8sContainerName    = "invocation"
-	k8sFileSecretVolume = "files"
-	numBackoffLoops     = 6
-	cnabPrefix          = "cnab.io/"
+	k8sContainerName      = "invocation"
+	numBackoffLoops       = 6
+	cnabPrefix            = "cnab.io/"
+	SettingInCluster      = "IN_CLUSTER"
+	SettingCleanupJobs    = "CLEANUP_JOBS"
+	SettingLabels         = "LABELS"
+	SettingJobVolumePath  = "JOB_VOLUME_PATH"
+	SettingJobVolumeName  = "JOB_VOLUME_NAME"
+	SettingKubeNamespace  = "KUBE_NAMESPACE"
+	SettingServiceAccount = "SERVICE_ACCOUNT"
+	SettingKubeconfig     = "KUBECONFIG"
+	SettingMasterURL      = "MASTER_URL"
 )
 
 var (
@@ -44,21 +55,77 @@ var (
 
 // Driver runs an invocation image in a Kubernetes cluster.
 type Driver struct {
-	Namespace             string
-	ServiceAccountName    string
-	Annotations           map[string]string
-	LimitCPU              resource.Quantity
-	LimitMemory           resource.Quantity
-	Tolerations           []v1.Toleration
+	// Namespace where the bundle's job should be executed. Required.
+	Namespace string
+
+	// ServiceAccountName is the name of the ServiceAccount under which the
+	// bundle's job should be executed. Leave blank to execute as the default
+	// ServiceAccount of the namespace.
+	ServiceAccountName string
+
+	// Annotations that should be applied to any Kubernetes resources created
+	// by the driver.
+	Annotations map[string]string
+
+	// Labels that should be applied to any Kubernetes resources created
+	// by the driver.
+	Labels []string
+
+	// LimitCPU is the amount of CPU to request and the limit for the bundle's job.
+	// Set to zero to not use a limit. Defaults to zero.
+	LimitCPU resource.Quantity
+
+	// LimitMemory is the amount of memory to request and the limit for the bundle's job.
+	// Set to zero to not use a limit. Defaults to zero.
+	LimitMemory resource.Quantity
+
+	// JobVolumePath is the local path where the a persistent volume is mounted to share
+	// data between the driver and the bundle.
+	JobVolumePath string
+
+	// JobVolumeName is the name of the persistent volume claim that should be mounted
+	// to the bundle's pod to share data between the driver and the bundle.
+	//
+	// Files that should be injected into the bundle are stored in ./inputs and the
+	// directory ./outputs is mounted to /cnab/app/outputs to collect any bundle
+	// outputs generated.
+	JobVolumeName string
+
+	// Tolerations is an optional list of tolerations to apply to the bundle's job.
+	Tolerations []v1.Toleration
+
+	// ActiveDeadlineSeconds is the time limit for running the driver's
+	// execution, including retries. Set to 0 to not use a deadline. Default is
+	// 5 minutes.
+	//
+	// Setting this value to a non-zero value can cause bundles that would have
+	// been successful, or that have even completed successfully, to halt abruptly
+	// before the bundle's execution run can be recorded in claim storage.
 	ActiveDeadlineSeconds int64
-	BackoffLimit          int32
-	SkipCleanup           bool
-	skipJobStatusCheck    bool
-	jobs                  batchclientv1.JobInterface
-	secrets               coreclientv1.SecretInterface
-	pods                  coreclientv1.PodInterface
-	deletionPolicy        metav1.DeletionPropagation
-	requiredCompletions   int32
+
+	// BackoffLimit is the number of times to retry the driver's
+	// execution. Defaults to 0, so failed executions will not be retried.
+	BackoffLimit int32
+
+	// SkipCleanup specifies if the driver should remove any Kubernetes
+	// resources that it created when the driver execution completes.
+	SkipCleanup bool
+
+	// InCluster indicates if the driver should connect to the cluster using
+	// in-cluster environment variables.
+	InCluster bool
+
+	// Kubeconfig is the absolute path to the kubeconfig file.
+	Kubeconfig string
+
+	// MasterURL is the Kubernetes API endpoint.
+	MasterURL string
+
+	skipJobStatusCheck bool
+	jobs               batchclientv1.JobInterface
+	secrets            coreclientv1.SecretInterface
+	pods               coreclientv1.PodInterface
+	deletionPolicy     metav1.DeletionPropagation
 }
 
 // New initializes a Kubernetes driver.
@@ -80,55 +147,94 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
-		"IN_CLUSTER":      "Connect to the cluster using in-cluster environment variables",
-		"CLEANUP_JOBS":    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
-		"KUBE_NAMESPACE":  "Kubernetes namespace in which to run the invocation image",
-		"SERVICE_ACCOUNT": "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
-		"KUBECONFIG":      "Absolute path to the kubeconfig file",
-		"MASTER_URL":      "Kubernetes master endpoint",
+		SettingInCluster:      "Connect to the cluster using in-cluster environment variables",
+		SettingCleanupJobs:    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		SettingLabels:         "Labels to apply to cluster resources created by the driver, separated by whitespace.",
+		SettingJobVolumePath:  "Path where the persistent volume is mounted",
+		SettingJobVolumeName:  "Name of the PersistentVolumeClaim to mount which enables the driver to share files with the invocation image",
+		SettingKubeNamespace:  "Kubernetes namespace in which to run the invocation image",
+		SettingServiceAccount: "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
+		SettingKubeconfig:     "Absolute path to the kubeconfig file",
+		SettingMasterURL:      "Kubernetes master endpoint",
 	}
 }
 
 // SetConfig sets Kubernetes driver configuration.
 func (k *Driver) SetConfig(settings map[string]string) error {
 	k.setDefaults()
-	k.Namespace = settings["KUBE_NAMESPACE"]
-	k.ServiceAccountName = settings["SERVICE_ACCOUNT"]
+	k.Namespace = settings[SettingKubeNamespace]
+	if k.Namespace == "" {
+		return errors.Errorf("setting %s is required", SettingKubeNamespace)
+	}
 
-	cleanup, err := strconv.ParseBool(settings["CLEANUP_JOBS"])
-	if err != nil {
+	k.ServiceAccountName = settings[SettingServiceAccount]
+	k.Labels = strings.Split(settings[SettingLabels], " ")
+
+	k.JobVolumePath = settings[SettingJobVolumePath]
+	if k.JobVolumePath == "" {
+		return errors.Errorf("setting %s is required", SettingJobVolumePath)
+	}
+	k.JobVolumeName = settings[SettingJobVolumeName]
+	if k.JobVolumeName == "" {
+		return errors.Errorf("setting %s is required", SettingJobVolumeName)
+	}
+
+	cleanup, err := strconv.ParseBool(settings[SettingCleanupJobs])
+	if err == nil {
 		k.SkipCleanup = !cleanup
 	}
 
-	var conf *rest.Config
-	if incluster, _ := strconv.ParseBool(settings["IN_CLUSTER"]); incluster {
-		conf, err = rest.InClusterConfig()
+	if inClusterVal, ok := settings[SettingInCluster]; ok {
+		inCluster, err := strconv.ParseBool(inClusterVal)
 		if err != nil {
-			return errors.Wrap(err, "error retrieving in-cluster kubernetes configuration")
+			return errors.Wrapf(err, "invalid value %q for %s", inClusterVal, SettingInCluster)
 		}
-	} else {
+		k.InCluster = inCluster
+	}
+
+	if !k.InCluster {
 		var kubeconfig string
-		if kpath := settings["KUBECONFIG"]; kpath != "" {
+		if kpath := settings[SettingKubeconfig]; kpath != "" {
 			kubeconfig = kpath
 		} else if home := homeDir(); home != "" {
 			kubeconfig = filepath.Join(home, ".kube", "config")
 		}
 
-		conf, err = clientcmd.BuildConfigFromFlags(settings["MASTER_URL"], kubeconfig)
-		if err != nil {
-			return errors.Wrapf(err, "error retrieving external kubernetes configuration using configuration:\n%v", settings)
-		}
+		k.Kubeconfig = kubeconfig
+		k.MasterURL = settings[SettingMasterURL]
 	}
 
-	return k.setClient(conf)
+	return nil
 }
 
 func (k *Driver) setDefaults() {
 	k.SkipCleanup = false
 	k.BackoffLimit = 0
-	k.ActiveDeadlineSeconds = 300
-	k.requiredCompletions = 1
+	k.ActiveDeadlineSeconds = 0 // Default to not cutting off a bundle mid-run
 	k.deletionPolicy = metav1.DeletePropagationBackground
+}
+
+func (k *Driver) initClient() error {
+	// Check if a test has already configured a client
+	if k.jobs != nil {
+		return nil
+	}
+
+	var conf *rest.Config
+	var err error
+	if k.InCluster {
+		conf, err = rest.InClusterConfig()
+		if err != nil {
+			return errors.Wrap(err, "error retrieving in-cluster kubernetes configuration")
+		}
+	} else {
+		conf, err = clientcmd.BuildConfigFromFlags(k.MasterURL, k.Kubeconfig)
+		if err != nil {
+			return errors.Wrapf(err, "error retrieving external kubernetes configuration for %s with kubeconfig %s", k.MasterURL, k.Kubeconfig)
+		}
+	}
+
+	return k.setClient(conf)
 }
 
 func (k *Driver) setClient(conf *rest.Config) error {
@@ -149,8 +255,15 @@ func (k *Driver) setClient(conf *rest.Config) error {
 
 // Run executes the operation inside of the invocation image.
 func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
-	if k.Namespace == "" {
-		return driver.OperationResult{}, fmt.Errorf("KUBE_NAMESPACE is required")
+	err := k.initClient()
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
+	const sharedVolumeName = "cnab-driver-share"
+	err = k.initJobVolumes()
+	if err != nil {
+		return driver.OperationResult{}, err
 	}
 
 	meta := metav1.ObjectMeta{
@@ -161,13 +274,23 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		},
 		Annotations: generateMergedAnnotations(op, k.Annotations),
 	}
+
+	// Apply custom labels
+	for _, l := range k.Labels {
+		parts := strings.SplitN(l, "=", 2)
+		if len(parts) > 1 {
+			meta.Labels[parts[0]] = parts[1]
+		}
+	}
+
 	// Mount SA token if a non-zero value for ServiceAccountName has been specified
 	mountServiceAccountToken := k.ServiceAccountName != ""
+
 	job := &batchv1.Job{
 		ObjectMeta: meta,
 		Spec: batchv1.JobSpec{
-			ActiveDeadlineSeconds: &k.ActiveDeadlineSeconds,
-			Completions:           &k.requiredCompletions,
+			ActiveDeadlineSeconds: defaultInt64Ptr(k.ActiveDeadlineSeconds),
+			Completions:           defaultInt32Ptr(1),
 			BackoffLimit:          &k.BackoffLimit,
 			Template: v1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -179,6 +302,17 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 					AutomountServiceAccountToken: &mountServiceAccountToken,
 					RestartPolicy:                v1.RestartPolicyNever,
 					Tolerations:                  k.Tolerations,
+					Volumes: []v1.Volume{
+						// This is a shared volume between the driver and the job so that files be shared
+						{
+							Name: sharedVolumeName,
+							VolumeSource: v1.VolumeSource{
+								PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+									ClaimName: k.JobVolumeName,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -189,16 +323,25 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	container := v1.Container{
-		Name:    k8sContainerName,
-		Image:   img,
-		Command: []string{"/cnab/app/run"},
-		Resources: v1.ResourceRequirements{
-			Limits: v1.ResourceList{
-				v1.ResourceCPU:    k.LimitCPU,
-				v1.ResourceMemory: k.LimitMemory,
+		Name:            k8sContainerName,
+		Image:           img,
+		Command:         []string{"/cnab/app/run"},
+		ImagePullPolicy: v1.PullIfNotPresent,
+		VolumeMounts: []v1.VolumeMount{
+			{
+				Name:      sharedVolumeName,
+				MountPath: "/cnab/app/outputs",
+				SubPath:   "outputs",
 			},
 		},
-		ImagePullPolicy: v1.PullIfNotPresent,
+	}
+
+	if !k.LimitCPU.IsZero() {
+		container.Resources.Limits[v1.ResourceCPU] = k.LimitCPU
+	}
+
+	if !k.LimitMemory.IsZero() {
+		container.Resources.Limits[v1.ResourceMemory] = k.LimitMemory
 	}
 
 	if len(op.Environment) > 0 {
@@ -227,29 +370,28 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	if len(op.Files) > 0 {
-		secret, mounts := generateFileSecret(op.Files)
-		secret.ObjectMeta = meta
-		secret.ObjectMeta.GenerateName += "files-"
-		secret, err := k.secrets.Create(secret)
-		if err != nil {
-			return driver.OperationResult{}, err
-		}
-		if !k.SkipCleanup {
-			defer k.deleteSecret(secret.ObjectMeta.Name)
-		}
+		// Write the files to the inputs directory on the shared volume and mount them individually to the desired location in the invocation image
+		for inputRelPath, contents := range op.Files {
+			inputPath := filepath.Join(k.JobVolumePath, "inputs", inputRelPath)
+			err = os.MkdirAll(filepath.Dir(inputPath), 0700)
+			if err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error creating directory for file %s on the shared job volume %s", inputPath, k.JobVolumeName)
+			}
+			err = ioutil.WriteFile(inputPath, []byte(contents), 0600)
+			if err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error writing file %s to the shared job volume %s", inputPath, k.JobVolumeName)
+			}
 
-		job.Spec.Template.Spec.Volumes = append(job.Spec.Template.Spec.Volumes, v1.Volume{
-			Name: k8sFileSecretVolume,
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName: secret.ObjectMeta.Name,
-				},
-			},
-		})
-		container.VolumeMounts = mounts
+			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{
+				Name:      sharedVolumeName,
+				MountPath: inputRelPath,
+				SubPath:   path.Join("inputs", inputRelPath),
+			})
+		}
 	}
 
 	job.Spec.Template.Spec.Containers = []v1.Container{container}
+
 	job, err = k.jobs.Create(job)
 	if err != nil {
 		return driver.OperationResult{}, err
@@ -258,24 +400,108 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		defer k.deleteJob(job.ObjectMeta.Name)
 	}
 
-	// Return early for unit testing purposes (the fake k8s client implementation just
+	// Skip waiting for the job in unit tests (the fake k8s client implementation just
 	// hangs during watch because no events are ever created on the Job)
-	if k.skipJobStatusCheck {
-		return driver.OperationResult{}, nil
+	var opErr *multierror.Error
+	if !k.skipJobStatusCheck {
+		// Create a selector to detect the job just created
+		jobSelector := metav1.ListOptions{
+			LabelSelector: labels.Set(job.ObjectMeta.Labels).String(),
+			FieldSelector: newSingleFieldSelector("metadata.name", job.ObjectMeta.Name),
+		}
+
+		// Prevent detecting pods from prior jobs by adding the job name to the labels
+		podSelector := metav1.ListOptions{
+			LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
+		}
+
+		err = k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
+		if err != nil {
+			opErr = multierror.Append(opErr, errors.Wrapf(err, "job %s failed", job.Name))
+		}
 	}
 
-	// Create a selector to detect the job just created
-	jobSelector := metav1.ListOptions{
-		LabelSelector: labels.Set(job.ObjectMeta.Labels).String(),
-		FieldSelector: newSingleFieldSelector("metadata.name", job.ObjectMeta.Name),
+	opResult, err := k.fetchOutputs(op)
+	if err != nil {
+		opErr = multierror.Append(opErr, err)
 	}
 
-	// Prevent detecting pods from prior jobs by adding the job name to the labels
-	podSelector := metav1.ListOptions{
-		LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
+	return opResult, opErr.ErrorOrNil()
+}
+
+// Store all job input files in ./inputs and outputs in ./outputs on the shared volume
+func (k *Driver) initJobVolumes() error {
+	inputsDir := filepath.Join(k.JobVolumePath, "inputs")
+	err := os.Mkdir(inputsDir, 0700)
+	if err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "error creating inputs directory %s on shared job volume %s", inputsDir, k.JobVolumeName)
 	}
 
-	return driver.OperationResult{}, k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
+	outputsDir := filepath.Join(k.JobVolumePath, "outputs")
+	err = os.Mkdir(outputsDir, 0700)
+	if err != nil && !os.IsExist(err) {
+		return errors.Wrapf(err, "error creating outputs directory %s on shared job volume %s", outputsDir, k.JobVolumeName)
+	}
+
+	return nil
+}
+
+// defaultInt64Ptr converts an integer value to a pointer, treating values less
+// than or equal to zero as nil.
+func defaultInt64Ptr(value int64) *int64 {
+	var ptr *int64
+	if value > 0 {
+		ptr = &value
+	}
+	return ptr
+}
+
+// defaultInt32Ptr converts an integer value to a pointer, treating values less
+// than or equal to zero as nil.
+func defaultInt32Ptr(value int32) *int32 {
+	var ptr *int32
+	if value > 0 {
+		ptr = &value
+	}
+	return ptr
+}
+
+// fetchOutputs collects any outputs created by the job that were persisted to JobVolumeName (which is mounted locally
+// at JobVolumePath).
+//
+// The goal is to collect all the files in the directory (recursively) and put them in a flat map of path to contents.
+// This map will be inside the OperationResult. When fetchOutputs returns an error, it may also return partial results.
+func (k *Driver) fetchOutputs(op *driver.Operation) (driver.OperationResult, error) {
+	opResult := driver.OperationResult{
+		Outputs: map[string]string{},
+	}
+
+	if len(op.Bundle.Outputs) == 0 {
+		return opResult, nil
+	}
+
+	outputsDir := filepath.Join(k.JobVolumePath, "outputs")
+	err := filepath.Walk(outputsDir, func(currentPath string, info os.FileInfo, err error) error {
+		// skip directories because we're gathering file contents
+		if info.IsDir() {
+			return nil
+		}
+
+		var contents []byte
+		pathInContainer := path.Join("/cnab/app/outputs", info.Name())
+		outputName, shouldCapture := op.Outputs[pathInContainer]
+		if shouldCapture {
+			contents, err = ioutil.ReadFile(currentPath)
+			if err != nil {
+				return errors.Wrapf(err, "error while reading %q from outputs", pathInContainer)
+			}
+			opResult.Outputs[outputName] = string(contents)
+		}
+
+		return nil
+	})
+
+	return opResult, err
 }
 
 func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelector metav1.ListOptions, out io.Writer) error {
@@ -313,9 +539,7 @@ func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelect
 	}
 
 	// Wait for pod logs to finish printing
-	for i := 0; i < int(k.requiredCompletions); i++ {
-		<-logsStreamingComplete
-	}
+	<-logsStreamingComplete
 
 	return err
 }
@@ -430,30 +654,6 @@ func generateMergedAnnotations(op *driver.Operation, mergeWith map[string]string
 	}
 
 	return anno
-}
-
-func generateFileSecret(files map[string]string) (*v1.Secret, []v1.VolumeMount) {
-	size := len(files)
-	data := make(map[string]string, size)
-	mounts := make([]v1.VolumeMount, size)
-
-	i := 0
-	for path, contents := range files {
-		key := strings.Replace(filepath.ToSlash(path), "/", "_", -1)
-		data[key] = contents
-		mounts[i] = v1.VolumeMount{
-			Name:      k8sFileSecretVolume,
-			MountPath: path,
-			SubPath:   key,
-		}
-		i++
-	}
-
-	secret := &v1.Secret{
-		StringData: data,
-	}
-
-	return secret, mounts
 }
 
 func newSingleFieldSelector(k, v string) string {

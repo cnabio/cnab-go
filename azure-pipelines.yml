@@ -17,7 +17,7 @@ steps:
     set -xeuo pipefail
     go env
     go mod download
-    go get sigs.k8s.io/kind@v0.6.0
+    go get sigs.k8s.io/kind@v0.10.0
     sudo make bootstrap
     make fetch-schemas build lint coverage
     GOOS=windows make build

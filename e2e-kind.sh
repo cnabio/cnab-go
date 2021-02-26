@@ -9,7 +9,7 @@ set -o pipefail
 CLUSTER_NAME=cnab-go-testing
 readonly CLUSTER_NAME
 
-K8S_VERSION=v1.15.3
+K8S_VERSION=v1.19.1
 readonly K8S_VERSION
 
 KIND_KUBECONFIG="$PWD/kind-kubeconfig.yaml"

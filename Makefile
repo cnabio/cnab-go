@@ -40,7 +40,7 @@ ifndef HAS_GOLANGCI
 	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_VERSION)
 endif
 ifndef HAS_KIND
-	go get sigs.k8s.io/kind@v0.6.0
+	go get sigs.k8s.io/kind@v0.10.0
 endif
 ifndef HAS_KUBECTL
 	echo "Follow instructions at https://kubernetes.io/docs/tasks/tools/install-kubectl/ to install kubectl."
