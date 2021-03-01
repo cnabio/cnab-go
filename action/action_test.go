@@ -3,6 +3,7 @@ package action
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -32,6 +33,7 @@ func (d *mockDriver) Handles(imageType string) bool {
 }
 func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	d.Operation = op
+	fmt.Fprintln(op.Out, "mocked running the bundle")
 	return d.Result, d.Error
 }
 
@@ -417,7 +419,7 @@ func TestOpFromClaim_Environment(t *testing.T) {
 	assert.Equal(t, expectedEnv, op.Environment, "operation env does not match expected")
 }
 
-func TestSetOutputsOnResult(t *testing.T) {
+func TestSetOutputsOnClaimResult(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	r, err := c.NewResult(claim.StatusSucceeded)
 	require.NoError(t, err, "NewResult failed")
@@ -537,7 +539,41 @@ func TestSetOutputsOnResult(t *testing.T) {
 	})
 }
 
-func TestSetOutputsOnClaim_MultipleTypes(t *testing.T) {
+func TestSetOutputsOnClaimResult_GeneratedByBundle(t *testing.T) {
+	c := newClaim(claim.ActionInstall)
+	r, err := c.NewResult(claim.StatusSucceeded)
+	require.NoError(t, err, "NewResult failed")
+
+	t.Run("true", func(t *testing.T) {
+		opResult := driver.OperationResult{
+			Outputs: map[string]string{
+				"some-output": "a valid output",
+			},
+		}
+		outputErrors := setOutputsOnClaimResult(c, &r, opResult)
+		require.NoError(t, outputErrors)
+
+		generatedByBundle, ok := r.OutputMetadata.GetGeneratedByBundle("some-output")
+		assert.True(t, ok, "generatedByBundle not set")
+		assert.True(t, generatedByBundle, "expected generatedByBundle to be true")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		opResult := driver.OperationResult{
+			Outputs: map[string]string{
+				"rando-output-not-in-bundle": "a valid output",
+			},
+		}
+		outputErrors := setOutputsOnClaimResult(c, &r, opResult)
+		require.NoError(t, outputErrors)
+
+		generatedByBundle, ok := r.OutputMetadata.GetGeneratedByBundle("rando-output-not-in-bundle")
+		assert.True(t, ok, "generatedByBundle not set")
+		assert.False(t, generatedByBundle, "expected generatedByBundle to be false")
+	})
+}
+
+func TestSetOutputsOnClaimResult_MultipleTypes(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	o := c.Bundle.Outputs["some-output"]
 	o.Definition = "BooleanAndIntegerParam"
@@ -570,7 +606,7 @@ func TestSetOutputsOnClaim_MultipleTypes(t *testing.T) {
 }
 
 // Tests that strings accept anything even as part of a list of types.
-func TestSetOutputsOnClaim_MultipleTypesWithString(t *testing.T) {
+func TestSetOutputsOnClaimResult_MultipleTypesWithString(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	o := c.Bundle.Outputs["some-output"]
 	o.Definition = "StringAndBooleanParam"
@@ -600,7 +636,7 @@ func TestSetOutputsOnClaim_MultipleTypesWithString(t *testing.T) {
 	})
 }
 
-func TestSetOutputsOnClaim_MismatchType(t *testing.T) {
+func TestSetOutputsOnClaimResult_MismatchType(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	o := c.Bundle.Outputs["some-output"]
 	o.Definition = "BooleanParam"
@@ -684,6 +720,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error: nil,
 		}
 		inst := New(d, nil)
+		inst.SaveLogs = true
 
 		opResult, claimResult, err := inst.Run(c, mockSet, out)
 		require.NoError(t, err)
@@ -694,6 +731,30 @@ func TestAction_RunAction(t *testing.T) {
 		assert.Equal(t, someContent, opResult.Outputs["some-output"], "the operation result should have the output contents")
 		contentDigest, _ := claimResult.OutputMetadata.GetContentDigest("some-output")
 		assert.Equal(t, someContentDigest, contentDigest, "invalid output content digest")
+
+		assert.Contains(t, opResult.Outputs, claim.OutputInvocationImageLogs, "the operation result should have saved the logs as an output")
+		assert.NotEmpty(t, opResult.Outputs[claim.OutputInvocationImageLogs], "the invocation image logs should not be empty")
+	})
+
+	t.Run("do not save logs", func(t *testing.T) {
+		c := newClaim(claim.ActionInstall)
+		d := &mockDriver{
+			shouldHandle: true,
+			Result: driver.OperationResult{
+				Outputs: map[string]string{
+					"some-output": someContent,
+				},
+			},
+			Error: nil,
+		}
+		inst := New(d, nil)
+		inst.SaveLogs = false
+
+		opResult, _, err := inst.Run(c, mockSet, out)
+		require.NoError(t, err)
+		require.NoError(t, opResult.Error)
+
+		assert.NotContains(t, opResult.Outputs, claim.OutputInvocationImageLogs, "the operation result should NOT have saved the logs as an output")
 	})
 
 	t.Run("configure operation", func(t *testing.T) {
