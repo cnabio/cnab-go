@@ -1080,7 +1080,7 @@ func TestExpandCredentials(t *testing.T) {
 			"third":  "third",
 		}
 
-		env, path, err := expandCredentials(b, set, false)
+		env, path, err := expandCredentials(b, set, false, "install")
 		is := assert.New(t)
 		is.NoError(err)
 		for k, v := range b.Credentials {
@@ -1106,9 +1106,9 @@ func TestExpandCredentials(t *testing.T) {
 			},
 		}
 		set := valuesource.Set{}
-		_, _, err := expandCredentials(b, set, false)
+		_, _, err := expandCredentials(b, set, false, "install")
 		assert.EqualError(t, err, `credential "first" is missing from the user-supplied credentials`)
-		_, _, err = expandCredentials(b, set, true)
+		_, _, err = expandCredentials(b, set, true, "install")
 		assert.NoError(t, err)
 	})
 
@@ -1124,9 +1124,29 @@ func TestExpandCredentials(t *testing.T) {
 			},
 		}
 		set := valuesource.Set{}
-		_, _, err := expandCredentials(b, set, false)
+		_, _, err := expandCredentials(b, set, false, "install")
 		assert.NoError(t, err)
-		_, _, err = expandCredentials(b, set, true)
+		_, _, err = expandCredentials(b, set, true, "install")
+		assert.NoError(t, err)
+	})
+
+	t.Run("missing cred with ApplyTo", func(t *testing.T) {
+		b := bundle.Bundle{
+			Name: "knapsack",
+			Credentials: map[string]bundle.Credential{
+				"first": {
+					Location: bundle.Location{
+						EnvironmentVariable: "FIRST_VAR",
+					},
+					Required: true,
+					ApplyTo:  []string{"install"},
+				},
+			},
+		}
+		set := valuesource.Set{}
+		_, _, err := expandCredentials(b, set, false, "install")
+		assert.EqualError(t, err, `credential "first" is missing from the user-supplied credentials`)
+		_, _, err = expandCredentials(b, set, false, "upgrade")
 		assert.NoError(t, err)
 	})
 }
