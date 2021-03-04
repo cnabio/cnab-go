@@ -133,7 +133,7 @@ func TestResultOutputs_GetMetadata(t *testing.T) {
 		assert.Empty(t, gotValue, "GetMetadata should return an empty value when one isn't found")
 	})
 
-	t.Run("output has no meatdata", func(t *testing.T) {
+	t.Run("output has no metadata", func(t *testing.T) {
 		outputs := OutputMetadata{
 			outputName: map[string]string{
 				"other": "stuff",
