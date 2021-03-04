@@ -177,7 +177,7 @@ func (s FileSystemStore) storageFiles(itemType string, files []os.FileInfo) []os
 	result := make([]os.FileInfo, 0)
 	ext := s.fileExtensions[itemType]
 	for _, file := range files {
-		if file.IsDir() || filepath.Ext(file.Name()) == ext {
+		if file.IsDir() || ext == "" || filepath.Ext(file.Name()) == ext {
 			result = append(result, file)
 		}
 	}
