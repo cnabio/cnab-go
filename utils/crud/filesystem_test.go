@@ -50,7 +50,7 @@ func TestFilesystemStore(t *testing.T) {
 			// List the records
 			list, err := s.List(testItemType, tc.group)
 			require.NoError(t, err)
-			require.Len(t, list, len(keys))
+			require.Equal(t, []string{"test.key1", "test.key2"}, list)
 
 			// Read each record
 			for _, key := range keys {
