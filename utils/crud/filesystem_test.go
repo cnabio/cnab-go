@@ -16,13 +16,19 @@ func TestFilesystemStore(t *testing.T) {
 	testcases := []struct {
 		name  string
 		group string
+		ext   string
 	}{
 		{
 			name:  "no group supplied",
 			group: "",
+			ext:   ".json",
 		}, {
 			name:  "group supplied",
 			group: testGroup,
+			ext:   ".json",
+		}, {
+			name: "empty extension",
+			ext:  "",
 		},
 	}
 
@@ -32,8 +38,8 @@ func TestFilesystemStore(t *testing.T) {
 			require.NoError(t, err)
 			defer os.RemoveAll(tmdir)
 
-			s := NewFileSystemStore(tmdir, map[string]string{testItemType: ".json"})
-			keys := []string{"testkey1", "testkey2"}
+			s := NewFileSystemStore(tmdir, map[string]string{testItemType: tc.ext})
+			keys := []string{"test.key1", "test.key2"} // Use periods in name to detect improper file extension checks
 			val := []byte("testval")
 
 			// Save some records
@@ -44,7 +50,7 @@ func TestFilesystemStore(t *testing.T) {
 			// List the records
 			list, err := s.List(testItemType, tc.group)
 			require.NoError(t, err)
-			require.Len(t, list, len(keys))
+			require.Equal(t, []string{"test.key1", "test.key2"}, list)
 
 			// Read each record
 			for _, key := range keys {

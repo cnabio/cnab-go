@@ -51,7 +51,7 @@ func (s FileSystemStore) List(itemType string, group string) ([]string, error) {
 		return []string{}, err
 	}
 
-	return names(s.storageFiles(itemType, files)), nil
+	return s.names(itemType, s.storageFiles(itemType, files)), nil
 }
 
 func (s FileSystemStore) Save(itemType string, group string, name string, data []byte) error {
@@ -177,21 +177,23 @@ func (s FileSystemStore) storageFiles(itemType string, files []os.FileInfo) []os
 	result := make([]os.FileInfo, 0)
 	ext := s.fileExtensions[itemType]
 	for _, file := range files {
-		if file.IsDir() || filepath.Ext(file.Name()) == ext {
+		if file.IsDir() || ext == "" || filepath.Ext(file.Name()) == ext {
 			result = append(result, file)
 		}
 	}
 	return result
 }
 
-func names(files []os.FileInfo) []string {
+func (s FileSystemStore) names(itemType string, files []os.FileInfo) []string {
 	result := make([]string, 0)
 	for _, file := range files {
-		result = append(result, name(file.Name()))
+		result = append(result, s.name(itemType, file.Name()))
 	}
 	return result
 }
 
-func name(filename string) string {
-	return strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename))
+func (s FileSystemStore) name(itemType string, path string) string {
+	ext := s.fileExtensions[itemType]
+	filename := filepath.Base(path)
+	return strings.TrimSuffix(filename, ext)
 }

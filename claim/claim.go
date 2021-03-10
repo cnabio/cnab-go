@@ -47,7 +47,16 @@ const (
 // Output constants define metadata about outputs that may be stored on a claim
 // Result.
 const (
+	// OutputContentDigest is the output metadata key for the output's content digest.
 	OutputContentDigest = "contentDigest"
+
+	// OutputGeneratedByBundle is the output metadata key for if the output was
+	// defined by the bundle and the value was set by the invocation image. Some
+	// outputs are created by the executing driver or CNAB tool.
+	OutputGeneratedByBundle = "generatedByBundle"
+
+	// OutputInvocationImageLogs is a well-known output name used to store the logs from the invocation image.
+	OutputInvocationImageLogs = "io.cnab.outputs.invocationImageLogs"
 )
 
 var (
@@ -253,6 +262,23 @@ func (c Claim) GetStatus() string {
 	}
 
 	return result.Status
+}
+
+// HasLogs indicates if logs were persisted for the bundle action.
+// When ok is false, this indicates that the result is indeterminate
+// because results are not loaded on the claim.
+func (c Claim) HasLogs() (hasLogs bool, ok bool) {
+	if c.results == nil {
+		return false, false
+	}
+
+	for _, r := range *c.results {
+		if r.HasLogs() {
+			return true, true
+		}
+	}
+
+	return false, true
 }
 
 type Claims []Claim

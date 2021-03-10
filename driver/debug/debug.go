@@ -22,9 +22,8 @@ func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	result := driver.OperationResult{}
-	result.Logs.Write(data)
 
-	fmt.Fprintln(op.Out, result.Logs.String())
+	fmt.Fprintln(op.Out, string(data))
 
 	return result, nil
 }

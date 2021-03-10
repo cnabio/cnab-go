@@ -1,7 +1,6 @@
 package driver
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 
@@ -54,9 +53,6 @@ type ResolvedCred struct {
 type OperationResult struct {
 	// Outputs maps from the name of the output to its content.
 	Outputs map[string]string
-
-	// Logs is the combined logs from the bundle execution.
-	Logs bytes.Buffer
 
 	// Error is any errors from executing the operation.
 	Error error

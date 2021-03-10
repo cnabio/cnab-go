@@ -394,3 +394,32 @@ func TestClaim_IsModifyingAction(t *testing.T) {
 		})
 	}
 }
+
+func TestClaim_HasLogs(t *testing.T) {
+	t.Run("unknown", func(t *testing.T) {
+		c := Claim{}
+
+		hasLogs, ok := c.HasLogs()
+		assert.False(t, ok, "Expected ok to be false")
+		assert.False(t, hasLogs, "Expected hasLogs to be false")
+	})
+
+	t.Run("true", func(t *testing.T) {
+		r := Result{}
+		r.OutputMetadata.SetGeneratedByBundle(OutputInvocationImageLogs, false)
+		c := Claim{results: &Results{r}}
+
+		hasLogs, ok := c.HasLogs()
+		assert.True(t, ok, "Expected ok to be true")
+		assert.True(t, hasLogs, "Expected hasLogs to be true")
+	})
+
+	t.Run("false", func(t *testing.T) {
+		r := Result{}
+		c := Claim{results: &Results{r}}
+
+		hasLogs, ok := c.HasLogs()
+		assert.True(t, ok, "Expected ok to be true")
+		assert.False(t, hasLogs, "Expected hasLogs to be false")
+	})
+}

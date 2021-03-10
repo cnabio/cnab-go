@@ -452,7 +452,7 @@ func (s Store) ReadOutput(c Claim, r Result, outputName string) (Output, error) 
 
 	sensitive, err := c.Bundle.IsOutputSensitive(outputName)
 	if err != nil {
-		return Output{}, errors.Wrapf(err, "could not determine if the output %q is sensitive", outputName)
+		sensitive = false // If it's not marked as sensitive, it was stored unencrypted
 	}
 
 	if sensitive {
@@ -506,7 +506,7 @@ func (s Store) SaveOutput(o Output) error {
 
 	sensitive, err := o.claim.Bundle.IsOutputSensitive(o.Name)
 	if err != nil {
-		return errors.Wrapf(err, "could not determine if the output %q is sensitive", o.Name)
+		sensitive = false // If it's not marked as sensitive, it was stored unencrypted
 	}
 
 	data := o.Value

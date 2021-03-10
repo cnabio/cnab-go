@@ -2,6 +2,7 @@ package claim
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -72,6 +73,15 @@ func (r Result) Validate() error {
 	return fmt.Errorf("invalid status: %s", r.Status)
 }
 
+// HasLogs indicates if logs were persisted for the result.
+func (r Result) HasLogs() bool {
+	if r.OutputMetadata == nil {
+		return false
+	}
+	_, ok := r.OutputMetadata[OutputInvocationImageLogs]
+	return ok
+}
+
 // Results is a sortable list of Result documents.
 type Results []Result
 
@@ -92,34 +102,65 @@ func (r Results) Swap(i, j int) {
 // for safely querying and retrieving well-known metadata.
 type OutputMetadata map[string]interface{}
 
-// GetContentDigest for the specified output.
-func (o OutputMetadata) GetContentDigest(outputName string) (string, bool) {
+// GetMetadata for the specified output and key.
+func (o OutputMetadata) GetMetadata(outputName string, metadataKey string) (string, bool) {
 	if output, ok := o[outputName]; ok {
 		if outputMetadata, ok := output.(map[string]string); ok {
-			contentDigest, ok := outputMetadata[OutputContentDigest]
-			return contentDigest, ok
+			if value, ok := outputMetadata[metadataKey]; ok {
+				return value, true
+			}
 		}
 	}
 
 	return "", false
 }
 
-// SetContentDigest for the specified output.
-func (o OutputMetadata) SetContentDigest(outputName string, contentDigest string) error {
-	output, ok := o[outputName]
+// SetMetadata for the specified output and key.
+func (o *OutputMetadata) SetMetadata(outputName string, metadataKey string, value string) error {
+	if *o == nil { // If the receiver is nil, initialize it to an empty map
+		*o = OutputMetadata{}
+	}
+	metadata := *o
+
+	output, ok := metadata[outputName]
 	if !ok {
 		output = map[string]string{
-			OutputContentDigest: contentDigest,
+			metadataKey: value,
 		}
-		o[outputName] = output
+		metadata[outputName] = output
 		return nil
 	}
 
 	outputMetadata, ok := output.(map[string]string)
 	if !ok {
-		return errors.Errorf("cannot set the claim result's OutputMetadata[%s][%s] because it is not type map[string]string but %T", outputName, OutputContentDigest, output)
+		return errors.Errorf("cannot set the claim result's OutputMetadata[%s][%s] because it is not type map[string]string but %T", outputName, metadataKey, output)
 	}
 
-	outputMetadata[OutputContentDigest] = contentDigest
+	outputMetadata[metadataKey] = value
 	return nil
+}
+
+// GetGeneratedByBundle flag for the specified output.
+func (o *OutputMetadata) GetGeneratedByBundle(outputName string) (bool, bool) {
+	if generatedByBundleS, ok := o.GetMetadata(outputName, OutputGeneratedByBundle); ok {
+		generatedByBundle, err := strconv.ParseBool(generatedByBundleS)
+		return generatedByBundle, err == nil
+	}
+
+	return false, false
+}
+
+// SetGeneratedByBundle for the specified output.
+func (o *OutputMetadata) SetGeneratedByBundle(outputName string, generatedByBundle bool) error {
+	return o.SetMetadata(outputName, OutputGeneratedByBundle, strconv.FormatBool(generatedByBundle))
+}
+
+// GetContentDigest for the specified output.
+func (o *OutputMetadata) GetContentDigest(outputName string) (string, bool) {
+	return o.GetMetadata(outputName, OutputContentDigest)
+}
+
+// SetContentDigest for the specified output.
+func (o *OutputMetadata) SetContentDigest(outputName string, contentDigest string) error {
+	return o.SetMetadata(outputName, OutputContentDigest, contentDigest)
 }
