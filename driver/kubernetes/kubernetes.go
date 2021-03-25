@@ -35,18 +35,19 @@ import (
 )
 
 const (
-	k8sContainerName      = "invocation"
-	numBackoffLoops       = 6
-	cnabPrefix            = "cnab.io/"
-	SettingInCluster      = "IN_CLUSTER"
-	SettingCleanupJobs    = "CLEANUP_JOBS"
-	SettingLabels         = "LABELS"
-	SettingJobVolumePath  = "JOB_VOLUME_PATH"
-	SettingJobVolumeName  = "JOB_VOLUME_NAME"
-	SettingKubeNamespace  = "KUBE_NAMESPACE"
-	SettingServiceAccount = "SERVICE_ACCOUNT"
-	SettingKubeconfig     = "KUBECONFIG"
-	SettingMasterURL      = "MASTER_URL"
+	k8sContainerName              = "invocation"
+	numBackoffLoops               = 6
+	cnabPrefix                    = "cnab.io/"
+	SettingInCluster              = "IN_CLUSTER"
+	SettingCleanupJobs            = "CLEANUP_JOBS"
+	SettingLabels                 = "LABELS"
+	SettingJobVolumePath          = "JOB_VOLUME_PATH"
+	SettingJobVolumeName          = "JOB_VOLUME_NAME"
+	SettingKubeNamespace          = "KUBE_NAMESPACE"
+	SettingServiceAccount         = "SERVICE_ACCOUNT"
+	SettingKubeconfig             = "KUBECONFIG"
+	SettingMasterURL              = "MASTER_URL"
+	SettingPodAffinityMatchLabels = "AFFINITY_MATCH_LABELS"
 )
 
 var (
@@ -66,6 +67,10 @@ type Driver struct {
 	// Annotations that should be applied to any Kubernetes resources created
 	// by the driver.
 	Annotations map[string]string
+
+	// Affinity specifies the affinity constraints for the job created by the driver, for example if the PV provisioned/used for the PVC (JobVolumeName) is mounted to a node
+	// using ReadWriteOnce then the job will need to run on the same node as the PVC
+	Affinity *v1.Affinity
 
 	// Labels that should be applied to any Kubernetes resources created
 	// by the driver.
@@ -147,15 +152,16 @@ func (k *Driver) Handles(imagetype string) bool {
 // Config returns the Kubernetes driver configuration options.
 func (k *Driver) Config() map[string]string {
 	return map[string]string{
-		SettingInCluster:      "Connect to the cluster using in-cluster environment variables",
-		SettingCleanupJobs:    "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
-		SettingLabels:         "Labels to apply to cluster resources created by the driver, separated by whitespace.",
-		SettingJobVolumePath:  "Path where the persistent volume is mounted",
-		SettingJobVolumeName:  "Name of the PersistentVolumeClaim to mount which enables the driver to share files with the invocation image",
-		SettingKubeNamespace:  "Kubernetes namespace in which to run the invocation image",
-		SettingServiceAccount: "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
-		SettingKubeconfig:     "Absolute path to the kubeconfig file",
-		SettingMasterURL:      "Kubernetes master endpoint",
+		SettingInCluster:              "Connect to the cluster using in-cluster environment variables",
+		SettingCleanupJobs:            "If true, the job and associated secrets will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		SettingLabels:                 "Labels to apply to cluster resources created by the driver, separated by whitespace.",
+		SettingJobVolumePath:          "Path where the persistent volume is mounted",
+		SettingJobVolumeName:          "Name of the PersistentVolumeClaim to mount which enables the driver to share files with the invocation image",
+		SettingKubeNamespace:          "Kubernetes namespace in which to run the invocation image",
+		SettingServiceAccount:         "Kubernetes service account to be mounted by the invocation image (if empty, no service account token will be mounted)",
+		SettingKubeconfig:             "Absolute path to the kubeconfig file",
+		SettingMasterURL:              "Kubernetes master endpoint",
+		SettingPodAffinityMatchLabels: "Pod Affinity Match Labels to apply to job created by the driver, expressed as name value pairs separated by whitespace. (e.g 'A=B X=Y'), the topology key is set to kubernetes.io/hostname",
 	}
 }
 
@@ -166,6 +172,34 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 	if k.Namespace == "" {
 		return errors.Errorf("setting %s is required", SettingKubeNamespace)
 	}
+
+	affinity := &v1.Affinity{}
+	if settings[SettingPodAffinityMatchLabels] != "" {
+		matchLabels := make(map[string]string)
+		for _, affinityMatch := range strings.Split(settings[SettingPodAffinityMatchLabels], " ") {
+			parts := strings.Split(affinityMatch, "=")
+			if len(parts) == 2 {
+				matchLabels[parts[0]] = parts[1]
+			}
+		}
+
+		if len(matchLabels) > 0 {
+			affinity = &v1.Affinity{
+				PodAffinity: &v1.PodAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
+						{
+							TopologyKey: "kubernetes.io/hostname",
+							LabelSelector: &metav1.LabelSelector{
+								MatchLabels: matchLabels,
+							},
+						},
+					},
+				},
+			}
+		}
+	}
+
+	k.Affinity = affinity
 
 	k.ServiceAccountName = settings[SettingServiceAccount]
 	k.Labels = strings.Split(settings[SettingLabels], " ")
@@ -298,6 +332,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 					Annotations: meta.Annotations,
 				},
 				Spec: v1.PodSpec{
+					Affinity:                     k.Affinity,
 					ServiceAccountName:           k.ServiceAccountName,
 					AutomountServiceAccountToken: &mountServiceAccountToken,
 					RestartPolicy:                v1.RestartPolicyNever,

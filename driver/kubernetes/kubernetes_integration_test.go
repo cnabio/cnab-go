@@ -4,17 +4,23 @@ package kubernetes
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubernetes/pkg/client/conditions"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
@@ -25,10 +31,11 @@ func TestDriver_Run_Integration(t *testing.T) {
 	k.ActiveDeadlineSeconds = 60
 
 	cases := []struct {
-		name   string
-		op     *driver.Operation
-		output string
-		err    error
+		name                   string
+		op                     *driver.Operation
+		output                 string
+		err                    error
+		podAffinityMatchLabels string
 	}{
 		{
 			name: "install",
@@ -48,6 +55,46 @@ func TestDriver_Run_Integration(t *testing.T) {
 			},
 			output: "Port parameter was set to 3000\nInstall action\nAction install complete for example\n",
 			err:    nil,
+		},
+		{
+			name: "install with affinity using single label",
+			op: &driver.Operation{
+				Installation: "example",
+				Action:       "install",
+				Bundle:       &bundle.Bundle{},
+				Image: bundle.InvocationImage{
+					BaseImage: bundle.BaseImage{
+						Image:  "cnab/helloworld",
+						Digest: "sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
+					},
+				},
+				Environment: map[string]string{
+					"PORT": "3000",
+				},
+			},
+			output:                 "Port parameter was set to 3000\nInstall action\nAction install complete for example\n",
+			err:                    nil,
+			podAffinityMatchLabels: "test=true",
+		},
+		{
+			name: "install with affinity using multiple labels",
+			op: &driver.Operation{
+				Installation: "example",
+				Action:       "install",
+				Bundle:       &bundle.Bundle{},
+				Image: bundle.InvocationImage{
+					BaseImage: bundle.BaseImage{
+						Image:  "cnab/helloworld",
+						Digest: "sha256:55f83710272990efab4e076f9281453e136980becfd879640b06552ead751284",
+					},
+				},
+				Environment: map[string]string{
+					"PORT": "3000",
+				},
+			},
+			output:                 "Port parameter was set to 3000\nInstall action\nAction install complete for example\n",
+			err:                    nil,
+			podAffinityMatchLabels: "test=true test1=true",
 		},
 		{
 			name: "long installation name",
@@ -89,13 +136,29 @@ func TestDriver_Run_Integration(t *testing.T) {
 			require.NoError(t, err, "could not create test directory")
 			defer os.RemoveAll(sharedDir)
 
+			testNameLabel := getTestNameLabel(tc.name)
+
 			err = k.SetConfig(map[string]string{
-				SettingJobVolumePath: sharedDir,
-				SettingJobVolumeName: pvc,
-				SettingKubeNamespace: "default",
-				SettingKubeconfig:    os.Getenv("KUBECONFIG"),
+				SettingJobVolumePath:          sharedDir,
+				SettingJobVolumeName:          pvc,
+				SettingKubeNamespace:          "default",
+				SettingKubeconfig:             os.Getenv("KUBECONFIG"),
+				SettingPodAffinityMatchLabels: tc.podAffinityMatchLabels,
+				SettingLabels:                 fmt.Sprintf("testname=%s", testNameLabel),
+				SettingCleanupJobs: func() string {
+					if tc.podAffinityMatchLabels == "" {
+						return "true"
+					}
+					return "false"
+				}(),
 			})
 			require.NoError(t, err, "SetConfig failed")
+			hostname := ""
+			var deletePod func()
+			if tc.podAffinityMatchLabels != "" {
+				hostname, deletePod = createTestPod(t, tc.podAffinityMatchLabels)
+				defer deletePod()
+			}
 
 			_, err = k.Run(tc.op)
 
@@ -105,12 +168,94 @@ func TestDriver_Run_Integration(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Contains(t, output.String(), tc.output)
+			if hostname != "" {
+				checkPodAffinity(t, testNameLabel, hostname)
+			}
+
 		})
 	}
 }
 
+func getTestNameLabel(testName string) string {
+	return fmt.Sprintf("%s.%d", strings.ReplaceAll(testName, " ", "."), time.Now().Unix())
+}
+
+func checkPodAffinity(t *testing.T, testname string, hostname string) {
+	coreClient := getCoreClient(t)
+	podClient := coreClient.Pods("default")
+	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"testname": testname}}
+	pods, err := podClient.List(metav1.ListOptions{
+		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
+	})
+	require.NoError(t, err, "List Pods by label failed %v", pods)
+	require.Equal(t, 1, len(pods.Items), "Only expected one pod with label: %s", testname)
+	driverHostName := getPodNodeName(t, pods.Items[0].Name)
+	require.Equal(t, hostname, driverHostName, "Pod hostname expected:%s actual:%s", hostname, driverHostName)
+}
+
+func createTestPod(t *testing.T, matchLabels string) (string, func()) {
+
+	labels := make(map[string]string)
+	for _, i := range strings.Split(matchLabels, " ") {
+		kv := strings.Split(i, "=")
+		labels[kv[0]] = kv[1]
+	}
+
+	podDefinition := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "affinity-test-pod",
+			Namespace:    "default",
+			Labels:       labels,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:    "affinity-test-container",
+					Image:   "alpine",
+					Command: []string{"tail", "-f", "/dev/null"},
+				},
+			},
+			RestartPolicy: "Always",
+		},
+	}
+
+	coreClient := getCoreClient(t)
+	podClient := coreClient.Pods("default")
+	pod, err := podClient.Create(podDefinition)
+	require.NoError(t, err, "Create pod failed")
+
+	return getPodNodeName(t, pod.Name), func() {
+		podClient.Delete(pod.Name, &metav1.DeleteOptions{})
+	}
+
+}
+
+func getPodNodeName(t *testing.T, podName string) string {
+	coreClient := getCoreClient(t)
+	podClient := coreClient.Pods("default")
+	wait.PollImmediate(time.Second, time.Second*60, func() (bool, error) {
+		pod, err := podClient.Get(podName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+		switch pod.Status.Phase {
+		case v1.PodRunning:
+			return true, nil
+		case v1.PodFailed, v1.PodSucceeded:
+			return false, conditions.ErrPodCompleted
+		}
+		return false, nil
+	})
+
+	pod, err := podClient.Get(podName, metav1.GetOptions{})
+	require.NoError(t, err, "Get running pod failed")
+
+	return pod.Spec.NodeName
+
+}
+
 func createTestPVC(t *testing.T) (string, func()) {
-	pvc := &v1.PersistentVolumeClaim{
+	pvcDefinition := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "cnab-driver-shared",
 			Namespace:    "default",
@@ -122,17 +267,23 @@ func createTestPVC(t *testing.T) (string, func()) {
 			}},
 		},
 	}
-	kubeconfig := os.Getenv("KUBECONFIG")
-	conf, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
-	require.NoError(t, err, "BuildConfigFromFlags failed")
-	coreClient, err := coreclientv1.NewForConfig(conf)
+	coreClient := getCoreClient(t)
 	pvcClient := coreClient.PersistentVolumeClaims("default")
-	pvc, err = pvcClient.Create(pvc)
+	pvc, err := pvcClient.Create(pvcDefinition)
 	require.NoError(t, err, "create pvc failed")
 
 	return pvc.Name, func() {
 		pvcClient.Delete(pvc.Name, &metav1.DeleteOptions{})
 	}
+}
+
+func getCoreClient(t *testing.T) *coreclientv1.CoreV1Client {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	conf, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	require.NoError(t, err, "BuildConfigFromFlags failed")
+	coreClient, err := coreclientv1.NewForConfig(conf)
+	require.NoError(t, err, "NewForConfig failed")
+	return coreClient
 }
 
 func TestDriver_InitClient(t *testing.T) {
