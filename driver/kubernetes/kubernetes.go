@@ -21,7 +21,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	batchclientv1 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
@@ -180,10 +182,17 @@ func (k *Driver) SetConfig(settings map[string]string) error {
 			parts := strings.Split(affinityMatch, "=")
 			if len(parts) == 2 {
 				matchLabels[parts[0]] = parts[1]
+			} else {
+				return errors.Errorf("AFFINITY_MATCH_LABELS is incorrectly formattted each value should be in the form X=Y, got %s", affinityMatch)
 			}
 		}
 
 		if len(matchLabels) > 0 {
+			errors := validation.ValidateLabels(matchLabels, field.NewPath("labels"))
+			if len(errors) > 0 {
+				return errors.ToAggregate()
+			}
+
 			affinity = &v1.Affinity{
 				PodAffinity: &v1.PodAffinity{
 					RequiredDuringSchedulingIgnoredDuringExecution: []v1.PodAffinityTerm{
