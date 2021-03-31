@@ -302,15 +302,16 @@ func TestDriver_ConfigureJob(t *testing.T) {
 func TestDriver_SetConfig(t *testing.T) {
 	validSettings := func() map[string]string {
 		return map[string]string{
-			SettingInCluster:      "true",
-			SettingKubeconfig:     "/tmp/kube.config",
-			SettingMasterURL:      "http://example.com",
-			SettingKubeNamespace:  "default",
-			SettingJobVolumeName:  "cnab-driver-shared",
-			SettingJobVolumePath:  "/tmp",
-			SettingCleanupJobs:    "false",
-			SettingLabels:         "a=1 b=2",
-			SettingServiceAccount: "myacct",
+			SettingInCluster:              "true",
+			SettingKubeconfig:             "/tmp/kube.config",
+			SettingMasterURL:              "http://example.com",
+			SettingKubeNamespace:          "default",
+			SettingJobVolumeName:          "cnab-driver-shared",
+			SettingJobVolumePath:          "/tmp",
+			SettingCleanupJobs:            "false",
+			SettingLabels:                 "a=1 b=2",
+			SettingServiceAccount:         "myacct",
+			SettingPodAffinityMatchLabels: "a=b x=y",
 		}
 	}
 
@@ -381,5 +382,23 @@ func TestDriver_SetConfig(t *testing.T) {
 		err := d.SetConfig(settings)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "setting JOB_VOLUME_PATH is required")
+	})
+
+	t.Run("invalid PodAffinity match labels ", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingPodAffinityMatchLabels] = "AB"
+		err := d.SetConfig(settings)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "AFFINITY_MATCH_LABELS is incorrectly formattted each value should be in the form X=Y, got")
+	})
+
+	t.Run("job volume path missing", func(t *testing.T) {
+		d := Driver{}
+		settings := validSettings()
+		settings[SettingPodAffinityMatchLabels] = "A=B%C"
+		err := d.SetConfig(settings)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "a valid label must be an empty string or consist of alphanumeric characters, '-', '_' or '.', and must start and end with an alphanumeric character")
 	})
 }

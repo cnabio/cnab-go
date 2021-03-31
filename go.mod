@@ -74,6 +74,7 @@ require (
 	k8s.io/api v0.0.0-20191016110408-35e52d86657a
 	k8s.io/apimachinery v0.0.0-20191004115801-a2eda9f80ab8
 	k8s.io/client-go v0.0.0-20191016111102-bec269661e48
+	k8s.io/kubernetes v1.11.10
 	vbom.ml/util v0.0.0-20180919145318-efcd4e0f9787 // indirect
 )
 

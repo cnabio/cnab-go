@@ -6,6 +6,7 @@ vendor/
 __pycache__/
 /duffle
 .vscode/settings.json
+.vscode/tasks.json
 
 # Test Output
 kind-kubeconfig.yaml

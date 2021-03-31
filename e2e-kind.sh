@@ -21,15 +21,21 @@ readonly GO_TEST_COMMAND
 GO_TEST_LOG="go_test.log"
 readonly GO_TEST_LOG
 
+KIND_CONFIG_FILE="$PWD/kind.config.yaml"
+readonly KIND_CONFIG_FILE
+
 create_kind_cluster() {
     kind create cluster \
       --name "$CLUSTER_NAME" \
       --image "kindest/node:$K8S_VERSION" \
       --kubeconfig "$KIND_KUBECONFIG" \
-      --wait 300s
+      --wait 300s \
+      --config "$KIND_CONFIG_FILE"
 
     kubectl cluster-info --kubeconfig $KIND_KUBECONFIG
     echo
+
+    kubectl wait --for=condition=Ready nodes --all --kubeconfig $KIND_KUBECONFIG
 
     kubectl get nodes --kubeconfig $KIND_KUBECONFIG
     echo
@@ -50,6 +56,10 @@ print_versions() {
     echo "kubectl version: $(kubectl version)"
 }
 
+delete_kind_cluster() {
+    kind delete cluster --name "$CLUSTER_NAME"
+}
+
 cleanup() {
     cat "$GO_TEST_LOG"
     echo
@@ -58,7 +68,8 @@ cleanup() {
     gocov convert coverage.txt > coverage.json
     gocov-xml < coverage.json > coverage.xml
 
-    kind delete cluster --name "$CLUSTER_NAME"
+    delete_kind_cluster
+
     echo 'Done!'
 }
 
@@ -70,4 +81,4 @@ main() {
     test_e2e
 }
 
-main
+"$@"

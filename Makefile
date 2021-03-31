@@ -24,6 +24,14 @@ test:
 lint:
 	golangci-lint run --config ./golangci.yml
 
+.PHONY: create-test-cluster
+create-test-cluster:
+	./e2e-kind.sh create_kind_cluster
+
+.PHONY: delete-test-cluster
+delete-test-cluster:
+	./e2e-kind.sh delete_kind_cluster
+
 HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
 GOLANGCI_VERSION := v1.21.0
 HAS_KIND := $(shell $(CHECK) kind)
@@ -62,7 +70,7 @@ endif
 
 .PHONY: coverage
 coverage: compile-integration-tests
-	./e2e-kind.sh
+	./e2e-kind.sh main
 
 .PHONY: compile-integration-tests
 compile-integration-tests:
