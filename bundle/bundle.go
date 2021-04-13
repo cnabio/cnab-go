@@ -139,7 +139,7 @@ func (img *InvocationImage) DeepCopy() *InvocationImage {
 func (img InvocationImage) Validate() error {
 	switch img.ImageType {
 	case "docker", "oci":
-		return validateDockerish(img.Image)
+		return nil
 	default:
 		return nil
 	}
@@ -278,12 +278,5 @@ func (b Bundle) Validate() error {
 		}
 	}
 
-	return nil
-}
-
-func validateDockerish(s string) error {
-	if !strings.Contains(s, ":") {
-		return errors.New("tag is required")
-	}
 	return nil
 }
