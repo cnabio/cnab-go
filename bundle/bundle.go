@@ -1,6 +1,7 @@
 package bundle
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/docker/go/canonical/json"
+	cjson "github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
 	pkgErrors "github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
@@ -53,7 +54,18 @@ func GetDefaultSchemaVersion() (schema.Version, error) {
 	return ver, nil
 }
 
-//Unmarshal unmarshals a Bundle that was not signed.
+// Marshal the bundle to canonical json.
+func (b Bundle) Marshal() ([]byte, error) {
+	// First marshal to json, then convert that to canonical json
+	d, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return cjson.Transform(d)
+}
+
+// Unmarshal a Bundle from json.
 func Unmarshal(data []byte) (*Bundle, error) {
 	b := &Bundle{}
 	return b, json.Unmarshal(data, b)
@@ -68,8 +80,7 @@ func ParseReader(r io.Reader) (Bundle, error) {
 
 // WriteFile serializes the bundle and writes it to a file as JSON.
 func (b Bundle) WriteFile(dest string, mode os.FileMode) error {
-	// FIXME: The marshal here should exactly match the Marshal in the signature code.
-	d, err := json.MarshalCanonical(b)
+	d, err := b.Marshal()
 	if err != nil {
 		return err
 	}
@@ -78,7 +89,7 @@ func (b Bundle) WriteFile(dest string, mode os.FileMode) error {
 
 // WriteTo writes unsigned JSON to an io.Writer using the standard formatting.
 func (b Bundle) WriteTo(w io.Writer) (int64, error) {
-	d, err := json.MarshalCanonical(b)
+	d, err := b.Marshal()
 	if err != nil {
 		return 0, err
 	}
