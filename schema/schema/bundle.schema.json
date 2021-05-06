@@ -213,9 +213,6 @@
       "additionalProperties": true
     },
     "definitions": {
-      "additionalProperties": {
-        "$ref": "https://cnab.io/v1/definitions.schema.json"
-      },
       "type": "object"
     },
     "description": {

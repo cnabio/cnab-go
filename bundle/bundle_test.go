@@ -574,7 +574,7 @@ var exampleCred = Credential{
 	},
 }
 
-var exampleBundle = &Bundle{
+var exampleBundle *Bundle = &Bundle{
 	SchemaVersion: "1.0.1",
 	Name:          "testBundle",
 	Description:   "something",
@@ -627,6 +627,12 @@ var exampleBundle = &Bundle{
 		"productKeyType": {
 			Type: "string",
 		},
+		"sizeType": {
+			Type:    "number",
+			Default: 5.5,
+			Minimum: float64Ptr(3.5),
+			Maximum: float64Ptr(10.1),
+		},
 	},
 	Parameters: map[string]Parameter{
 		"port": {
@@ -662,6 +668,12 @@ var exampleBundle = &Bundle{
 				EnvironmentVariable: "PRODUCT_KEY",
 			},
 		},
+		"size": {
+			Definition: "sizeType",
+			Destination: &Location{
+				EnvironmentVariable: "SIZE",
+			},
+		},
 	},
 	Outputs: map[string]Output{
 		"clientCert": {
@@ -669,6 +681,10 @@ var exampleBundle = &Bundle{
 			Definition: "clientCert",
 		},
 	},
+}
+
+func float64Ptr(value float64) *float64 {
+	return &value
 }
 
 func TestValidateExampleBundle(t *testing.T) {

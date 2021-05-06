@@ -61,29 +61,29 @@ func TestSimpleUnMarshalDefinition(t *testing.T) {
 func TestSimpleSchema(t *testing.T) {
 	s := `
 	{
-		"default": 80,
-		"maximum": 10240,
-		"minimum": 10,
-		"type": "integer"
+		"default": 98.6,
+		"maximum": 10239.5,
+		"minimum": 0.1,
+		"type": "number"
 	}
 	`
 
 	definition := new(Schema)
 	err := json.Unmarshal([]byte(s), definition)
 	require.NoError(t, err, "should have been able to marshall definition")
-	assert.Equal(t, "integer", definition.Type, "type should have been an integer")
+	assert.Equal(t, "number", definition.Type, "type should have been a number")
 
 	maxVal := definition.Maximum
 	require.NotNil(t, maxVal, "maximum should have been loaded")
-	assert.Equal(t, 10240, int(*maxVal), "max should have been 10240")
+	assert.Equal(t, 10239.5, *maxVal, "max should have been 10239.5")
 
 	minVal := definition.Minimum
 	require.NotNil(t, minVal, "minimum should have been loaded")
-	assert.Equal(t, 10, int(*minVal), "min should have been 10")
+	assert.Equal(t, 0.1, *minVal, "min should have been 0.1")
 
 	def, ok := definition.Default.(float64)
 	require.True(t, ok, "default should h ave been float64")
-	assert.Equal(t, 80, int(def), "default should have been 80")
+	assert.Equal(t, 98.6, def, "default should have been 98.6")
 
 }
 
@@ -310,13 +310,13 @@ func TestConvertValue(t *testing.T) {
 	is.Error(err)
 
 	pd.Type = "number"
-	_, err = pd.ConvertValue("123")
-	is.Error(err)
-	is.Contains(err.Error(), "invalid definition")
+	out, err = pd.ConvertValue("123")
+	is.NoError(err)
+	is.Equal(float64(123), out.(float64))
 
-	_, err = pd.ConvertValue("5.5")
-	is.Error(err)
-	is.Contains(err.Error(), "invalid definition")
+	out, err = pd.ConvertValue("5.5")
+	is.NoError(err)
+	is.Equal(float64(5.5), out.(float64))
 
 	_, err = pd.ConvertValue("nope")
 	is.Error(err)
