@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -303,6 +304,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, err
 	}
 
+	ctx := context.Background()
 	const sharedVolumeName = "cnab-driver-share"
 	err = k.initJobVolumes()
 	if err != nil {
@@ -394,12 +396,12 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			StringData: op.Environment,
 		}
 		secret.ObjectMeta.GenerateName += "env-"
-		secret, err := k.secrets.Create(secret)
+		secret, err := k.secrets.Create(ctx, secret, metav1.CreateOptions{})
 		if err != nil {
 			return driver.OperationResult{}, err
 		}
 		if !k.SkipCleanup {
-			defer k.deleteSecret(secret.ObjectMeta.Name)
+			defer k.deleteSecret(ctx, secret.ObjectMeta.Name)
 		}
 
 		container.EnvFrom = []v1.EnvFromSource{
@@ -436,12 +438,12 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 
 	job.Spec.Template.Spec.Containers = []v1.Container{container}
 
-	job, err = k.jobs.Create(job)
+	job, err = k.jobs.Create(ctx, job, metav1.CreateOptions{})
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
 	if !k.SkipCleanup {
-		defer k.deleteJob(job.ObjectMeta.Name)
+		defer k.deleteJob(ctx, job.ObjectMeta.Name)
 	}
 
 	// Skip waiting for the job in unit tests (the fake k8s client implementation just
@@ -459,7 +461,7 @@ func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 			LabelSelector: newSingleFieldSelector("job-name", job.ObjectMeta.Name),
 		}
 
-		err = k.watchJobStatusAndLogs(podSelector, jobSelector, op.Out)
+		err = k.watchJobStatusAndLogs(ctx, podSelector, jobSelector, op.Out)
 		if err != nil {
 			opErr = multierror.Append(opErr, errors.Wrapf(err, "job %s failed", job.Name))
 		}
@@ -548,15 +550,15 @@ func (k *Driver) fetchOutputs(op *driver.Operation) (driver.OperationResult, err
 	return opResult, err
 }
 
-func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelector metav1.ListOptions, out io.Writer) error {
+func (k *Driver) watchJobStatusAndLogs(ctx context.Context, podSelector metav1.ListOptions, jobSelector metav1.ListOptions, out io.Writer) error {
 	// Stream Pod logs in the background
 	logsStreamingComplete := make(chan bool)
-	err := k.streamPodLogs(podSelector, out, logsStreamingComplete)
+	err := k.streamPodLogs(ctx, podSelector, out, logsStreamingComplete)
 	if err != nil {
 		return err
 	}
 	// Watch job events and exit on failure/success
-	watch, err := k.jobs.Watch(jobSelector)
+	watch, err := k.jobs.Watch(ctx, jobSelector)
 	if err != nil {
 		return err
 	}
@@ -588,8 +590,8 @@ func (k *Driver) watchJobStatusAndLogs(podSelector metav1.ListOptions, jobSelect
 	return err
 }
 
-func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done chan bool) error {
-	watcher, err := k.pods.Watch(options)
+func (k *Driver) streamPodLogs(ctx context.Context, options metav1.ListOptions, out io.Writer, done chan bool) error {
+	watcher, err := k.pods.Watch(ctx, options)
 	if err != nil {
 		return err
 	}
@@ -615,7 +617,7 @@ func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done c
 					Container: k8sContainerName,
 					Follow:    true,
 				})
-				reader, err := req.Stream()
+				reader, err := req.Stream(ctx)
 				if err != nil {
 					// There was an error connecting to the pod, so continue the loop and attempt streaming
 					// the logs again.
@@ -647,14 +649,14 @@ func (k *Driver) streamPodLogs(options metav1.ListOptions, out io.Writer, done c
 	return nil
 }
 
-func (k *Driver) deleteSecret(name string) error {
-	return k.secrets.Delete(name, &metav1.DeleteOptions{
+func (k *Driver) deleteSecret(ctx context.Context, name string) error {
+	return k.secrets.Delete(ctx, name, metav1.DeleteOptions{
 		PropagationPolicy: &k.deletionPolicy,
 	})
 }
 
-func (k *Driver) deleteJob(name string) error {
-	return k.jobs.Delete(name, &metav1.DeleteOptions{
+func (k *Driver) deleteJob(ctx context.Context, name string) error {
+	return k.jobs.Delete(ctx, name, metav1.DeleteOptions{
 		PropagationPolicy: &k.deletionPolicy,
 	})
 }

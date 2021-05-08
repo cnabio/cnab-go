@@ -217,7 +217,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, err
 	}
 
-	resp, err := cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, "")
+	resp, err := cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, nil, "")
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}

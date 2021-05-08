@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 )
 
 func TestDriver_Run(t *testing.T) {
+	ctx := context.Background()
 	// Simulate the shared volume
 	sharedDir, err := ioutil.TempDir("", "cnab-go")
 	require.NoError(t, err, "could not create test directory")
@@ -46,14 +48,15 @@ func TestDriver_Run(t *testing.T) {
 	_, err = k.Run(&op)
 	assert.NoError(t, err)
 
-	jobList, _ := k.jobs.List(metav1.ListOptions{})
+	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})
 	assert.Equal(t, len(jobList.Items), 1, "expected one job to be created")
 
-	secretList, _ := k.secrets.List(metav1.ListOptions{})
+	secretList, _ := k.secrets.List(ctx, metav1.ListOptions{})
 	assert.Equal(t, len(secretList.Items), 1, "expected one secret to be created")
 }
 
 func TestDriver_RunWithSharedFiles(t *testing.T) {
+	ctx := context.Background()
 	// Simulate the shared volume
 	sharedDir, err := ioutil.TempDir("", "cnab-go")
 	require.NoError(t, err, "could not create test directory")
@@ -103,10 +106,10 @@ func TestDriver_RunWithSharedFiles(t *testing.T) {
 	opResult, err := k.Run(&op)
 	require.NoError(t, err)
 
-	jobList, _ := k.jobs.List(metav1.ListOptions{})
+	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})
 	assert.Equal(t, len(jobList.Items), 1, "expected one job to be created")
 
-	secretList, _ := k.secrets.List(metav1.ListOptions{})
+	secretList, _ := k.secrets.List(ctx, metav1.ListOptions{})
 	assert.Equal(t, len(secretList.Items), 1, "expected one secret to be created")
 
 	require.Contains(t, opResult.Outputs, "foo", "expected the foo output to be collected")
@@ -239,6 +242,7 @@ func TestGenerateNameTemplate(t *testing.T) {
 }
 
 func TestDriver_ConfigureJob(t *testing.T) {
+	ctx := context.Background()
 	// Simulate the shared volume
 	sharedDir, err := ioutil.TempDir("", "cnab-go")
 	require.NoError(t, err, "could not create test directory")
@@ -270,7 +274,7 @@ func TestDriver_ConfigureJob(t *testing.T) {
 	_, err = k.Run(&op)
 	assert.NoError(t, err)
 
-	jobList, _ := k.jobs.List(metav1.ListOptions{})
+	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})
 	assert.Len(t, jobList.Items, 1, "expected one job to be created")
 
 	job := jobList.Items[0]
