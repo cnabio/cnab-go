@@ -271,6 +271,29 @@ func TestValuesOrDefaults_NotApplicableToAction(t *testing.T) {
 	require.Equal(t, expected, res)
 }
 
+func TestValuesOrDefaults_DefaultFailsValidation(t *testing.T) {
+	is := assert.New(t)
+
+	b := &Bundle{
+		Definitions: map[string]*definition.Schema{
+			"param": {
+				Type:    "boolean",
+				Default: "notaboolean",
+			},
+		},
+		Parameters: map[string]Parameter{
+			"param": {
+				Definition: "param",
+			},
+		},
+	}
+
+	_, err := ValuesOrDefaults(map[string]interface{}{}, b, "install")
+	is.Error(err)
+	is.Contains(err.Error(), "cannot use value")
+	is.Contains(err.Error(), "type should be boolean")
+}
+
 func TestValidateVersionTag(t *testing.T) {
 	is := assert.New(t)
 
