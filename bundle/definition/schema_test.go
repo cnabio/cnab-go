@@ -322,17 +322,15 @@ func TestConvertValue(t *testing.T) {
 	is.Error(err)
 
 	pd.Type = "array"
-	_, err = pd.ConvertValue("nope")
-	is.Error(err)
+	out, err = pd.ConvertValue(`["chocolate", "chip", "cookies"]`)
+	is.NoError(err)
+	is.Equal([]interface{}{"chocolate", "chip", "cookies"}, out)
 
-	_, err = pd.ConvertValue("123")
+	out, err = pd.ConvertValue(`["chocolate" "chip" "cookies"]`)
 	is.Error(err)
-
-	_, err = pd.ConvertValue("true")
-	is.Error(err)
-
-	_, err = pd.ConvertValue("123.5")
-	is.Error(err)
+	is.Contains(err.Error(), "could not unmarshal")
+	is.Contains(err.Error(), "into a json array")
+	is.Equal(nil, out)
 
 	pd.Type = "object"
 	out, err = pd.ConvertValue(`{"object": true}`)
@@ -342,5 +340,6 @@ func TestConvertValue(t *testing.T) {
 	out, err = pd.ConvertValue(`{"object" true}`)
 	is.Error(err)
 	is.Contains(err.Error(), "could not unmarshal")
+	is.Contains(err.Error(), "into a json object")
 	is.Equal(nil, out)
 }
