@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
+	"github.com/qri-io/jsonschema"
 )
 
 // ValidationError error represents a validation error
@@ -14,20 +15,30 @@ type ValidationError struct {
 	Error string
 }
 
-// Validate applies JSON Schema validation to the data passed as a parameter.
-// If validation errors occur, they will be returned in as a slice of ValidationError
-// structs. If any other error occurs, it will be returned as a separate error
-func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
-
+// ValidateSchema validates that the Schema is valid JSON Schema.
+// If no errors occur, the validated jsonschema.Schema is returned.
+func (s *Schema) ValidateSchema() (*jsonschema.RootSchema, error) {
 	b, err := json.Marshal(s)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to load schema")
 	}
-	def := NewRootSchema()
-	err = json.Unmarshal([]byte(b), def)
+	rs := NewRootSchema()
+	err = rs.UnmarshalJSON(b)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to build schema")
+		return nil, errors.Wrap(err, "schema not valid")
 	}
+	return rs, nil
+}
+
+// Validate applies JSON Schema validation to the data passed as a parameter.
+// If validation errors occur, they will be returned in as a slice of ValidationError
+// structs. If any other error occurs, it will be returned as a separate error
+func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
+	def, err := s.ValidateSchema()
+	if err != nil {
+		return nil, err
+	}
+
 	payload, err := json.Marshal(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to process data")
