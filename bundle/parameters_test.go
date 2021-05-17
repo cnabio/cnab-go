@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/cnabio/cnab-go/bundle/definition"
 )
 
 func TestCanReadParameterNames(t *testing.T) {
