@@ -278,6 +278,14 @@ func (b Bundle) Validate() error {
 		}
 	}
 
+	// Validate the outputs
+	for name, output := range b.Outputs {
+		err := output.Validate(name, b)
+		if err != nil {
+			return pkgErrors.Wrapf(err, "validation failed for output %q", name)
+		}
+	}
+
 	return nil
 }
 
