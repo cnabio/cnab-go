@@ -115,7 +115,7 @@ func TestParameterValidate(t *testing.T) {
 		b.Definitions["param-definition"].Default = 1
 		err := p.Validate("param", b)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "encountered validation error for parameter param: type should be string")
+		assert.Contains(t, err.Error(), `cannot use value: 1 for parameter "param": type should be string`)
 	})
 
 	t.Run("successful validation", func(t *testing.T) {

@@ -45,7 +45,7 @@ func (p *Parameter) Validate(name string, bun Bundle) error {
 			valResult = multierror.Append(valResult, errors.Wrapf(err, "encountered an error validating parameter %s", name))
 		}
 		for _, valErr := range valErrs {
-			valResult = multierror.Append(valResult, fmt.Errorf("encountered validation error for parameter %s: %v", name, valErr.Error))
+			valResult = multierror.Append(valResult, fmt.Errorf("cannot use value: %+v for parameter %q: %v", schema.Default, name, valErr.Error))
 		}
 		if valResult != nil {
 			return valResult
