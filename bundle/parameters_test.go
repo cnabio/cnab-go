@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -87,23 +88,40 @@ func TestCanReadParameterDefinition(t *testing.T) {
 }
 
 func TestParameterValidate(t *testing.T) {
+	b := Bundle{
+		Definitions: map[string]*definition.Schema{
+			"param-definition": {
+				Type: "string",
+			},
+		},
+	}
 	p := Parameter{}
 
 	t.Run("empty parameter fails", func(t *testing.T) {
-		err := p.Validate()
+		err := p.Validate("param", b)
 		assert.EqualError(t, err, "parameter definition must be provided")
 	})
 
 	t.Run("empty path fails", func(t *testing.T) {
-		p.Definition = "paramDef"
-		err := p.Validate()
+		p.Definition = "param-definition"
+		err := p.Validate("param", b)
 		assert.EqualError(t, err, "parameter destination must be provided")
 	})
 
-	t.Run("successful validation", func(t *testing.T) {
-		p.Definition = "paramDef"
+	t.Run("unsuccessful validation", func(t *testing.T) {
+		p.Definition = "param-definition"
 		p.Destination = &Location{Path: "/path/to/param"}
-		err := p.Validate()
+		b.Definitions["param-definition"].Default = 1
+		err := p.Validate("param", b)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "encountered validation error for parameter param: type should be string")
+	})
+
+	t.Run("successful validation", func(t *testing.T) {
+		p.Definition = "param-definition"
+		p.Destination = &Location{Path: "/path/to/param"}
+		b.Definitions["param-definition"].Default = "foo"
+		err := p.Validate("param", b)
 		assert.NoError(t, err)
 	})
 }

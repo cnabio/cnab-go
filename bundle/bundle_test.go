@@ -398,6 +398,9 @@ func TestValidateParameters(t *testing.T) {
 		Version:          "0.1.0",
 		SchemaVersion:    "99.98",
 		InvocationImages: []InvocationImage{img},
+		Definitions: definition.Definitions{
+			"param": &definition.Schema{},
+		},
 	}
 
 	t.Run("bad parameter fails", func(t *testing.T) {

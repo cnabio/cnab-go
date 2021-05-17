@@ -1,6 +1,11 @@
 package bundle
 
-import "errors"
+import (
+	"fmt"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+)
 
 // Parameter defines a single parameter for a CNAB bundle
 type Parameter struct {
@@ -23,10 +28,30 @@ func (p *Parameter) AppliesTo(action string) bool {
 }
 
 // Validate a Parameter
-func (p *Parameter) Validate() error {
+func (p *Parameter) Validate(name string, bun Bundle) error {
 	if p.Definition == "" {
 		return errors.New("parameter definition must be provided")
 	}
+
+	// Validate default against definition schema, if exists
+	schema, ok := bun.Definitions[p.Definition]
+	if !ok {
+		return fmt.Errorf("unable to find definition for %s", name)
+	}
+	if schema.Default != nil {
+		var valResult *multierror.Error
+		valErrs, err := schema.Validate(schema.Default)
+		if err != nil {
+			valResult = multierror.Append(valResult, errors.Wrapf(err, "encountered an error validating parameter %s", name))
+		}
+		for _, valErr := range valErrs {
+			valResult = multierror.Append(valResult, fmt.Errorf("encountered validation error for parameter %s: %v", name, valErr.Error))
+		}
+		if valResult != nil {
+			return valResult
+		}
+	}
+
 	if p.Destination == nil {
 		return errors.New("parameter destination must be provided")
 	}

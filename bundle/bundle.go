@@ -263,7 +263,7 @@ func (b Bundle) Validate() error {
 
 	// Validate the parameters
 	for name, param := range b.Parameters {
-		err := param.Validate()
+		err := param.Validate(name, b)
 		if err != nil {
 			return pkgErrors.Wrapf(err, "validation failed for parameter %q", name)
 		}
