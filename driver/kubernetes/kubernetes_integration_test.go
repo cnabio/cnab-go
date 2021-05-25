@@ -4,6 +4,7 @@ package kubernetes
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -119,6 +120,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			var output bytes.Buffer
 			tc.op.Out = &output
 			if tc.op.Environment == nil {
@@ -128,7 +130,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			tc.op.Environment["CNAB_INSTALLATION_NAME"] = tc.op.Installation
 
 			// Create a volume to share data with the invocation image
-			pvc, cleanup := createTestPVC(t)
+			pvc, cleanup := createTestPVC(t, ctx)
 			defer cleanup()
 
 			// Simulate mounting the shared volume
@@ -156,7 +158,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			hostname := ""
 			var deletePod func()
 			if tc.podAffinityMatchLabels != "" {
-				hostname, deletePod = createTestPod(t, tc.podAffinityMatchLabels)
+				hostname, deletePod = createTestPod(t, ctx, tc.podAffinityMatchLabels)
 				defer deletePod()
 			}
 
@@ -169,7 +171,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 			}
 			assert.Contains(t, output.String(), tc.output)
 			if hostname != "" {
-				checkPodAffinity(t, testNameLabel, hostname)
+				checkPodAffinity(t, ctx, testNameLabel, hostname)
 			}
 
 		})
@@ -180,21 +182,20 @@ func getTestNameLabel(testName string) string {
 	return fmt.Sprintf("%s.%d", strings.ReplaceAll(testName, " ", "."), time.Now().Unix())
 }
 
-func checkPodAffinity(t *testing.T, testname string, hostname string) {
+func checkPodAffinity(t *testing.T, ctx context.Context, testname string, hostname string) {
 	coreClient := getCoreClient(t)
 	podClient := coreClient.Pods("default")
 	labelSelector := metav1.LabelSelector{MatchLabels: map[string]string{"testname": testname}}
-	pods, err := podClient.List(metav1.ListOptions{
+	pods, err := podClient.List(ctx, metav1.ListOptions{
 		LabelSelector: labels.Set(labelSelector.MatchLabels).String(),
 	})
 	require.NoError(t, err, "List Pods by label failed %v", pods)
 	require.Equal(t, 1, len(pods.Items), "Only expected one pod with label: %s", testname)
-	driverHostName := getPodNodeName(t, pods.Items[0].Name)
+	driverHostName := getPodNodeName(t, ctx, pods.Items[0].Name)
 	require.Equal(t, hostname, driverHostName, "Pod hostname expected:%s actual:%s", hostname, driverHostName)
 }
 
-func createTestPod(t *testing.T, matchLabels string) (string, func()) {
-
+func createTestPod(t *testing.T, ctx context.Context, matchLabels string) (string, func()) {
 	labels := make(map[string]string)
 	for _, i := range strings.Split(matchLabels, " ") {
 		kv := strings.Split(i, "=")
@@ -221,20 +222,20 @@ func createTestPod(t *testing.T, matchLabels string) (string, func()) {
 
 	coreClient := getCoreClient(t)
 	podClient := coreClient.Pods("default")
-	pod, err := podClient.Create(podDefinition)
+	pod, err := podClient.Create(ctx, podDefinition, metav1.CreateOptions{})
 	require.NoError(t, err, "Create pod failed")
 
-	return getPodNodeName(t, pod.Name), func() {
-		podClient.Delete(pod.Name, &metav1.DeleteOptions{})
+	return getPodNodeName(t, ctx, pod.Name), func() {
+		podClient.Delete(ctx, pod.Name, metav1.DeleteOptions{})
 	}
 
 }
 
-func getPodNodeName(t *testing.T, podName string) string {
+func getPodNodeName(t *testing.T, ctx context.Context, podName string) string {
 	coreClient := getCoreClient(t)
 	podClient := coreClient.Pods("default")
 	wait.PollImmediate(time.Second, time.Second*60, func() (bool, error) {
-		pod, err := podClient.Get(podName, metav1.GetOptions{})
+		pod, err := podClient.Get(ctx, podName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -247,14 +248,14 @@ func getPodNodeName(t *testing.T, podName string) string {
 		return false, nil
 	})
 
-	pod, err := podClient.Get(podName, metav1.GetOptions{})
+	pod, err := podClient.Get(ctx, podName, metav1.GetOptions{})
 	require.NoError(t, err, "Get running pod failed")
 
 	return pod.Spec.NodeName
 
 }
 
-func createTestPVC(t *testing.T) (string, func()) {
+func createTestPVC(t *testing.T, ctx context.Context) (string, func()) {
 	pvcDefinition := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "cnab-driver-shared",
@@ -269,11 +270,11 @@ func createTestPVC(t *testing.T) (string, func()) {
 	}
 	coreClient := getCoreClient(t)
 	pvcClient := coreClient.PersistentVolumeClaims("default")
-	pvc, err := pvcClient.Create(pvcDefinition)
+	pvc, err := pvcClient.Create(ctx, pvcDefinition, metav1.CreateOptions{})
 	require.NoError(t, err, "create pvc failed")
 
 	return pvc.Name, func() {
-		pvcClient.Delete(pvc.Name, &metav1.DeleteOptions{})
+		pvcClient.Delete(ctx, pvc.Name, metav1.DeleteOptions{})
 	}
 }
 
