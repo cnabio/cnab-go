@@ -129,7 +129,7 @@ func (s Store) ListOutputs(resultID string) ([]string, error) {
 	// outputs are keyed with the result, like RESULTID-OUTPUTNAME to make them unique
 	// Strip off RESULTID- and return just OUTPUTNAME
 	for i, fullName := range outputNames {
-		outputNames[i] = strings.TrimLeft(fullName, resultID+"-")
+		outputNames[i] = strings.TrimPrefix(fullName, resultID+"-")
 	}
 	sort.Strings(outputNames)
 	return outputNames, nil
