@@ -211,24 +211,30 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle, action string) (ma
 		if !ok {
 			return res, fmt.Errorf("unable to find definition for %s", name)
 		}
+
+		// Set to the corresponding val if it exists in the supplied overrides,
+		// else error out if required or set to the default defined on the parameter
+		var uncoerced interface{}
 		if val, ok := vals[name]; ok {
-			valErrs, err := s.Validate(val)
-			if err != nil {
-				return res, pkgErrors.Wrapf(err, "encountered an error validating parameter %s", name)
-			}
-			// This interface returns a single error. Validation can have multiple errors. For now return the first
-			// We should update this later.
-			if len(valErrs) > 0 {
-				valErr := valErrs[0]
-				return res, fmt.Errorf("cannot use value: %v as parameter %s: %s ", val, name, valErr.Error)
-			}
-			typedVal := s.CoerceValue(val)
-			res[name] = typedVal
-			continue
+			uncoerced = val
 		} else if param.Required {
 			return res, fmt.Errorf("parameter %q is required", name)
+		} else {
+			uncoerced = s.Default
 		}
-		res[name] = s.Default
+
+		// Validate the selection
+		valErrs, err := s.Validate(uncoerced)
+		if err != nil {
+			return res, pkgErrors.Wrapf(err, "encountered an error validating parameter %s", name)
+		}
+		// This interface returns a single error. Validation can have multiple errors. For now return the first
+		// We should update this later.
+		if len(valErrs) > 0 {
+			valErr := valErrs[0]
+			return res, fmt.Errorf("cannot use value: %v as parameter %s: %s", uncoerced, name, valErr.Error)
+		}
+		res[name] = s.CoerceValue(uncoerced)
 	}
 	return res, nil
 }
