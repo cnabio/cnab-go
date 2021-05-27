@@ -2,6 +2,9 @@ package bundle
 
 import (
 	"fmt"
+
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 )
 
 type Output struct {
@@ -35,4 +38,29 @@ func (b Bundle) IsOutputSensitive(outputName string) (bool, error) {
 	}
 
 	return false, fmt.Errorf("output %q not defined", outputName)
+}
+
+// Validate an Output
+func (o *Output) Validate(name string, bun Bundle) error {
+	if o.Definition == "" {
+		return errors.New("output definition must be provided")
+	}
+
+	// Validate default against definition schema, if exists
+	schema, ok := bun.Definitions[o.Definition]
+	if !ok {
+		return fmt.Errorf("unable to find definition for %s", name)
+	}
+	var valResult *multierror.Error
+	if schema.Default != nil {
+		valErrs, err := schema.Validate(schema.Default)
+		if err != nil {
+			valResult = multierror.Append(valResult, errors.Wrapf(err, "encountered an error validating output %s", name))
+		}
+		for _, valErr := range valErrs {
+			valResult = multierror.Append(valResult, fmt.Errorf("encountered an error validating the default value %v for output %q: %v", schema.Default, name, valErr.Error))
+		}
+	}
+
+	return valResult.ErrorOrNil()
 }
