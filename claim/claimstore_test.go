@@ -128,6 +128,7 @@ func generateClaimData(t *testing.T) (Provider, crud.MockStore) {
 	r = createResult(c, StatusSucceeded)
 	createOutput(c, r, "output1")
 	createOutput(c, r, "output2")
+	createOutput(c, r, r.ID+"-output3") // Test bug in how we read output names by having the name include characters from the result id
 
 	c = createClaim(foo, "test")
 	createResult(c, StatusFailed)
@@ -525,10 +526,11 @@ func TestClaimStore_Outputs(t *testing.T) {
 		datastore.ResetCounts()
 		outputs, err := cp.ListOutputs(resultID)
 		require.NoError(t, err, "ListResults failed")
-		assert.Len(t, outputs, 2, "expected 2 outputs")
+		assert.Len(t, outputs, 3, "expected 2 outputs")
 
-		assert.Equal(t, "output1", outputs[0])
-		assert.Equal(t, "output2", outputs[1])
+		assert.Contains(t, outputs, "output1")
+		assert.Contains(t, outputs, "output2")
+		assert.Contains(t, outputs, resultID+"-output3")
 
 		assertSingleConnection(t, datastore)
 	})
@@ -544,7 +546,7 @@ func TestClaimStore_Outputs(t *testing.T) {
 		outputs, err := cp.ReadLastOutputs("foo")
 
 		require.NoError(t, err, "GetLastOutputs failed")
-		assert.Equal(t, 2, outputs.Len(), "wrong number of outputs identified")
+		assert.Equal(t, 3, outputs.Len(), "wrong number of outputs identified")
 
 		gotOutput1, hasOutput1 := outputs.GetByName("output1")
 		assert.True(t, hasOutput1, "should have found output1")
@@ -785,5 +787,5 @@ func TestStore_GetLastOutputs_OutputDefinitionRemoved(t *testing.T) {
 	outputs, err := cp.ReadLastOutputs("foo")
 	require.NoError(t, err, "ReadLastOutputs failed")
 
-	assert.Equal(t, outputs.Len(), 2)
+	assert.Equal(t, outputs.Len(), 3)
 }
