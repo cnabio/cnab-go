@@ -131,10 +131,16 @@ func (s *Schema) ConvertValue(val string) (interface{}, error) {
 		default:
 			return false, errors.Errorf("%q is not a valid boolean", val)
 		}
-	case "array", "object":
-		var obj interface{}
+	case "array":
+		var obj []interface{}
 		if err := json.Unmarshal([]byte(val), &obj); err != nil {
-			return nil, errors.Wrapf(err, "could not unmarshal value %v into a json %s", val, dataType)
+			return nil, errors.Wrapf(err, "could not unmarshal value %v into a json array", val)
+		}
+		return obj, nil
+	case "object":
+		var obj map[string]interface{}
+		if err := json.Unmarshal([]byte(val), &obj); err != nil {
+			return nil, errors.Wrapf(err, "could not unmarshal value %v into a json object", val)
 		}
 		return obj, nil
 	default:

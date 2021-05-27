@@ -322,9 +322,11 @@ func TestConvertValue(t *testing.T) {
 	is.Error(err)
 
 	pd.Type = "array"
-	out, err = pd.ConvertValue(`["chocolate", "chip", "cookies"]`)
-	is.NoError(err)
-	is.Equal([]interface{}{"chocolate", "chip", "cookies"}, out)
+	out, err = pd.ConvertValue(`"cookies"`)
+	is.Error(err)
+	is.Contains(err.Error(), "could not unmarshal")
+	is.Contains(err.Error(), "into a json array")
+	is.Equal(nil, out)
 
 	out, err = pd.ConvertValue(`["chocolate" "chip" "cookies"]`)
 	is.Error(err)
@@ -332,14 +334,30 @@ func TestConvertValue(t *testing.T) {
 	is.Contains(err.Error(), "into a json array")
 	is.Equal(nil, out)
 
-	pd.Type = "object"
-	out, err = pd.ConvertValue(`{"object": true}`)
+	out, err = pd.ConvertValue(`["chocolate", "chip", "cookies"]`)
 	is.NoError(err)
-	is.Equal(map[string]interface{}{"object": true}, out)
+	is.Equal([]interface{}{"chocolate", "chip", "cookies"}, out)
+
+	pd.Type = "object"
+	out, err = pd.ConvertValue(`"object"`)
+	is.Error(err)
+	is.Contains(err.Error(), "could not unmarshal")
+	is.Contains(err.Error(), "into a json object")
+	is.Equal(nil, out)
+
+	out, err = pd.ConvertValue(`"object": true`)
+	is.Error(err)
+	is.Contains(err.Error(), "could not unmarshal")
+	is.Contains(err.Error(), "into a json object")
+	is.Equal(nil, out)
 
 	out, err = pd.ConvertValue(`{"object" true}`)
 	is.Error(err)
 	is.Contains(err.Error(), "could not unmarshal")
 	is.Contains(err.Error(), "into a json object")
 	is.Equal(nil, out)
+
+	out, err = pd.ConvertValue(`{"object": true}`)
+	is.NoError(err)
+	is.Equal(map[string]interface{}{"object": true}, out)
 }
