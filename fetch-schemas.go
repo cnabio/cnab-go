@@ -19,9 +19,8 @@ const CNABSchemaDestPrefix = "./schema/schema"
 
 func main() {
 	schemas := map[string]string{
-		"bundle":      bundle.CNABSpecVersion,
-		"definitions": bundle.CNABSpecVersion,
-		"claim":       claim.CNABSpecVersion,
+		"bundle": bundle.CNABSpecVersion,
+		"claim":  claim.CNABSpecVersion,
 	}
 
 	for schema, version := range schemas {
@@ -39,6 +38,7 @@ func main() {
 
 func fetchSchema(schemaType, schemaVersion string) ([]byte, error) {
 	schemaURL := fmt.Sprintf("%s/%s/%s.schema.json", CNABSchemaURLPrefix, schemaVersion, schemaType)
+	fmt.Println("Retrieving schema", schemaURL)
 	resp, err := http.Get(schemaURL)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to fetch schema from %q", schemaURL)
