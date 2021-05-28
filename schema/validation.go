@@ -51,7 +51,7 @@ func Validate(schemaType string, bytes []byte) ([]ValidationError, error) {
 	schemaLoader := gojsonschema.NewBytesLoader(schemaData)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
-		return valErrs, errors.Wrap(err, "unable to compile schema validator")
+		return valErrs, errors.Wrapf(err, "unable to compile schema validator for schema\n%s", string(schemaData))
 	}
 
 	// Validate the provided bytes via the compiled schema validator
