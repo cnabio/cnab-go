@@ -36,6 +36,10 @@ parameters:
     definition: replicaCountType
     destination:
       env: REPLICA_COUNT
+  size:
+    definition: sizeType
+    destination:
+      env: SIZE
 credentials:
   password:
     path: /cnab/app/path
@@ -63,4 +67,9 @@ definitions:
   replicaCountType:
     default: 3
     type: integer
+  sizeType:
+    default: 5.5
+    maximum: 10.1
+    minimum: 3.5
+    type: number
 license: MIT License
