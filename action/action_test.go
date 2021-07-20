@@ -49,9 +49,8 @@ const (
 
 func newClaim(action string) claim.Claim {
 	now := time.Now()
-	schemaVersion, _ := claim.GetDefaultSchemaVersion()
 	return claim.Claim{
-		SchemaVersion: schemaVersion,
+		SchemaVersion: claim.GetDefaultSchemaVersion(),
 		ID:            "id",
 		Created:       now,
 		Installation:  "name",
@@ -402,12 +401,11 @@ func TestOpFromClaim_Environment(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	invocImage := c.Bundle.InvocationImages[0]
 
-	schemaVersion, _ := claim.GetDefaultSchemaVersion()
 	expectedEnv := map[string]string{
 		"CNAB_ACTION":            "install",
 		"CNAB_BUNDLE_NAME":       "bar",
 		"CNAB_BUNDLE_VERSION":    "0.1.0",
-		"CNAB_CLAIMS_VERSION":    string(schemaVersion),
+		"CNAB_CLAIMS_VERSION":    string(claim.GetDefaultSchemaVersion()),
 		"CNAB_INSTALLATION_NAME": "name",
 		"CNAB_REVISION":          "revision",
 		"SECRET_ONE":             "I'm a secret",

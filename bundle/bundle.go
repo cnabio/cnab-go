@@ -44,14 +44,18 @@ type Bundle struct {
 	Custom map[string]interface{} `json:"custom,omitempty" yaml:"custom,omitempty"`
 }
 
+// validate the schema version at build time
+var _ schema.Version = GetDefaultSchemaVersion()
+
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Bundle
 // that this library implements
-func GetDefaultSchemaVersion() (schema.Version, error) {
+func GetDefaultSchemaVersion() schema.Version {
 	ver, err := schema.GetSemver(CNABSpecVersion)
 	if err != nil {
-		return "", err
+		// We check that this can compile at build time, so if this fails, something is seriously wrong
+		panic(err)
 	}
-	return ver, nil
+	return ver
 }
 
 // Marshal the bundle to canonical json.

@@ -105,14 +105,18 @@ type Claim struct {
 	results *Results
 }
 
+// validate the schema version at buildtime
+var _ schema.Version = GetDefaultSchemaVersion()
+
 // GetDefaultSchemaVersion returns the default semver CNAB schema version of the Claim
 // that this library implements
-func GetDefaultSchemaVersion() (schema.Version, error) {
+func GetDefaultSchemaVersion() schema.Version {
 	ver, err := schema.GetSemver(CNABSpecVersion)
 	if err != nil {
-		return "", err
+		// We check that this can compile at build time, so if this fails, something is seriously wrong
+		panic(err)
 	}
-	return ver, nil
+	return ver
 }
 
 // ValidName is a regular expression that indicates whether a name is a valid claim name.
@@ -122,11 +126,6 @@ var ValidName = regexp.MustCompile("^[a-zA-Z0-9._-]+$")
 func New(installation string, action string, bun bundle.Bundle, parameters map[string]interface{}) (Claim, error) {
 	if !ValidName.MatchString(installation) {
 		return Claim{}, fmt.Errorf("invalid installation name %q. Names must be [a-zA-Z0-9-_]+", installation)
-	}
-
-	schemaVersion, err := GetDefaultSchemaVersion()
-	if err != nil {
-		return Claim{}, err
 	}
 
 	now := time.Now()
@@ -140,7 +139,7 @@ func New(installation string, action string, bun bundle.Bundle, parameters map[s
 	}
 
 	return Claim{
-		SchemaVersion: schemaVersion,
+		SchemaVersion: GetDefaultSchemaVersion(),
 		ID:            id,
 		Installation:  installation,
 		Revision:      revision,
