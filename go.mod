@@ -2,11 +2,6 @@ module github.com/cnabio/cnab-go
 
 go 1.13
 
-// Make our use of jsonschema thread-safe
-// Upstream Issue: https://github.com/qri-io/jsonschema/issues/80
-// Local Fix: https://github.com/carolynvs/jsonschema/tree/local-keyword-registry
-replace github.com/qri-io/jsonschema => github.com/carolynvs/jsonschema v0.2.1-0.20210602145235-283986347fba
-
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
@@ -42,7 +37,7 @@ require (
 	github.com/pivotal/image-relocation v0.0.0-20191111101224-e94aff6df06c
 	github.com/pkg/errors v0.9.1
 	github.com/qri-io/jsonpointer v0.1.1
-	github.com/qri-io/jsonschema v0.2.1-0.20201028142641-08d62a2939dc
+	github.com/qri-io/jsonschema v0.2.2-0.20210723092138-2eb22ee8115f
 	github.com/stretchr/testify v1.6.1
 	github.com/theupdateframework/notary v0.6.1 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0
