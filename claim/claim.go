@@ -18,7 +18,7 @@ import (
 // CNABSpecVersion represents the CNAB Spec version of the Claim
 // that this library implements
 // This value is prefixed with e.g. `cnab-claim-` so isn't itself valid semver.
-var CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+b5ed2f3"
+const CNABSpecVersion string = "cnab-claim-1.0.0-DRAFT+b5ed2f3"
 
 // Status constants define the CNAB status fields on a Result.
 const (
