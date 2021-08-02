@@ -87,6 +87,46 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 	})
 }
 
+func TestDriver_setConfigurationOptions(t *testing.T) {
+	img := "example.com/myimage"
+	op := &driver.Operation{
+		Image: bundle.InvocationImage{
+			BaseImage: bundle.BaseImage{Image: img},
+		},
+	}
+
+	t.Run("defaults", func(t *testing.T) {
+		d := &Driver{}
+
+		err := d.setConfigurationOptions(op)
+		require.NoError(t, err)
+
+		cfg := d.containerCfg
+		wantCfg := container.Config{
+			Image:        img,
+			AttachStdout: true,
+			AttachStderr: true,
+			Entrypoint:   []string{"/cnab/app/run"},
+		}
+		assert.Equal(t, wantCfg, cfg)
+
+		hostCfg := d.containerHostCfg
+		assert.Equal(t, container.HostConfig{}, hostCfg)
+	})
+
+	t.Run("docker network", func(t *testing.T) {
+		net := "mynetwork"
+		d := &Driver{}
+		d.SetConfig(map[string]string{SettingNetwork: net})
+
+		err := d.setConfigurationOptions(op)
+		require.NoError(t, err)
+
+		hostCfg := d.containerHostCfg
+		assert.Equal(t, net, string(hostCfg.NetworkMode))
+	})
+}
+
 func TestDriver_SetConfig(t *testing.T) {
 	testcases := []struct {
 		name      string
