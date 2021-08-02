@@ -25,6 +25,12 @@ import (
 	"github.com/cnabio/cnab-go/driver"
 )
 
+const (
+	// SettingNetwork is the environment variable for the driver that specifies
+	// the docker network to which the invocation image should be attached.
+	SettingNetwork = "DOCKER_NETWORK"
+)
+
 // Driver is capable of running Docker invocation images using Docker itself.
 type Driver struct {
 	config map[string]string
@@ -93,6 +99,7 @@ func (d *Driver) Config() map[string]string {
 		"DOCKER_DRIVER_QUIET": "Make the Docker driver quiet (only print container stdout/stderr)",
 		"OUTPUTS_MOUNT_PATH":  "Absolute path to where Docker driver can create temporary directories to bundle outputs. Defaults to temp dir.",
 		"CLEANUP_CONTAINERS":  "If true, the docker container will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
+		SettingNetwork:        "Attach the invocation image to the specified docker network",
 	}
 }
 
@@ -199,21 +206,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, errors.Wrap(err, "image digest validation failed")
 	}
 
-	var env []string
-	for k, v := range op.Environment {
-		env = append(env, fmt.Sprintf("%s=%v", k, v))
-	}
-
-	d.containerCfg = container.Config{
-		Image:        op.Image.Image,
-		Env:          env,
-		Entrypoint:   strslice.StrSlice{"/cnab/app/run"},
-		AttachStderr: true,
-		AttachStdout: true,
-	}
-
-	d.containerHostCfg = container.HostConfig{}
-	if err := d.ApplyConfigurationOptions(); err != nil {
+	if err := d.setConfigurationOptions(op); err != nil {
 		return driver.OperationResult{}, err
 	}
 
@@ -297,13 +290,42 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	return opResult, err
 }
 
-// ApplyConfigurationOptions applies the configuration options set on the driver
+// ApplyConfigurationOptions applies the configuration options set on the driver by the user.
 func (d *Driver) ApplyConfigurationOptions() error {
 	for _, opt := range d.dockerConfigurationOptions {
 		if err := opt(&d.containerCfg, &d.containerHostCfg); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+// setConfigurationOptions initializes the container and host configuration options on the driver,
+// combining the default configuration with any overrides set by the user.
+func (d *Driver) setConfigurationOptions(op *driver.Operation) error {
+	var env []string
+	for k, v := range op.Environment {
+		env = append(env, fmt.Sprintf("%s=%v", k, v))
+	}
+
+	d.containerCfg = container.Config{
+		Image:        op.Image.Image,
+		Env:          env,
+		Entrypoint:   strslice.StrSlice{"/cnab/app/run"},
+		AttachStderr: true,
+		AttachStdout: true,
+	}
+
+	d.containerHostCfg = container.HostConfig{}
+
+	if network, ok := d.config[SettingNetwork]; ok {
+		d.containerHostCfg.NetworkMode = container.NetworkMode(network)
+	}
+
+	if err := d.ApplyConfigurationOptions(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
