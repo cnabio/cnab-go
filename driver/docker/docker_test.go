@@ -136,7 +136,7 @@ func TestDriver_SetConfig(t *testing.T) {
 		{
 			name: "valid settings",
 			settings: map[string]string{
-				"VERBOSE": "true",
+				"DOCKER_DRIVER_QUIET": "1",
 			},
 			wantError: "",
 		},
