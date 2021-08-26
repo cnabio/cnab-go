@@ -118,7 +118,7 @@ func TestDriver_ValidateImageDigestFail(t *testing.T) {
 	imageFromEnv, ok := os.LookupEnv("DOCKER_INTEGRATION_TEST_IMAGE")
 	var image bundle.InvocationImage
 
-	badDigest := "sha256:deadbeef"
+	badDigest := "sha256:bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0bad0"
 
 	if ok {
 		image = bundle.InvocationImage{

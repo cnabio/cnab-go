@@ -182,6 +182,11 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	ctx := context.Background()
 
+	imageRef, err := op.Image.WithDigest()
+	if err != nil {
+		return driver.OperationResult{}, err
+	}
+
 	cli, err := d.initializeDockerCli()
 	if err != nil {
 		return driver.OperationResult{}, err
@@ -191,12 +196,12 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, nil
 	}
 	if d.config["PULL_ALWAYS"] == "1" {
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
+		if err := pullImage(ctx, cli, imageRef); err != nil {
 			return driver.OperationResult{}, err
 		}
 	}
 
-	ii, err := d.inspectImage(ctx, op.Image)
+	ii, err := d.inspectImage(ctx, imageRef)
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
@@ -303,13 +308,18 @@ func (d *Driver) ApplyConfigurationOptions() error {
 // setConfigurationOptions initializes the container and host configuration options on the driver,
 // combining the default configuration with any overrides set by the user.
 func (d *Driver) setConfigurationOptions(op *driver.Operation) error {
+	imageRef, err := op.Image.WithDigest()
+	if err != nil {
+		return err
+	}
+
 	var env []string
 	for k, v := range op.Environment {
 		env = append(env, fmt.Sprintf("%s=%v", k, v))
 	}
 
 	d.containerCfg = container.Config{
-		Image:        op.Image.Image,
+		Image:        imageRef,
 		Env:          env,
 		Entrypoint:   strslice.StrSlice{"/cnab/app/run"},
 		AttachStderr: true,
@@ -413,19 +423,19 @@ type ConfigurationOption func(*container.Config, *container.HostConfig) error
 
 // inspectImage inspects the operation image and returns an object of types.ImageInspect,
 // pulling the image if not found locally
-func (d *Driver) inspectImage(ctx context.Context, image bundle.InvocationImage) (types.ImageInspect, error) {
-	ii, _, err := d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image)
+func (d *Driver) inspectImage(ctx context.Context, image string) (types.ImageInspect, error) {
+	ii, _, err := d.dockerCli.Client().ImageInspectWithRaw(ctx, image)
 	switch {
 	case client.IsErrNotFound(err):
-		fmt.Fprintf(d.dockerCli.Err(), "Unable to find image '%s' locally\n", image.Image)
-		if err := pullImage(ctx, d.dockerCli, image.Image); err != nil {
+		fmt.Fprintf(d.dockerCli.Err(), "Unable to find image '%s' locally\n", image)
+		if err := pullImage(ctx, d.dockerCli, image); err != nil {
 			return ii, err
 		}
-		if ii, _, err = d.dockerCli.Client().ImageInspectWithRaw(ctx, image.Image); err != nil {
-			return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+		if ii, _, err = d.dockerCli.Client().ImageInspectWithRaw(ctx, image); err != nil {
+			return ii, errors.Wrapf(err, "cannot inspect image %s", image)
 		}
 	case err != nil:
-		return ii, errors.Wrapf(err, "cannot inspect image %s", image.Image)
+		return ii, errors.Wrapf(err, "cannot inspect image %s", image)
 	}
 
 	return ii, nil
