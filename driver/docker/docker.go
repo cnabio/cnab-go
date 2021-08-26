@@ -94,10 +94,8 @@ func (d *Driver) GetContainerHostConfig() (container.HostConfig, error) {
 // Config returns the Docker driver configuration options
 func (d *Driver) Config() map[string]string {
 	return map[string]string{
-		"VERBOSE":             "Increase verbosity. true, false are supported values",
 		"PULL_ALWAYS":         "Always pull image, even if locally available (0|1)",
 		"DOCKER_DRIVER_QUIET": "Make the Docker driver quiet (only print container stdout/stderr)",
-		"OUTPUTS_MOUNT_PATH":  "Absolute path to where Docker driver can create temporary directories to bundle outputs. Defaults to temp dir.",
 		"CLEANUP_CONTAINERS":  "If true, the docker container will be destroyed when it finishes running. If false, it will not be destroyed. The supported values are true and false. Defaults to true.",
 		SettingNetwork:        "Attach the invocation image to the specified docker network",
 	}
