@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	cjson "github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
+	"github.com/docker/distribution/reference"
+	"github.com/opencontainers/go-digest"
 	pkgErrors "github.com/pkg/errors"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
@@ -121,6 +123,37 @@ func (i *BaseImage) DeepCopy() *BaseImage {
 		i2.Labels[key] = value
 	}
 	return &i2
+}
+
+// WithDigest returns an image reference which can be used to pull by digest using Docker or Kubernetes.
+func (i *BaseImage) WithDigest() (string, error) {
+	// i.Image can be just the name, name:tag or name@digest
+	ref, err := reference.ParseNormalizedNamed(i.Image)
+	if err != nil {
+		return "", pkgErrors.Wrapf(err, "could not parse %s as an OCI reference", i.Image)
+	}
+
+	var d digest.Digest
+	if v, ok := ref.(reference.Digested); ok {
+		// Check that the digests match since it's provided twice
+		if i.Digest != "" && i.Digest != v.Digest().String() {
+			return "", pkgErrors.Errorf("The digest %s for the image %s doesn't match the one specified in the image", i.Digest, i.Image)
+		}
+		d = v.Digest()
+	} else if i.Digest != "" {
+		d, err = digest.Parse(i.Digest)
+		if err != nil {
+			return "", pkgErrors.Wrapf(err, "invalid digest %s specified for invocation image %s", i.Digest, i.Image)
+		}
+	}
+
+	// Digest was not supplied anywhere
+	if d == "" {
+		return i.Image, nil
+	}
+
+	digestedRef, err := reference.WithDigest(ref, d)
+	return reference.FamiliarString(digestedRef), pkgErrors.Wrapf(err, "invalid image digest %s", d.String())
 }
 
 // Image describes a container image in the bundle

@@ -949,3 +949,79 @@ func TestBundle_IsOutputSensitive(t *testing.T) {
 	})
 
 }
+
+func TestBaseImageWithDigest(t *testing.T) {
+	testCases := map[string]InvocationImage{
+		"foo": {
+			BaseImage: BaseImage{
+				Image: "foo",
+			},
+		},
+		"foo/bar": {
+			BaseImage: BaseImage{
+				Image: "foo/bar",
+			},
+		},
+		"foo/bar:baz": {
+			BaseImage: BaseImage{
+				Image: "foo/bar:baz",
+			},
+		},
+		"foo/bar:baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: BaseImage{
+				Image:  "foo/bar:baz",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+			},
+		},
+		"foo/fun@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: BaseImage{
+				Image:  "foo/fun@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+				Digest: "",
+			},
+		},
+		"taco/truck@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: BaseImage{
+				Image:  "taco/truck",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+			},
+		},
+		"foo/baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21": {
+			BaseImage: BaseImage{
+				Image:  "foo/baz@sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+				Digest: "sha256:9cfb3575ae5ff2b23ffa3c8e9514d818a9028a71b1d1e3b56b31937188a70b21",
+			},
+		},
+	}
+
+	for expectedImageRef, img := range testCases {
+		t.Run(expectedImageRef, func(t *testing.T) {
+			img, err := img.WithDigest()
+			require.NoError(t, err)
+			assert.Equal(t, expectedImageRef, img)
+		})
+	}
+}
+
+func TestImageWithDigest_Failures(t *testing.T) {
+	testcases := []struct {
+		image     string
+		digest    string
+		wantError string
+	}{
+		{"foo/bar@sha:invalid", "",
+			"could not parse foo/bar@sha:invalid as an OCI reference"},
+		{"foo/bar:baz", "sha:invalid",
+			"invalid digest sha:invalid specified for invocation image foo/bar:baz"},
+		{"foo/bar@sha256:276f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e", "sha256:176f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e",
+			"The digest sha256:176f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e for the image foo/bar@sha256:276f1974b4749003bc6c934593983314227cc9a1e6b922396fff59647b82dc4e doesn't match the one specified in the image"},
+	}
+
+	for _, tc := range testcases {
+		input := InvocationImage{}
+		input.Image = tc.image
+		input.Digest = tc.digest
+		_, err := input.WithDigest()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), tc.wantError)
+	}
+}
