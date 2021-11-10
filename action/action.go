@@ -34,19 +34,17 @@ const (
 
 // Action executes a bundle operation and helps save the results.
 type Action struct {
-	Claims         claim.Provider
-	Driver         driver.Driver
-	SaveAllOutputs bool
-	SaveOutputs    []string
-	SaveLogs       bool
+	Driver driver.Driver
+
+	// SaveLogs to the OperationResult.
+	SaveLogs bool
 }
 
 // New creates an Action.
 // - Driver to execute the operation with.
 // - Claim Provider for persisting the claim data. If not set, calls to Save* will error.
-func New(d driver.Driver, cp claim.Provider) Action {
+func New(d driver.Driver) Action {
 	return Action{
-		Claims: cp,
 		Driver: d,
 	}
 }
@@ -116,7 +114,7 @@ func (a Action) Run(c claim.Claim, creds valuesource.Set, opCfgs ...OperationCon
 	return opResult, cr, nil
 }
 
-// captureLogs to a temporary file when action.SaveLogs is set.
+// captureLogs to a temporary file.
 func (a Action) captureLogs(op *driver.Operation) (*os.File, error) {
 	if !a.SaveLogs {
 		return nil, nil
@@ -164,83 +162,6 @@ func (a Action) saveLogs(logFile *os.File, opResult driver.OperationResult) erro
 	opResult.Outputs[claim.OutputInvocationImageLogs] = string(logsB)
 
 	return nil
-}
-
-// SaveInitialClaim with the specified status. If not used, the caller is
-// responsible for persisting the claim.
-func (a Action) SaveInitialClaim(c claim.Claim, status string) error {
-	if a.Claims == nil {
-		return errors.New("the action claims provider is not set")
-	}
-
-	err := a.saveClaimWithStatus(c, status)
-	return errors.Wrap(err, "could not save the pending action's status, the bundle was not executed")
-}
-
-// SaveOperationResult saves the ClaimResult and Outputs. The caller is
-// responsible for having already persisted the claim itself, for example using
-// SaveInitialClaim.
-func (a Action) SaveOperationResult(opResult driver.OperationResult, c claim.Claim, r claim.Result) error {
-	if a.Claims == nil {
-		return errors.New("the action claims provider is not set")
-	}
-
-	// Keep accumulating errors from any error returned from the operation
-	// We must save the claim even when the op failed, but we want to report
-	// ALL errors back.
-	var bigerr *multierror.Error
-	bigerr = multierror.Append(bigerr, opResult.Error)
-
-	err := a.Claims.SaveResult(r)
-	if err != nil {
-		bigerr = multierror.Append(bigerr, err)
-	}
-
-	for outputName, outputValue := range opResult.Outputs {
-		if !a.shouldSaveOutput(outputName) {
-			continue
-		}
-
-		output := claim.NewOutput(c, r, outputName, []byte(outputValue))
-		err = a.Claims.SaveOutput(output)
-		if err != nil {
-			bigerr = multierror.Append(bigerr, err)
-		}
-	}
-
-	return bigerr.ErrorOrNil()
-}
-
-func (a Action) shouldSaveOutput(name string) bool {
-	if a.SaveAllOutputs {
-		return true
-	}
-	for _, output := range a.SaveOutputs {
-		if name == output {
-			return true
-		}
-	}
-	return false
-}
-
-// saveClaimWithStatus saves a claim and a result with the specified status.
-func (a Action) saveClaimWithStatus(c claim.Claim, status string) error {
-	r, err := c.NewResult(status)
-	if err != nil {
-		return err
-	}
-
-	err = r.Validate()
-	if err != nil {
-		return err
-	}
-
-	err = a.Claims.SaveClaim(c)
-	if err != nil {
-		return err
-	}
-
-	return a.Claims.SaveResult(r)
 }
 
 func golangTypeToJSONType(value interface{}) (string, error) {

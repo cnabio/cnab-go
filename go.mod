@@ -17,7 +17,6 @@ require (
 	github.com/docker/docker v20.10.6+incompatible
 	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
-	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobuffalo/packr/v2 v2.8.0
 	github.com/gofrs/uuid v3.2.0+incompatible // indirect
 	github.com/gorilla/mux v1.7.3 // indirect

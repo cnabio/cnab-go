@@ -670,7 +670,7 @@ func TestSetOutputsOnClaimResult_MismatchType(t *testing.T) {
 
 func TestSelectInvocationImage_EmptyInvocationImages(t *testing.T) {
 	d := &debug.Driver{}
-	a := New(d, nil)
+	a := New(d)
 	c := claim.Claim{
 		Bundle: bundle.Bundle{},
 	}
@@ -687,7 +687,7 @@ func TestSelectInvocationImage_EmptyInvocationImages(t *testing.T) {
 
 func TestSelectInvocationImage_DriverIncompatible(t *testing.T) {
 	d := &mockDriver{Error: errors.New("I always fail")}
-	a := New(d, nil)
+	a := New(d)
 	c := claim.Claim{
 		Bundle: mockBundle(),
 	}
@@ -719,7 +719,7 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		inst.SaveLogs = true
 
 		opResult, claimResult, err := inst.Run(c, mockSet, out)
@@ -747,7 +747,7 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		inst.SaveLogs = false
 
 		opResult, _, err := inst.Run(c, mockSet, out)
@@ -768,7 +768,7 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 
 		addFile := func(op *driver.Operation) error {
 			op.Files["/tmp/another/path"] = "ANOTHER FILE"
@@ -790,7 +790,7 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		sabotage := func(op *driver.Operation) error {
 			return errors.New("oops")
 		}
@@ -806,7 +806,7 @@ func TestAction_RunAction(t *testing.T) {
 			Result:       driver.OperationResult{},
 			Error:        nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		_, claimResult, err := inst.Run(c, mockSet, out)
 		require.NoError(t, err)
 		assert.Equal(t, claim.ActionInstall, c.Action)
@@ -849,7 +849,7 @@ func TestAction_RunAction(t *testing.T) {
 			Result:       driver.OperationResult{},
 			Error:        nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		opResult, _, err := inst.Run(c, mockSet, out)
 		require.NoError(t, err)
 
@@ -874,7 +874,7 @@ func TestAction_RunAction(t *testing.T) {
 			Result:       driver.OperationResult{},
 			Error:        nil,
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		opResult, _, err := inst.Run(c, mockSet, out)
 		require.NoError(t, err)
 		require.Contains(t, opResult.Error.Error(), "required output noDefault is missing and has no default")
@@ -886,7 +886,7 @@ func TestAction_RunAction(t *testing.T) {
 			shouldHandle: false,
 			Error:        errors.New("I always fail"),
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		_, _, err := inst.Run(c, mockSet, out)
 		require.Error(t, err)
 	})
@@ -902,7 +902,7 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: errors.New("I always fail"),
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		opResult, claimResult, err := inst.Run(c, mockSet, out)
 		require.NoError(t, err)
 		require.Contains(t, opResult.Error.Error(), "I always fail")
@@ -923,49 +923,11 @@ func TestAction_RunAction(t *testing.T) {
 			},
 			Error: errors.New("I always fail"),
 		}
-		inst := New(d, nil)
+		inst := New(d)
 		opResult, claimResult, err := inst.Run(c, mockSet, out)
 		require.Error(t, err, "Unknown action should fail")
 		require.NoError(t, opResult.Error)
 		assert.Empty(t, claimResult)
-	})
-}
-
-func TestAction_ShouldSaveOutput(t *testing.T) {
-	t.Run("save all", func(t *testing.T) {
-		a := Action{
-			SaveAllOutputs: true,
-			SaveOutputs:    []string{"output1", "output3"},
-		}
-		result := a.shouldSaveOutput("output1")
-		assert.True(t, result)
-	})
-
-	t.Run("name in list", func(t *testing.T) {
-		a := Action{
-			SaveAllOutputs: false,
-			SaveOutputs:    []string{"output1", "output3"},
-		}
-		result := a.shouldSaveOutput("output1")
-		assert.True(t, result)
-	})
-
-	t.Run("name not list", func(t *testing.T) {
-		a := Action{
-			SaveAllOutputs: false,
-			SaveOutputs:    []string{"output1", "output3"},
-		}
-		result := a.shouldSaveOutput("output2")
-		assert.False(t, result)
-	})
-
-	t.Run("save all, name not list", func(t *testing.T) {
-		a := Action{
-			SaveAllOutputs: true,
-			SaveOutputs:    []string{"output1", "output3"},
-		}
-		result := a.shouldSaveOutput("output2")
-		assert.True(t, result)
 	})
 }
 
@@ -1049,66 +1011,6 @@ func TestGetOutputsGeneratedByAction(t *testing.T) {
 		"/cnab/app/outputs/output3": "output3",
 	}
 	assert.Equal(t, wantOutputs, gotOutputs)
-}
-
-func TestSaveAction(t *testing.T) {
-	t.Run("save output", func(t *testing.T) {
-		cp := claim.NewMockStore(nil, nil)
-		c := newClaim(claim.ActionInstall)
-		r, err := c.NewResult(claim.StatusSucceeded)
-		require.NoError(t, err, "NewResult failed")
-
-		a := New(nil, cp)
-		a.SaveAllOutputs = true
-		opResult := driver.OperationResult{
-			Outputs: map[string]string{
-				"some-output": someContent,
-			},
-		}
-
-		err = a.SaveInitialClaim(c, claim.StatusRunning)
-		require.NoError(t, err, "SaveInitiaClaim failed")
-
-		err = a.SaveOperationResult(opResult, c, r)
-		require.NoError(t, err, "SaveOperationResult failed")
-
-		_, err = cp.ReadClaim(c.ID)
-		assert.NoError(t, err, "the claim was not persisted")
-
-		_, err = cp.ReadResult(r.ID)
-		assert.NoError(t, err, "the result was not persisted")
-
-		_, err = cp.ReadOutput(c, r, "some-output")
-		assert.NoError(t, err, "the output was not persisted")
-	})
-
-	t.Run("do not save output", func(t *testing.T) {
-		cp := claim.NewMockStore(nil, nil)
-		c := newClaim(claim.ActionInstall)
-		r, err := c.NewResult(claim.StatusSucceeded)
-		require.NoError(t, err, "NewResult failed")
-
-		a := New(nil, cp)
-		opResult := driver.OperationResult{
-			Outputs: map[string]string{
-				"some-output": someContent,
-			},
-		}
-		err = a.SaveInitialClaim(c, claim.StatusRunning)
-		require.NoError(t, err, "SaveInitiaClaim failed")
-
-		err = a.SaveOperationResult(opResult, c, r)
-		require.NoError(t, err, "SaveOperationResult failed")
-
-		_, err = cp.ReadClaim(c.ID)
-		assert.NoError(t, err, "the claim was not persisted")
-
-		_, err = cp.ReadResult(r.ID)
-		assert.NoError(t, err, "the result was not persisted")
-
-		_, err = cp.ReadOutput(c, r, "some-output")
-		assert.Error(t, err, "the output should NOT be persisted")
-	})
 }
 
 func TestExpandCredentials(t *testing.T) {
