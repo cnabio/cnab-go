@@ -32,6 +32,7 @@ create-test-cluster:
 delete-test-cluster:
 	./e2e-kind.sh delete_kind_cluster
 
+GOPATH := $(shell go env GOPATH)
 HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
 GOLANGCI_VERSION := v1.21.0
 HAS_KIND := $(shell $(CHECK) kind)

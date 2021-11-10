@@ -17,7 +17,7 @@ steps:
     set -xeuo pipefail
     go env
     go mod download
-    sudo make bootstrap
+    make bootstrap
     make fetch-schemas build lint coverage
     GOOS=windows make build
     GOOS=darwin make build 
