@@ -958,8 +958,8 @@ func TestBundle_GetAction(t *testing.T) {
 		wantErr   string
 	}{
 		{action: "install", modifies: true},
-		{action: "install", modifies: true},
-		{action: "install", modifies: true},
+		{action: "upgrade", modifies: true},
+		{action: "uninstall", modifies: true},
 		{action: "test", stateless: true},
 		{action: "missing", wantErr: "action not defined"},
 	}
