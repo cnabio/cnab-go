@@ -318,3 +318,24 @@ func validateDockerish(s string) error {
 	}
 	return nil
 }
+
+// GetAction returns the definition for the specified action or an error if
+// undefined. Assumes that all core actions such as install, upgrade, uninstall, are defined.
+// Since the upgrade action is optional, and the bundle.json does not know if the action
+// is supported using the metadata in bundle.json, calling upgrade at runtime may
+// result in an error. You won't know until you try.
+func (b Bundle) GetAction(action string) (Action, error) {
+	switch action {
+	case "install", "upgrade", "uninstall":
+		return Action{
+			Modifies:  true,
+			Stateless: false,
+		}, nil
+	default:
+		actionDef, ok := b.Actions[action]
+		if !ok {
+			return Action{}, fmt.Errorf("action not defined %q", action)
+		}
+		return actionDef, nil
+	}
+}

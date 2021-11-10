@@ -949,3 +949,40 @@ func TestBundle_IsOutputSensitive(t *testing.T) {
 	})
 
 }
+
+func TestBundle_GetAction(t *testing.T) {
+	testcases := []struct {
+		action    string
+		modifies  bool
+		stateless bool
+		wantErr   string
+	}{
+		{action: "install", modifies: true},
+		{action: "upgrade", modifies: true},
+		{action: "uninstall", modifies: true},
+		{action: "test", stateless: true},
+		{action: "missing", wantErr: "action not defined"},
+	}
+	b := Bundle{
+		Actions: map[string]Action{
+			"test": {
+				Modifies:  false,
+				Stateless: true,
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.action, func(t *testing.T) {
+			action, err := b.GetAction(tc.action)
+			if tc.wantErr != "" {
+				require.Error(t, err, "expected GetAction to fail")
+				assert.Contains(t, err.Error(), tc.wantErr)
+			} else {
+				require.NoError(t, err, "expected the %s action to be defined", tc.action)
+				assert.Equal(t, tc.modifies, action.Modifies, "incorrect modifies value for %s action", tc.action)
+				assert.Equal(t, tc.stateless, action.Stateless, "incorrect stateless value for %s action", tc.action)
+			}
+		})
+	}
+}
