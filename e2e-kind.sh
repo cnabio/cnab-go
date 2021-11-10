@@ -9,7 +9,7 @@ set -o pipefail
 CLUSTER_NAME=cnab-go-testing
 readonly CLUSTER_NAME
 
-K8S_VERSION=v1.19.1
+K8S_VERSION=v1.21.1
 readonly K8S_VERSION
 
 KIND_KUBECONFIG="$PWD/kind-kubeconfig.yaml"
@@ -53,7 +53,7 @@ test_e2e() {
 
 print_versions() {
     echo "kind version: $(kind version)"
-    echo "kubectl version: $(kubectl version)"
+    echo "kubectl version: $(kubectl version --client)"
 }
 
 delete_kind_cluster() {
