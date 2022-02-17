@@ -1,6 +1,4 @@
-#!/bin/sh
-
-#set -eo pipefail
+#!/busybox/sh
 
 action=$CNAB_ACTION
 name=$CNAB_INSTALLATION_NAME
@@ -8,7 +6,19 @@ name=$CNAB_INSTALLATION_NAME
 case $action in
     install)
     echo "Install action"
-    echo >/cnab/app/outputs/output1 "SOME INSTALL CONTENT 1"
+
+    # verify that we can read all injected inputs
+    echo ""
+    echo "Listing inputs"
+    ls /cnab/app/inputs
+
+    # verify we can write a file to the inputs directory
+    echo >/cnab/app/inputs/.cache.json "{}"
+
+    echo ""
+    echo "Generating outputs"
+    input1=$(cat /cnab/app/inputs/input1)
+    echo >/cnab/app/outputs/output1 input1
     echo >/cnab/app/outputs/output2 "SOME INSTALL CONTENT 2"
     ;;
     uninstall)

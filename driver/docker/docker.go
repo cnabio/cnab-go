@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/ioutil"
 	unix_path "path"
+	"strconv"
+	"strings"
 
 	"github.com/docker/cli/cli/command"
 	cliflags "github.com/docker/cli/cli/flags"
@@ -217,7 +219,8 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		defer cli.Client().ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
 	}
 
-	tarContent, err := generateTar(op.Files)
+	containerUID := getContainerUserID(ii.Config.User)
+	tarContent, err := generateTar(op.Files, containerUID)
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("error staging files: %s", err)
 	}
@@ -286,6 +289,18 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return opResult, fmt.Errorf("fetching outputs failed: %s", fetchErr)
 	}
 	return opResult, err
+}
+
+// getContainerUserID determines the user id that the container will execute as
+// based on the image's configured user. Defaults to 0 (root) if a user id is not set.
+func getContainerUserID(user string) int {
+	if user != "" {
+		// Only look at the user, strip off a group if one was specified with USER uid:gid
+		if uid, err := strconv.Atoi(strings.Split(user, ":")[0]); err == nil {
+			return uid
+		}
+	}
+	return 0
 }
 
 // ApplyConfigurationOptions applies the configuration options set on the driver by the user.
@@ -383,7 +398,10 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 	return opResult, nil
 }
 
-func generateTar(files map[string]string) (io.Reader, error) {
+// generateTar creates a tarfile containing the specified files, with the owner
+// set to the uid that the container runs as so that it is guaranteed to have
+// read access to the files we copy into the container.
+func generateTar(files map[string]string, uid int) (io.Reader, error) {
 	r, w := io.Pipe()
 	tw := tar.NewWriter(w)
 	for path := range files {
@@ -393,12 +411,29 @@ func generateTar(files map[string]string) (io.Reader, error) {
 	}
 	go func() {
 		for path, content := range files {
-			hdr := &tar.Header{
-				Name: path,
-				Mode: 0644,
-				Size: int64(len(content)),
+			// Write a header for the parent directories so that newly created intermediate directories are accessible by the user
+			dir := path
+			for dir != "/" {
+				dir = unix_path.Dir(dir)
+				dirHdr := &tar.Header{
+					Typeflag: tar.TypeDir,
+					Name:     dir,
+					Mode:     0700,
+					Uid:      uid,
+					Size:     0,
+				}
+				tw.WriteHeader(dirHdr)
 			}
-			tw.WriteHeader(hdr)
+
+			// Grant access to just the owner (container user), so that files can be read by the container
+			fildHdr := &tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     path,
+				Mode:     0600,
+				Size:     int64(len(content)),
+				Uid:      uid,
+			}
+			tw.WriteHeader(fildHdr)
 			tw.Write([]byte(content))
 		}
 		w.Close()
