@@ -5,6 +5,7 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 
@@ -39,7 +40,7 @@ func TestDockerDriver_Run(t *testing.T) {
 		}
 	}
 
-	runDriverTest(t, image)
+	runDriverTest(t, image, false)
 }
 
 // Test running a bundle where the invocation image runs as a nonroot user
@@ -51,10 +52,10 @@ func TestDockerDriver_RunNonrootInvocationImage(t *testing.T) {
 		},
 	}
 
-	runDriverTest(t, image)
+	runDriverTest(t, image, false)
 }
 
-func runDriverTest(t *testing.T, image bundle.InvocationImage) {
+func runDriverTest(t *testing.T, image bundle.InvocationImage, skipValidations bool) {
 	op := &driver.Operation{
 		Installation: "example",
 		Action:       "install",
@@ -90,9 +91,11 @@ func runDriverTest(t *testing.T, image bundle.InvocationImage) {
 	}
 
 	docker := &Driver{}
-	docker.SetContainerOut(op.Out) // Docker driver writes container stdout to driver.containerOut.
-	docker.SetContainerOut(op.Err)
 	opResult, err := docker.Run(op)
+
+	if skipValidations {
+		return
+	}
 
 	require.NoError(t, err)
 	assert.Equal(t, "Install action\n\nListing inputs\ninput1\n\nGenerating outputs\nAction install complete for example\n", output.String())
@@ -101,6 +104,29 @@ func runDriverTest(t *testing.T, image bundle.InvocationImage) {
 		"output1": "input1\n",
 		"output2": "SOME INSTALL CONTENT 2\n",
 	}, opResult.Outputs)
+}
+
+func TestDockerDriver_NoOpErrSet(t *testing.T) {
+	// Validate that when op.Err is not set that we print to stderr
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	origStderr := os.Stderr
+	defer func() {
+		os.Stderr = origStderr
+	}()
+	os.Stderr = w
+
+	image := bundle.InvocationImage{
+		BaseImage: defaultBaseImage,
+	}
+	image.Image += "-oops-this-does-not-exist"
+	runDriverTest(t, image, true)
+	w.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	require.NoError(t, err)
+	assert.Contains(t, buf.String(), "Unable to find image 'carolynvs/example-outputs:v1.0.0-oops-this-does-not-exist'")
 }
 
 func TestDriver_Run_CaptureOutput(t *testing.T) {
