@@ -24,15 +24,10 @@ func Example_install() {
 	// Create the action that will execute the operation
 	a := action.New(d)
 
-	schemaVersion, err := bundle.GetDefaultSchemaVersion()
-	if err != nil {
-		panic(err)
-	}
-
 	// Get the definition of the bundle, usually you get this by pulling
 	// the bundle from an OCI registry using github.com/cnabio/cnab-to-oci
 	b := bundle.Bundle{
-		SchemaVersion: schemaVersion,
+		SchemaVersion: bundle.GetDefaultSchemaVersion(),
 		Name:          "mybuns",
 		Version:       "1.0.0",
 		InvocationImages: []bundle.InvocationImage{

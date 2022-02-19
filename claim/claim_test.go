@@ -175,9 +175,8 @@ func TestMarshal_New(t *testing.T) {
 	assert.Equal(t, string(wantClaim), gotClaim, "marshaled claim does not match expected")
 }
 
-var schemaVersion, _ = GetDefaultSchemaVersion()
 var exampleClaim = Claim{
-	SchemaVersion:   schemaVersion,
+	SchemaVersion:   GetDefaultSchemaVersion(),
 	ID:              staticID,
 	Installation:    "my_claim",
 	Revision:        staticRevision,

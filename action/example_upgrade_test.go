@@ -102,13 +102,8 @@ func Example_upgrade() {
 }
 
 func createInstallClaim() claim.Claim {
-	schemaVersion, err := bundle.GetDefaultSchemaVersion()
-	if err != nil {
-		panic(err)
-	}
-
 	b := bundle.Bundle{
-		SchemaVersion: schemaVersion,
+		SchemaVersion: bundle.GetDefaultSchemaVersion(),
 		Name:          "mybuns",
 		Version:       "1.0.0",
 		InvocationImages: []bundle.InvocationImage{
