@@ -13,7 +13,7 @@ require (
 	github.com/containerd/containerd v1.5.0-beta.1 // indirect
 	github.com/cyberphone/json-canonicalization v0.0.0-20210303052042-6bc126869bf4
 	github.com/docker/cli v0.0.0-20191017083524-a8ff7f821017
-	github.com/docker/distribution v2.7.1+incompatible
+	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v20.10.6+incompatible
 	github.com/docker/go v1.5.1-1 // indirect
 	github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7 // indirect
