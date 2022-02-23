@@ -233,3 +233,22 @@ func TestDriver_ValidateImageDigest(t *testing.T) {
 		require.NoError(t, err, "validateImageDigest failed")
 	})
 }
+
+func TestGetContainerUserId(t *testing.T) {
+	testcases := []struct {
+		name    string
+		user    string
+		wantUID int
+	}{
+		{"no user specified", "", 0},
+		{"user name specified", "someuser", 0}, // We can't determine the user id from outside the container
+		{"uid specified", "65532", 65532},
+		{"uid and gid specified", "31:33", 31},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.wantUID, getContainerUserID(tc.user))
+		})
+	}
+}

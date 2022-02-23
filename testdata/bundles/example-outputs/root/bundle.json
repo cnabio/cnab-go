@@ -1,0 +1,49 @@
+{
+  "name": "outputs",
+  "version": "1.0.0",
+  "schemaVersion": "1.0.0",
+  "description": "An example bundle for showing outputs",
+  "invocationImages": [
+    {
+      "image": "carolynvs/example-outputs:v1.0.0",
+      "imageType":"docker"
+    }
+  ],
+  "keywords": [
+    "outputs",
+    "cnab",
+    "example",
+    "test"
+  ],
+  "maintainers": [
+    {
+      "email": "john.doe@example.com",
+      "name": "John Doe",
+      "url": "https://example.com"
+    }
+  ],
+  "images": null,
+  "definitions": {
+    "StringParam" : {
+      "type": "string"
+    }
+  },
+  "credentials": {
+    "input1": {
+      "definition": "StringParam",
+      "path": "/cnab/app/input1"
+    }
+  },
+  "outputs": {
+    "fields": {
+      "output1": {
+        "path": "/cnab/app/outputs/output1",
+        "definition": "StringParam"
+      },
+      "output2": {
+        "path": "/cnab/app/outputs/output2",
+        "definition": "StringParam"
+      }
+    }
+  }
+}

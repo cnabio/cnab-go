@@ -1,15 +1,20 @@
 #!/bin/bash -eu
 
 readonly PROGDIR="$(cd "$(dirname "${0}")" && pwd)"
-readonly IMAGE="pvtlmc/example-outputs"
+readonly IMAGE="carolynvs/example-outputs"
+readonly VERSION="v1.0.0"
 
-function main() {
-  docker build -f "${PROGDIR}/cnab/Dockerfile" -t "${IMAGE}:latest" "${PROGDIR}/cnab"
-
-  local image
-  image=$(docker inspect --format='{{index .RepoDigests 0}}' ${IMAGE})
-
-  printf "\nSet DOCKER_INTEGRATION_TEST_IMAGE=%s\nto override the image used in the docker integration tests\n" "${image}"
+function root() {
+  printf "Building the bundle"
+  docker build -f "${PROGDIR}/root/Dockerfile" -t "${IMAGE}:${VERSION}" "${PROGDIR}/root"
+  docker push "${IMAGE}:${VERSION}"
 }
 
-main
+function nonroot() {
+  printf "Building the nonroot flavor of the bundle"
+  docker build -f "${PROGDIR}/nonroot/Dockerfile" -t "${IMAGE}:${VERSION}-nonroot" "${PROGDIR}/nonroot"
+  docker push "${IMAGE}:${VERSION}-nonroot"
+}
+
+root
+nonroot

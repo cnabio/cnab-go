@@ -16,12 +16,14 @@ import (
 	"github.com/cnabio/cnab-go/driver"
 )
 
+// The bundles in this file are located in /testdata/bundles/example-outputs
+// Refresh by changing the registry to one you can push to, and running /testdata/bundles/example-outputs/build.sh
 var defaultBaseImage = bundle.BaseImage{
-	Image:  "pvtlmc/example-outputs",
-	Digest: "sha256:568461508c8d220742add8abd226b33534d4269868df4b3178fae1cba3818a6e",
+	Image:  "carolynvs/example-outputs:v1.0.0",
+	Digest: "sha256:b4a6e86cde93a7ab0b7953b2463e6547aaa08331876b0d0896e3cdc85de4363e",
 }
 
-func TestDriver_Run(t *testing.T) {
+func TestDockerDriver_Run(t *testing.T) {
 	imageFromEnv, ok := os.LookupEnv("DOCKER_INTEGRATION_TEST_IMAGE")
 	var image bundle.InvocationImage
 
@@ -37,10 +39,29 @@ func TestDriver_Run(t *testing.T) {
 		}
 	}
 
+	runDriverTest(t, image)
+}
+
+// Test running a bundle where the invocation image runs as a nonroot user
+func TestDockerDriver_RunNonrootInvocationImage(t *testing.T) {
+	image := bundle.InvocationImage{
+		BaseImage: bundle.BaseImage{
+			Image:  "carolynvs/example-outputs:v1.0.0-nonroot",
+			Digest: "sha256:6dd56d1974fcd3436d12856f621e78a43e62caf94cb4ab9f830c6e03e0c5fdb2",
+		},
+	}
+
+	runDriverTest(t, image)
+}
+
+func runDriverTest(t *testing.T, image bundle.InvocationImage) {
 	op := &driver.Operation{
 		Installation: "example",
 		Action:       "install",
 		Image:        image,
+		Files: map[string]string{
+			"/cnab/app/inputs/input1": "input1",
+		},
 		Outputs: map[string]string{
 			"/cnab/app/outputs/output1": "output1",
 			"/cnab/app/outputs/output2": "output2",
@@ -73,11 +94,11 @@ func TestDriver_Run(t *testing.T) {
 	docker.SetContainerOut(op.Err)
 	opResult, err := docker.Run(op)
 
-	assert.NoError(t, err)
-	assert.Equal(t, "Install action\nAction install complete for example\n", output.String())
+	require.NoError(t, err)
+	assert.Equal(t, "Install action\n\nListing inputs\ninput1\n\nGenerating outputs\nAction install complete for example\n", output.String())
 	assert.Equal(t, 2, len(opResult.Outputs), "Expecting two output files")
 	assert.Equal(t, map[string]string{
-		"output1": "SOME INSTALL CONTENT 1\n",
+		"output1": "input1\n",
 		"output2": "SOME INSTALL CONTENT 2\n",
 	}, opResult.Outputs)
 }

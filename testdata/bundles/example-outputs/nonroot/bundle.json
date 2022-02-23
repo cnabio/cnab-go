@@ -1,11 +1,11 @@
 {
-  "name": "outputs",
-  "version": "0.1.1",
+  "name": "outputs-nonroot",
+  "version": "1.0.0",
   "schemaVersion": "1.0.0",
-  "description": "An example bundle for showing outputs",
+  "description": "An example bundle for showing outputs that runs as a nonroot user",
   "invocationImages": [
     {
-      "image": "pvtlmc/example-outputs:latest",
+      "image": "carolynvs/example-outputs:v1.0.0-nonroot",
       "imageType":"docker"
     }
   ],
@@ -28,8 +28,12 @@
       "type": "string"
     }
   },
-  "parameters": null,
-  "credentials": null,
+  "credentials": {
+    "input1": {
+      "definition": "StringParam",
+      "path": "/cnab/app/input1"
+    }
+  },
   "outputs": {
     "fields": {
       "output1": {
