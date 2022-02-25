@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	unix_path "path"
 	"strconv"
 	"strings"
@@ -244,14 +245,18 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, fmt.Errorf("unable to retrieve logs: %v", err)
 	}
 	var (
-		stdout = op.Out
-		stderr = op.Err
+		stdout io.Writer = os.Stdout
+		stderr io.Writer = os.Stderr
 	)
 	if d.containerOut != nil {
 		stdout = d.containerOut
+	} else if op.Out != nil {
+		stdout = op.Out
 	}
 	if d.containerErr != nil {
 		stderr = d.containerErr
+	} else if op.Err != nil {
+		stderr = op.Err
 	}
 	go func() {
 		defer attach.Close()
