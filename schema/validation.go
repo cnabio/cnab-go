@@ -1,11 +1,9 @@
-//go:generate packr2
-
 package schema
 
 import (
+	"embed"
 	"fmt"
 
-	"github.com/gobuffalo/packr/v2"
 	"github.com/pkg/errors"
 
 	// Using this library as qri-io/jsonschema doesn't appear to have
@@ -15,14 +13,12 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+//go:embed schema
+var schemas embed.FS
+
 // ValidationError is a validation error as defined by this package
 // As of now, it simply equates to a stock Golang error
 type ValidationError error
-
-// newSchemaBox returns a *packer.Box with the schema files from the schema sub-directory
-func newSchemaBox() *packr.Box {
-	return packr.New("github.com/cnabio/cnab-go/schema/schema", "./schema")
-}
 
 // ValidateBundle validates the provided bundle bytes against the applicable CNAB-Spec schema
 func ValidateBundle(bytes []byte) ([]ValidationError, error) {
@@ -39,7 +35,7 @@ func Validate(schemaType string, bytes []byte) ([]ValidationError, error) {
 	valErrs := []ValidationError{}
 
 	// Retrieve main schema bytes
-	schemaData, err := newSchemaBox().Find(fmt.Sprintf("%s.schema.json", schemaType))
+	schemaData, err := schemas.ReadFile(fmt.Sprintf("schema/%s.schema.json", schemaType))
 	if err != nil {
 		return valErrs, errors.Wrapf(err, "failed to read the schema data for type %q", schemaType)
 	}
