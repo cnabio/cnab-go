@@ -40,7 +40,6 @@ HAS_KUBECTL := $(shell $(CHECK) kubectl)
 HAS_GOCOV_XML := $(shell $(CHECK) gocov-xml;)
 HAS_GOCOV := $(shell $(CHECK) gocov;)
 HAS_GO_JUNIT_REPORT := $(shell $(CHECK) go-junit-report;)
-HAS_PACKR2 := $(shell $(CHECK) packr2;)
 
 .PHONY: bootstrap
 bootstrap:
@@ -63,9 +62,7 @@ endif
 ifndef HAS_GO_JUNIT_REPORT
 	go get github.com/jstemmer/go-junit-report@v0.9.1
 endif
-ifndef HAS_PACKR2
-	go get github.com/gobuffalo/packr/v2/packr2@v2.8.0
-endif
+
 	@# go get to install global tools with modules modify our dependencies. Reset them back
 	git checkout go.mod go.sum
 
