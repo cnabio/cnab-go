@@ -1,6 +1,7 @@
 package host
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -48,6 +49,10 @@ func (h *SecretStore) Resolve(keyName string, keyValue string) (string, error) {
 	default:
 		return "", fmt.Errorf("invalid value source: %s", keyName)
 	}
+}
+
+func (h *SecretStore) Create(keyName string, keyValue string, value string) error {
+	return errors.New("not implemented")
 }
 
 func execCmd(cmd string) ([]byte, error) {
