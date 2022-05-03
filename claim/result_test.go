@@ -1,6 +1,8 @@
 package claim
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"sort"
 	"testing"
 
@@ -99,16 +101,6 @@ func TestResultOutputs_SetMetadata(t *testing.T) {
 		require.NoError(t, err, "SetMetadata failed")
 		assert.Equal(t, wantoutputs, outputs, "SetMetadata did not produce the expected structure")
 	})
-
-	t.Run("existing invalid structure", func(t *testing.T) {
-		outputs := OutputMetadata{
-			outputName: map[string]interface{}{
-				metadataKey: struct{}{},
-			},
-		}
-		err := outputs.SetMetadata(outputName, metadataKey, metadataValue)
-		require.EqualError(t, err, "cannot set the claim result's OutputMetadata[test1][so-meta] because it is not type map[string]string but map[string]interface {}")
-	})
 }
 
 func TestResultOutputs_GetMetadata(t *testing.T) {
@@ -144,19 +136,6 @@ func TestResultOutputs_GetMetadata(t *testing.T) {
 		require.False(t, ok, "GetMetadata should report that it did not find the value")
 		assert.Empty(t, gotValue, "GetMetadata should return an empty value when one isn't found")
 	})
-
-	t.Run("output has different structure", func(t *testing.T) {
-		outputs := OutputMetadata{
-			outputName: map[string]interface{}{
-				"other": struct{}{},
-			},
-		}
-
-		gotValue, ok := outputs.GetMetadata(outputName, metadataKey)
-		require.False(t, ok, "GetMetadata should report that it did not find the value")
-		assert.Empty(t, gotValue, "GetMetadata should return an empty value when one isn't found")
-	})
-
 }
 
 func TestResultOutputs_SetContentDigest(t *testing.T) {
@@ -264,4 +243,20 @@ func TestResult_HasLogs(t *testing.T) {
 	// Record that the result generated logs
 	r.OutputMetadata.SetGeneratedByBundle(OutputInvocationImageLogs, true)
 	assert.True(t, r.HasLogs(), "expected HasLogs to return true")
+}
+
+// Verify that when we unmarshal a result, the output metadata can be read back
+func TestResult_UnmarshalOutputMetadata(t *testing.T) {
+	data, err := ioutil.ReadFile("testdata/result.json")
+	require.NoError(t, err, "error reading testdata result")
+
+	var result Result
+	err = json.Unmarshal(data, &result)
+	require.NoError(t, err, "error unmarshaling result")
+
+	contentDigest, _ := result.OutputMetadata.GetContentDigest(OutputInvocationImageLogs)
+	assert.Equal(t, "sha256:28ccd0529aa1edefb0e771a28c31c0193f656718af985fed197235ba98fc5696", contentDigest, "the content digest output metadata could not be read")
+
+	generatedFlag, _ := result.OutputMetadata.GetGeneratedByBundle("output1")
+	assert.True(t, generatedFlag, "the generatedByBundle output metadata could not be read")
 }
