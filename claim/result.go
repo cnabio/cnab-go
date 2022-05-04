@@ -100,15 +100,13 @@ func (r Results) Swap(i, j int) {
 // OutputMetadata is the output metadata from an operation.
 // Any metadata can be stored, however this provides methods
 // for safely querying and retrieving well-known metadata.
-type OutputMetadata map[string]interface{}
+type OutputMetadata map[string]map[string]string
 
 // GetMetadata for the specified output and key.
 func (o OutputMetadata) GetMetadata(outputName string, metadataKey string) (string, bool) {
 	if output, ok := o[outputName]; ok {
-		if outputMetadata, ok := output.(map[string]string); ok {
-			if value, ok := outputMetadata[metadataKey]; ok {
-				return value, true
-			}
+		if value, ok := output[metadataKey]; ok {
+			return value, true
 		}
 	}
 
@@ -122,18 +120,13 @@ func (o *OutputMetadata) SetMetadata(outputName string, metadataKey string, valu
 	}
 	metadata := *o
 
-	output, ok := metadata[outputName]
+	outputMetadata, ok := metadata[outputName]
 	if !ok {
-		output = map[string]string{
+		outputMetadata = map[string]string{
 			metadataKey: value,
 		}
-		metadata[outputName] = output
+		metadata[outputName] = outputMetadata
 		return nil
-	}
-
-	outputMetadata, ok := output.(map[string]string)
-	if !ok {
-		return errors.Errorf("cannot set the claim result's OutputMetadata[%s][%s] because it is not type map[string]string but %T", outputName, metadataKey, output)
 	}
 
 	outputMetadata[metadataKey] = value
