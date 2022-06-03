@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/docker/cli/cli/command"
-	cliflags "github.com/docker/cli/cli/flags"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -167,16 +166,15 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 		return d.dockerCli, nil
 	}
 
-	cli, err := command.NewDockerCli()
+	cli, err := GetDockerClient()
 	if err != nil {
 		return nil, err
 	}
+
 	if d.config["DOCKER_DRIVER_QUIET"] == "1" {
 		cli.Apply(command.WithCombinedStreams(ioutil.Discard))
 	}
-	if err := cli.Initialize(cliflags.NewClientOptions()); err != nil {
-		return nil, err
-	}
+
 	d.dockerCli = cli
 	return cli, nil
 }
