@@ -310,11 +310,11 @@ func TestNewULID_ThreadSafe(t *testing.T) {
 			for j := 0; j < 1000; j++ {
 				next, err := NewULID()
 				if err != nil {
-					t.Fatal(err)
+					panic(err)
 				}
 
 				if strings.Compare(next, last) != 1 {
-					t.Fatal("generated a ULID that was not monotonically increasing")
+					panic("generated a ULID that was not monotonically increasing")
 				}
 				last = next
 			}
