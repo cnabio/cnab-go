@@ -34,7 +34,7 @@ delete-test-cluster:
 
 GOPATH := $(shell go env GOPATH)
 HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
-GOLANGCI_VERSION := v1.21.0
+GOLANGCI_VERSION := v1.46.2
 HAS_KIND := $(shell $(CHECK) kind)
 HAS_KUBECTL := $(shell $(CHECK) kubectl)
 HAS_GOCOV_XML := $(shell $(CHECK) gocov-xml;)
@@ -45,26 +45,23 @@ HAS_GO_JUNIT_REPORT := $(shell $(CHECK) go-junit-report;)
 bootstrap:
 
 ifndef HAS_GOLANGCI
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(GOPATH)/bin $(GOLANGCI_VERSION)
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VERSION)
 endif
 ifndef HAS_KIND
-	go get sigs.k8s.io/kind@v0.11.1
+	go install sigs.k8s.io/kind@v0.11.1
 endif
 ifndef HAS_KUBECTL
 	echo "Follow instructions at https://kubernetes.io/docs/tasks/tools/install-kubectl/ to install kubectl."
 endif
 ifndef HAS_GOCOV_XML
-	go get github.com/AlekSi/gocov-xml
+	go install github.com/AlekSi/gocov-xml@v1.0.0
 endif
 ifndef HAS_GOCOV
-	go get github.com/axw/gocov/gocov@v1.0.0
+	go install github.com/axw/gocov/gocov@v1.0.0
 endif
 ifndef HAS_GO_JUNIT_REPORT
-	go get github.com/jstemmer/go-junit-report@v0.9.1
+	go install github.com/jstemmer/go-junit-report@v0.9.1
 endif
-
-	@# go get to install global tools with modules modify our dependencies. Reset them back
-	git checkout go.mod go.sum
 
 .PHONY: coverage
 coverage: compile-integration-tests

@@ -166,6 +166,7 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 	if d.dockerCli != nil {
 		return d.dockerCli, nil
 	}
+
 	cli, err := command.NewDockerCli()
 	if err != nil {
 		return nil, err
