@@ -22,11 +22,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreclientv1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/pkg/client/conditions"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/driver"
 )
+
+// ErrPodCompleted is returned by PodRunning or PodContainerRunning to indicate that
+// the pod has already reached completed state.
+var ErrPodCompleted = fmt.Errorf("pod ran to completion")
 
 func TestDriver_Run_Integration(t *testing.T) {
 	k := &Driver{}
@@ -244,7 +247,7 @@ func getPodNodeName(t *testing.T, ctx context.Context, podName string) string {
 		case v1.PodRunning:
 			return true, nil
 		case v1.PodFailed, v1.PodSucceeded:
-			return false, conditions.ErrPodCompleted
+			return false, ErrPodCompleted
 		}
 		return false, nil
 	})
