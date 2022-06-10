@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+
+name: build
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: go.sum
+      - name: Bootstrap
+        run: make bootstrap
+      - name: Build
+        run: make fetch-schemas build
+      - name: Build (Windows)
+        run: GOOS=windows make build
+      - name: Build (Darwin)
+        run: GOOS=darwin make build 
+      - name: Lint
+        run: make lint
+      - name: Test
+        run: make coverage
