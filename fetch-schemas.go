@@ -28,7 +28,7 @@ func main() {
 		if err != nil {
 			fmt.Printf("unable to fetch %s schema with version %s: %s\n", schema, version, err.Error())
 			// if cdn.cnab.io is not reachable, we stick with default schema
-			return
+			continue
 		}
 
 		err = writeSchema(schema, bytes)
