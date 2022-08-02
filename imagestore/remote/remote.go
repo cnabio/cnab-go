@@ -15,9 +15,10 @@ type remote struct {
 	registryClient registry.Client
 }
 
-func Create(...imagestore.Option) (imagestore.Store, error) {
+func Create(options ...imagestore.Option) (imagestore.Store, error) {
+	parms := imagestore.Create(options...)
 	return &remote{
-		registryClient: ggcr.NewRegistryClient(),
+		registryClient: ggcr.NewRegistryClient(parms.BuildRegistryOptions()...),
 	}, nil
 }
 
