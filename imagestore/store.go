@@ -3,8 +3,10 @@ package imagestore
 import (
 	"io"
 	"io/ioutil"
+	"net/http"
 
 	"github.com/pivotal/image-relocation/pkg/image"
+	"github.com/pivotal/image-relocation/pkg/registry/ggcr"
 )
 
 // Store is an abstract image store.
@@ -24,6 +26,19 @@ type Constructor func(...Option) (Store, error)
 type Parameters struct {
 	ArchiveDir string
 	Logs       io.Writer
+
+	// Transport is http.Transport to use when communicating with an OCI registry.
+	Transport *http.Transport
+}
+
+// BuildRegistryOptions returns a list of applicable ggcr.Option values
+// to use when calling ggcr.NewRegistryClient().
+func (p Parameters) BuildRegistryOptions() []ggcr.Option {
+	var regOpts []ggcr.Option
+	if p.Transport != nil {
+		regOpts = append(regOpts, ggcr.WithTransport(p.Transport))
+	}
+	return regOpts
 }
 
 // Options is a function which returns updated parameters.
@@ -45,16 +60,29 @@ func WithArchiveDir(archiveDir string) Option {
 		return Parameters{
 			ArchiveDir: archiveDir,
 			Logs:       b.Logs,
+			Transport:  b.Transport,
 		}
 	}
 }
 
-// WithArchiveDir return an option to set the logs parameter.
+// WithLogs return an option to set the logs parameter.
 func WithLogs(logs io.Writer) Option {
 	return func(b Parameters) Parameters {
 		return Parameters{
 			ArchiveDir: b.ArchiveDir,
 			Logs:       logs,
+			Transport:  b.Transport,
+		}
+	}
+}
+
+// WithTransport returns an option with the Transport parameter set.
+func WithTransport(transport *http.Transport) Option {
+	return func(b Parameters) Parameters {
+		return Parameters{
+			ArchiveDir: b.ArchiveDir,
+			Logs:       b.Logs,
+			Transport:  transport,
 		}
 	}
 }

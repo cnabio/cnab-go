@@ -27,7 +27,7 @@ func Create(options ...imagestore.Option) (imagestore.Store, error) {
 		return nil, err
 	}
 
-	layout, err := ggcr.NewRegistryClient().NewLayout(layoutDir)
+	layout, err := ggcr.NewRegistryClient(parms.BuildRegistryOptions()...).NewLayout(layoutDir)
 	if err != nil {
 		return nil, err
 	}
@@ -38,12 +38,12 @@ func Create(options ...imagestore.Option) (imagestore.Store, error) {
 	}, nil
 }
 
-func LocateOciLayout(archiveDir string) (imagestore.Store, error) {
-	layoutDir := filepath.Join(archiveDir, "artifacts", "layout")
+func LocateOciLayout(parms imagestore.Parameters) (imagestore.Store, error) {
+	layoutDir := filepath.Join(parms.ArchiveDir, "artifacts", "layout")
 	if _, err := os.Stat(layoutDir); os.IsNotExist(err) {
 		return nil, err
 	}
-	layout, err := ggcr.NewRegistryClient().ReadLayout(layoutDir)
+	layout, err := ggcr.NewRegistryClient(parms.BuildRegistryOptions()...).ReadLayout(layoutDir)
 	if err != nil {
 		return nil, err
 	}

@@ -25,7 +25,7 @@ func NewLocatingConstructor() imagestore.Constructor {
 		if thin(parms.ArchiveDir) {
 			return remote.Create()
 		}
-		return ocilayout.LocateOciLayout(parms.ArchiveDir)
+		return ocilayout.LocateOciLayout(parms)
 	}
 }
 
