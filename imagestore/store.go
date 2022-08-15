@@ -5,8 +5,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/pivotal/image-relocation/pkg/image"
-	"github.com/pivotal/image-relocation/pkg/registry/ggcr"
+	"github.com/cnabio/image-relocation/pkg/image"
+	"github.com/cnabio/image-relocation/pkg/registry/ggcr"
 )
 
 // Store is an abstract image store.

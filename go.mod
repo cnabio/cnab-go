@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/Masterminds/semver v1.5.0
+	github.com/cnabio/image-relocation v0.0.0-20220815190842-cd2f11ecad88
 	github.com/cyberphone/json-canonicalization v0.0.0-20210303052042-6bc126869bf4
 	github.com/docker/cli v20.10.17+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
@@ -13,7 +14,6 @@ require (
 	github.com/mitchellh/copystructure v1.0.0
 	github.com/oklog/ulid v1.3.1
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/pivotal/image-relocation v0.0.0-20191111101224-e94aff6df06c
 	github.com/pkg/errors v0.9.1
 	github.com/qri-io/jsonpointer v0.1.1
 	github.com/qri-io/jsonschema v0.2.2-0.20210723092138-2eb22ee8115f
@@ -110,13 +110,11 @@ require (
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220314164441-57ef72a4c106 // indirect
-	google.golang.org/grpc v1.45.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/dancannon/gorethink.v3 v3.0.5 // indirect

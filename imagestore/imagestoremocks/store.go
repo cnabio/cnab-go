@@ -1,6 +1,6 @@
 package imagestoremocks
 
-import "github.com/pivotal/image-relocation/pkg/image"
+import "github.com/cnabio/image-relocation/pkg/image"
 
 type MockStore struct {
 	AddStub  func(im string) (string, error)

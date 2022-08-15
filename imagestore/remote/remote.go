@@ -3,9 +3,9 @@ package remote
 import (
 	"fmt"
 
-	"github.com/pivotal/image-relocation/pkg/image"
-	"github.com/pivotal/image-relocation/pkg/registry"
-	"github.com/pivotal/image-relocation/pkg/registry/ggcr"
+	"github.com/cnabio/image-relocation/pkg/image"
+	"github.com/cnabio/image-relocation/pkg/registry"
+	"github.com/cnabio/image-relocation/pkg/registry/ggcr"
 
 	"github.com/cnabio/cnab-go/imagestore"
 )
