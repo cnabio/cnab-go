@@ -27,7 +27,7 @@ func Test_buildDockerClientOptions(t *testing.T) {
 
 	t.Run("tls disabled", func(t *testing.T) {
 		os.Unsetenv(DockerTLSVerifyEnvVar)
-		opts := buildDockerClientOptions()
+		opts := BuildDockerClientOptions()
 		assert.False(t, opts.Common.TLS, "expected TLS to be disabled")
 		assert.False(t, opts.Common.TLSVerify, "expected TLSVerify to be disabled")
 		assert.Nil(t, opts.Common.TLSOptions, "expected TLSOptions to be unset")
@@ -40,7 +40,7 @@ func Test_buildDockerClientOptions(t *testing.T) {
 			os.Unsetenv(DockerTLSVerifyEnvVar)
 		}()
 
-		opts := buildDockerClientOptions()
+		opts := BuildDockerClientOptions()
 		assert.True(t, opts.Common.TLS, "expected TLS to be enabled")
 		assert.True(t, opts.Common.TLSVerify, "expected the certs to be verified")
 		assert.Equal(t, defaultTLSOptions, opts.Common.TLSOptions, "expected TLSOptions to be initialized to the default TLS settings")
@@ -54,7 +54,7 @@ func Test_buildDockerClientOptions(t *testing.T) {
 			os.Unsetenv(DockerCertPathEnvVar)
 		}()
 
-		opts := buildDockerClientOptions()
+		opts := BuildDockerClientOptions()
 		assert.True(t, opts.Common.TLS, "expected TLS to be enabled")
 		assert.True(t, opts.Common.TLSVerify, "expected the certs to be verified")
 		assert.Equal(t, customTLSOptions, opts.Common.TLSOptions, "expected TLSOptions to use the custom DOCKER_CERT_PATH set")
@@ -68,7 +68,7 @@ func Test_buildDockerClientOptions(t *testing.T) {
 			os.Unsetenv(DockerCertPathEnvVar)
 		}()
 
-		opts := buildDockerClientOptions()
+		opts := BuildDockerClientOptions()
 		assert.True(t, opts.Common.TLS, "expected TLS to be enabled")
 		assert.False(t, opts.Common.TLSVerify, "expected TLSVerify to be false")
 		assert.Equal(t, customTLSOptions, opts.Common.TLSOptions, "expected TLSOptions to use the custom DOCKER_CERT_PATH set")
