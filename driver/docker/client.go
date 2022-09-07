@@ -29,21 +29,21 @@ func GetDockerClient() (*command.DockerCli, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not create new docker client: %w", err)
 	}
-	opts := buildDockerClientOptions()
+	opts := BuildDockerClientOptions()
 	if err = cli.Initialize(opts); err != nil {
 		return nil, fmt.Errorf("error initializing docker client: %w", err)
 	}
 	return cli, nil
 }
 
-// manually handle DOCKER_TLS_VERIFY and DOCKER_CERT_PATH because the docker cli
+// BuildDockerClientOptions manually handles DOCKER_TLS_VERIFY and DOCKER_CERT_PATH because the docker cli
 // library only binds these values when initializing its cli flags. There isn't
 // other parts of the library that we can take advantage of to get these values
 // for "free".
 //
 // DOCKER_HOST however is retrieved dynamically later so that doesn't
 // require additional configuration.
-func buildDockerClientOptions() *cliflags.ClientOptions {
+func BuildDockerClientOptions() *cliflags.ClientOptions {
 	cliOpts := cliflags.NewClientOptions()
 	cliOpts.ConfigDir = cliconfig.Dir()
 
