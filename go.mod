@@ -6,9 +6,9 @@ require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/cnabio/image-relocation v0.0.0-20220815190842-cd2f11ecad88
 	github.com/cyberphone/json-canonicalization v0.0.0-20210303052042-6bc126869bf4
-	github.com/docker/cli v23.0.0-rc.1+incompatible
+	github.com/docker/cli v23.0.1+incompatible
 	github.com/docker/distribution v2.8.1+incompatible
-	github.com/docker/docker v23.0.0-rc.1+incompatible
+	github.com/docker/docker v23.0.1+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/copystructure v1.0.0
