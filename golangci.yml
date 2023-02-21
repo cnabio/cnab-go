@@ -6,12 +6,11 @@ linters:
   enable:
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosimple
     - ineffassign
     - misspell
     - unused
-    - deadcode
     - govet
 
 linters-settings:

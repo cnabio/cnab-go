@@ -19,7 +19,7 @@ import (
 // CNABSpecVersion represents the CNAB Spec version of the Bundle
 // that this library implements
 // This value is prefixed with e.g. `cnab-core-` so isn't itself valid semver.
-var CNABSpecVersion string = "cnab-core-1.2.0"
+var CNABSpecVersion = "cnab-core-1.2.0"
 
 // Bundle is a CNAB metadata document
 type Bundle struct {
