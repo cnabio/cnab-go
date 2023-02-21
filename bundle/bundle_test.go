@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/schema"
@@ -583,7 +583,7 @@ var exampleCred = Credential{
 	},
 }
 
-var exampleBundle *Bundle = &Bundle{
+var exampleBundle = &Bundle{
 	SchemaVersion: "1.0.1",
 	Name:          "testBundle",
 	Description:   "something",

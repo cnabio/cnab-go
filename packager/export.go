@@ -25,8 +25,8 @@ type Exporter struct {
 }
 
 // NewExporter returns an *Exporter given information about where a bundle
-//  lives, where the compressed bundle should be exported to. It also
-//  sets up a docker client to work with images.
+// lives, where the compressed bundle should be exported to. It also
+// sets up a docker client to work with images.
 func NewExporter(source, dest, logsDir string, l loader.BundleLoader, c imagestore.Constructor) (*Exporter, error) {
 	logs := filepath.Join(logsDir, "export-"+time.Now().Format("20060102150405"))
 
@@ -40,10 +40,10 @@ func NewExporter(source, dest, logsDir string, l loader.BundleLoader, c imagesto
 }
 
 // Export prepares an artifacts directory containing all of the necessary
-//  images, packages the bundle along with the artifacts in a gzipped tar
-//  file, and saves that file to the file path specified as destination.
-//  If the any part of the destination path doesn't, it will be created.
-//  exist
+// images, packages the bundle along with the artifacts in a gzipped tar
+// file, and saves that file to the file path specified as destination.
+// If the any part of the destination path doesn't, it will be created.
+// exist
 func (ex *Exporter) Export() error {
 	//prepare log file for this export
 	logsf, err := os.Create(ex.logs)

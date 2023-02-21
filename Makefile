@@ -34,7 +34,7 @@ delete-test-cluster:
 
 GOPATH := $(shell go env GOPATH)
 HAS_GOLANGCI := $(shell $(CHECK) golangci-lint)
-GOLANGCI_VERSION := v1.46.2
+GOLANGCI_VERSION := v1.51.2
 HAS_KIND := $(shell $(CHECK) kind)
 HAS_KUBECTL := $(shell $(CHECK) kubectl)
 HAS_GOCOV_XML := $(shell $(CHECK) gocov-xml;)

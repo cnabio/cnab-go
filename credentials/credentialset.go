@@ -92,10 +92,10 @@ func Validate(given valuesource.Set, spec map[string]bundle.Credential, action s
 //
 // The typical workflow for working with a credential set is:
 //
-//	- Load the set
-//	- Validate the credentials against a spec
-//	- Resolve the credentials
-//	- Expand them into bundle values
+//   - Load the set
+//   - Validate the credentials against a spec
+//   - Resolve the credentials
+//   - Expand them into bundle values
 func (c *CredentialSet) ResolveCredentials(s secrets.Store) (valuesource.Set, error) {
 	l := len(c.Credentials)
 	res := make(map[string]string, l)

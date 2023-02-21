@@ -22,7 +22,7 @@ type BundleLoader interface {
 type Loader struct{}
 
 // New creates a loader for bundle files.
-//TODO: remove if unnecessary
+// TODO: remove if unnecessary
 func New() BundleLoader {
 	return &Loader{}
 }
