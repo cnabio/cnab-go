@@ -1,6 +1,8 @@
 module github.com/cnabio/cnab-go
 
-go 1.19
+go 1.21
+
+toolchain go1.22.3
 
 require (
 	github.com/Masterminds/semver v1.5.0
@@ -15,8 +17,7 @@ require (
 	github.com/oklog/ulid v1.3.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/pkg/errors v0.9.1
-	github.com/qri-io/jsonpointer v0.1.1
-	github.com/qri-io/jsonschema v0.2.2-0.20210723092138-2eb22ee8115f
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.1
 	github.com/stretchr/testify v1.7.0
 	github.com/xeipuuv/gojsonschema v1.2.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -110,7 +111,7 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
-	golang.org/x/text v0.7.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect

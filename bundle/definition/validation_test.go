@@ -82,7 +82,7 @@ func TestObjectValidationValid_CustomValidator_ContentEncoding_base64(t *testing
 	valErrors, err = definition.Validate(invalidVal)
 	require.NoError(t, err)
 	require.Len(t, valErrors, 1, "expected 1 validation error")
-	assert.Equal(t, "invalid base64 value: SGVsbG8gV29ybGQhCg===", valErrors[0].Error)
+	assert.Equal(t, "at '/file': value is not 'base64' encoded: illegal base64 data at input byte 20", valErrors[0].Error)
 }
 
 func TestObjectValidationValid_CustomValidator_ContentEncoding_InvalidEncoding(t *testing.T) {
@@ -106,9 +106,9 @@ func TestObjectValidationValid_CustomValidator_ContentEncoding_InvalidEncoding(t
 		File: "SGVsbG8gV29ybGQhCg==",
 	}
 	valErrors, err := definition.Validate(val)
-	assert.NoError(t, err)
-	assert.Len(t, valErrors, 1, "expected 1 validation error")
-	assert.Equal(t, "unsupported or invalid contentEncoding type of base65", valErrors[0].Error)
+	require.NoError(t, err)
+	require.Len(t, valErrors, 1, "expected 1 validation error")
+	require.Equal(t, "unsupported or invalid contentEncoding type of base65", valErrors[0].Error)
 }
 
 func TestObjectValidationInValidMinimum(t *testing.T) {

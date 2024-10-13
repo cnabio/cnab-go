@@ -1,11 +1,11 @@
 package definition
 
 import (
-	"context"
+	"bytes"
 	"encoding/json"
 
 	"github.com/pkg/errors"
-	"github.com/qri-io/jsonschema"
+	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 // ValidationError error represents a validation error
@@ -23,10 +23,18 @@ func (s *Schema) ValidateSchema() (*jsonschema.Schema, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to load schema")
 	}
-	rs := NewRootSchema()
-	err = rs.UnmarshalJSON(b)
+	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(b))
 	if err != nil {
-		return nil, errors.Wrap(err, "schema not valid")
+		return nil, err
+	}
+	c := NewCompiler()
+	err = c.AddResource("schema.json", schema)
+	if err != nil {
+		return nil, err
+	}
+	rs, err := c.Compile("schema.json")
+	if err != nil {
+		return nil, err
 	}
 	return rs, nil
 }
@@ -40,27 +48,32 @@ func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
 		return nil, err
 	}
 
-	payload, err := json.Marshal(data)
+	jsonPayload, err := json.Marshal(data)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to process data")
 	}
-	valErrs, err := def.ValidateBytes(context.Background(), payload)
-	if err != nil {
-		return nil, errors.Wrap(err, "unable to perform validation")
-	}
-	if len(valErrs) > 0 {
-		valErrors := []ValidationError{}
 
-		for _, err := range valErrs {
+	payload, err := jsonschema.UnmarshalJSON(bytes.NewReader(jsonPayload))
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to process data")
+	}
+
+	err = def.Validate(payload)
+	if err == nil {
+		return nil, nil
+	}
+	if verr, ok := err.(*jsonschema.ValidationError); ok {
+		valErrors := make([]ValidationError, 0, len(verr.Causes))
+		for _, e := range verr.Causes {
 			valError := ValidationError{
-				Path:  err.PropertyPath,
-				Error: err.Message,
+				Path:  e.SchemaURL,
+				Error: e.Error(),
 			}
 			valErrors = append(valErrors, valError)
 		}
 		return valErrors, nil
 	}
-	return nil, nil
+	return nil, err
 }
 
 // CoerceValue can be used to turn float and other numeric types into integers. When

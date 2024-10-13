@@ -15,7 +15,6 @@ func TestSimpleUnMarshalDefinition(t *testing.T) {
 	def := `{
 		"$comment": "schema comment",
 		"$id": "schema id",
-		"$ref": "schema ref",
 		"$schema": "http://json-schema.org/draft-07/schema#",
 		"type": "array",
 		"items": [

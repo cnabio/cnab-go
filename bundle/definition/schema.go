@@ -1,11 +1,13 @@
 package definition
 
 import (
+	"bytes"
 	"encoding/json"
 	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
 type Definitions map[string]*Schema
@@ -91,12 +93,20 @@ func (s *Schema) GetTypes() ([]string, bool, error) {
 // github.com/qri-io/jsonschema to load and validate a given schema. If it is valid,
 // then the json is unmarshaled.
 func (s *Schema) UnmarshalJSON(data []byte) error {
-
+	schema, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
 	// Before we unmarshal into the cnab-go bundle/definition/Schema type, unmarshal into
 	// the library struct so we can handle any validation errors in the schema. If there
 	// are any errors, return those.
-	js := NewRootSchema()
-	if err := js.UnmarshalJSON(data); err != nil {
+	c := NewCompiler()
+	err = c.AddResource("schema.json", schema)
+	if err != nil {
+		return err
+	}
+	_, err = c.Compile("schema.json")
+	if err != nil {
 		return err
 	}
 	// The schema is valid at this point, so now use an indirect wrapper type to actually
