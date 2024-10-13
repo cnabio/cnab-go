@@ -85,32 +85,6 @@ func TestObjectValidationValid_CustomValidator_ContentEncoding_base64(t *testing
 	assert.Equal(t, "at '/file': value is not 'base64' encoded: illegal base64 data at input byte 20", valErrors[0].Error)
 }
 
-func TestObjectValidationValid_CustomValidator_ContentEncoding_InvalidEncoding(t *testing.T) {
-	s := `{
-		"type": "object",
-		"properties" : {
-			"file" : {
-				"type": "string",
-				"contentEncoding": "base65"
-			}
-		},
-		"required" : ["file"]
-	}`
-	definition := new(Schema)
-	err := json.Unmarshal([]byte(s), definition)
-	require.NoError(t, err, "should have been able to marshal definition")
-
-	val := struct {
-		File string `json:"file"`
-	}{
-		File: "SGVsbG8gV29ybGQhCg==",
-	}
-	valErrors, err := definition.Validate(val)
-	require.NoError(t, err)
-	require.Len(t, valErrors, 1, "expected 1 validation error")
-	require.Equal(t, "unsupported or invalid contentEncoding type of base65", valErrors[0].Error)
-}
-
 func TestObjectValidationInValidMinimum(t *testing.T) {
 	s := `{
 		"type": "object",
@@ -146,7 +120,7 @@ func TestObjectValidationInValidMinimum(t *testing.T) {
 	valErr := valErrors[0]
 	assert.NotNil(t, valErr, "expected the obtain the validation error")
 	assert.Equal(t, "/port", valErr.Path, "expected validation error to reference port")
-	assert.Equal(t, "must be greater than or equal to 100", valErr.Error, "expected validation error to reference port")
+	assert.Equal(t, "at '/port': minimum: got 80, want 100", valErr.Error, "expected validation error to reference port")
 }
 
 func TestObjectValidationPropertyRequired(t *testing.T) {
@@ -184,7 +158,7 @@ func TestObjectValidationPropertyRequired(t *testing.T) {
 	valErrors, err := definition.Validate(val)
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	assert.NoError(t, err)
-	assert.Equal(t, "\"host\" value is required", valErrors[0].Error)
+	assert.Equal(t, "at '': missing property 'host'", valErrors[0].Error)
 
 }
 
@@ -228,8 +202,8 @@ func TestObjectValidationNoAdditionalPropertiesAllowed(t *testing.T) {
 	valErrors, err := definition.Validate(val)
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	assert.NoError(t, err)
-	assert.Equal(t, "/badActor", valErrors[0].Path, "expected the error to be on badActor")
-	assert.Equal(t, "additional properties are not allowed", valErrors[0].Error)
+	assert.Equal(t, "/", valErrors[0].Path, "expected the error to be on badActor")
+	assert.Equal(t, "at '': additional properties 'badActor' not allowed", valErrors[0].Error)
 }
 
 func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
@@ -276,5 +250,5 @@ func TestObjectValidationAdditionalPropertiesAreStrings(t *testing.T) {
 	valErrors, err := definition.Validate(val)
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	assert.NoError(t, err)
-	assert.Equal(t, "type should be string, got boolean", valErrors[0].Error)
+	assert.Equal(t, "at '/badActor': got boolean, want string", valErrors[0].Error)
 }

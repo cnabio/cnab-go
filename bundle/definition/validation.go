@@ -3,6 +3,7 @@ package definition
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 
 	"github.com/pkg/errors"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v6"
@@ -62,11 +63,14 @@ func (s *Schema) Validate(data interface{}) ([]ValidationError, error) {
 	if err == nil {
 		return nil, nil
 	}
+
 	if verr, ok := err.(*jsonschema.ValidationError); ok {
 		valErrors := make([]ValidationError, 0, len(verr.Causes))
 		for _, e := range verr.Causes {
+			path := strings.Join(e.InstanceLocation, "/")
+			path = "/" + path
 			valError := ValidationError{
-				Path:  e.SchemaURL,
+				Path:  path,
 				Error: e.Error(),
 			}
 			valErrors = append(valErrors, valError)

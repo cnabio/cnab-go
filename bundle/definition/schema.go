@@ -107,6 +107,9 @@ func (s *Schema) UnmarshalJSON(data []byte) error {
 	}
 	_, err = c.Compile("schema.json")
 	if err != nil {
+		if e, ok := err.(*jsonschema.SchemaValidationError); ok {
+			return e.Err
+		}
 		return err
 	}
 	// The schema is valid at this point, so now use an indirect wrapper type to actually

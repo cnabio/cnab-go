@@ -300,7 +300,7 @@ func TestValuesOrDefaults_DefaultFailsValidation(t *testing.T) {
 	_, err := ValuesOrDefaults(map[string]interface{}{}, b, "install")
 	is.Error(err)
 	is.Contains(err.Error(), "cannot use value")
-	is.Contains(err.Error(), "type should be boolean")
+	is.Contains(err.Error(), "got string, want boolean")
 }
 
 func TestValidateVersionTag(t *testing.T) {

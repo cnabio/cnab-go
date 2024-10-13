@@ -96,7 +96,7 @@ func TestUnknownSchemaType(t *testing.T) {
 	definition := new(Schema)
 	err := json.Unmarshal([]byte(s), definition)
 	assert.Error(t, err, "should not have been able to marshall definition")
-	assert.EqualError(t, err, "error unmarshaling type from json: \"cnab\" is not a valid type")
+	assert.Contains(t, err.Error(), "jsonschema validation failed with 'https://json-schema.org/draft/2019-09/schema#'")
 }
 
 func TestSingleSchemaType(t *testing.T) {
@@ -180,7 +180,7 @@ func TestBooleanTypeValidation(t *testing.T) {
 	assert.Len(t, valErrors, 1, "expected a validation error")
 	valErr := valErrors[0]
 	assert.Equal(t, "/", valErr.Path, "expected validation to fail at the root")
-	assert.Equal(t, "should be one of [true]", valErr.Error)
+	assert.Equal(t, "at '': value must be true", valErr.Error)
 
 	boolValue2 := "true, false"
 	s2 := valueTestJSON("boolean", boolValue, boolValue2)
@@ -209,7 +209,7 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	assert.NoError(t, err)
 	valErr := valErrors[0]
 	assert.Equal(t, "/", valErr.Path, "expected validation to fail at the root")
-	assert.Equal(t, "should be one of [\"dog\"]", valErr.Error)
+	assert.Equal(t, "at '': value must be 'dog'", valErr.Error)
 
 	anotherSchema := `{
 		"type" : "string",
@@ -223,7 +223,7 @@ func TestStringTypeValidationEnum(t *testing.T) {
 	valErrors, err = definition2.Validate("pig")
 	assert.NoError(t, err, "shouldn't have gotten an actual error")
 	assert.Len(t, valErrors, 1, "expected validation failure for pig")
-	assert.Equal(t, "should be one of [\"chicken\", \"duck\"]", valErrors[0].Error)
+	assert.Equal(t, "at '': value must be one of 'chicken', 'duck'", valErrors[0].Error)
 }
 
 func TestStringMinLengthValidator(t *testing.T) {
@@ -237,7 +237,7 @@ func TestStringMinLengthValidator(t *testing.T) {
 
 	valErrors, err := definition.Validate("four")
 	assert.Len(t, valErrors, 1, "expected the validation to fail with four characters")
-	assert.Equal(t, "min length of 10 characters required: four", valErrors[0].Error)
+	assert.Equal(t, "at '': minLength: got 4, want 10", valErrors[0].Error)
 	assert.NoError(t, err)
 
 	valErrors, err = definition.Validate("abcdefghijklmnopqrstuvwxyz")
