@@ -15,6 +15,7 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -143,8 +144,8 @@ func pullImage(ctx context.Context, cli command.Cli, image string) error {
 	if err != nil {
 		return err
 	}
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
+	authConfig := command.ResolveAuthConfig(cli.ConfigFile(), repoInfo.Index)
+	encodedAuth, err := registrytypes.EncodeAuthConfig(authConfig)
 	if err != nil {
 		return err
 	}
