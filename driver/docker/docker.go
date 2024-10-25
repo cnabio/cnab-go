@@ -15,6 +15,8 @@ import (
 	"github.com/docker/distribution/reference"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	imagetypes "github.com/docker/docker/api/types/image"
+	registrytypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/api/types/strslice"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -143,12 +145,12 @@ func pullImage(ctx context.Context, cli command.Cli, image string) error {
 	if err != nil {
 		return err
 	}
-	authConfig := command.ResolveAuthConfig(ctx, cli, repoInfo.Index)
-	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
+	authConfig := command.ResolveAuthConfig(cli.ConfigFile(), repoInfo.Index)
+	encodedAuth, err := registrytypes.EncodeAuthConfig(authConfig)
 	if err != nil {
 		return err
 	}
-	options := types.ImagePullOptions{
+	options := imagetypes.PullOptions{
 		RegistryAuth: encodedAuth,
 	}
 	responseBody, err := cli.Client().ImagePull(ctx, image, options)
@@ -216,7 +218,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 
 	if d.config["CLEANUP_CONTAINERS"] == "true" {
-		defer cli.Client().ContainerRemove(ctx, resp.ID, types.ContainerRemoveOptions{})
+		defer cli.Client().ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
 	}
 
 	containerUID := getContainerUserID(ii.Config.User)
@@ -234,7 +236,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, fmt.Errorf("error copying to / in container: %s", err)
 	}
 
-	attach, err := cli.Client().ContainerAttach(ctx, resp.ID, types.ContainerAttachOptions{
+	attach, err := cli.Client().ContainerAttach(ctx, resp.ID, container.AttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -267,7 +269,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		}
 	}()
 
-	if err = cli.Client().ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err = cli.Client().ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot start container: %v", err)
 	}
 	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
