@@ -144,6 +144,7 @@ func (a Action) saveLogs(logFile *os.File, opResult driver.OperationResult) erro
 	_, logOutputNameInUse := opResult.Outputs[claim.OutputInvocationImageLogs]
 	if logOutputNameInUse {
 		// The bundle is using our reserved log output name, so skip saving the logs
+		return nil
 	}
 
 	// Read from the beginning of the file
@@ -152,7 +153,7 @@ func (a Action) saveLogs(logFile *os.File, opResult driver.OperationResult) erro
 		return errors.Wrapf(err, "error seeking the log file")
 	}
 
-	logsB, err := ioutil.ReadAll(logFile)
+	logsB, err := io.ReadAll(logFile)
 	if err != nil {
 		return errors.Wrapf(err, "error reading log file %s", logFile.Name())
 	}

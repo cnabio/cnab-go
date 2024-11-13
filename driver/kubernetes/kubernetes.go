@@ -570,7 +570,7 @@ func (k *Driver) watchJobStatusAndLogs(ctx context.Context, podSelector metav1.L
 		complete := false
 		for _, cond := range job.Status.Conditions {
 			if cond.Type == batchv1.JobFailed {
-				err = fmt.Errorf(cond.Message)
+				err = fmt.Errorf("%s", cond.Message)
 				complete = true
 				break
 			}

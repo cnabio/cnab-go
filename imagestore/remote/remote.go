@@ -22,7 +22,7 @@ func Create(options ...imagestore.Option) (imagestore.Store, error) {
 	}, nil
 }
 
-func (r *remote) Add(im string) (string, error) {
+func (r *remote) Add(_ string) (string, error) {
 	return "", nil
 }
 

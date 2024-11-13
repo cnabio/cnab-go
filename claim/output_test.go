@@ -42,13 +42,11 @@ func TestOutput(t *testing.T) {
 	assert.Equal(t, []string{ActionInstall}, def.ApplyTo)
 }
 
-func TestOutputs_GetByName(t *testing.T) {
+// func TestOutputs_GetByName(t *testing.T) {
+// }
 
-}
-
-func TestOutputs_GetByIndex(t *testing.T) {
-
-}
+// func TestOutputs_GetByIndex(t *testing.T) {
+// }
 
 func TestOutputs_Sort(t *testing.T) {
 	o := NewOutputs([]Output{
