@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -40,6 +41,7 @@ type Operation struct {
 	Err io.Writer `json:"-"`
 	// Bundle represents the bundle information for use by the operation
 	Bundle *bundle.Bundle
+	CTX    context.Context
 }
 
 // ResolvedCred is a credential that has been resolved and is ready for injection into the runtime.
