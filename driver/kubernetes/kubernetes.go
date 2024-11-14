@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/distribution/reference"
+	"github.com/distribution/reference"
 	"github.com/hashicorp/go-multierror"
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"

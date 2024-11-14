@@ -267,7 +267,7 @@ func createTestPVC(t *testing.T, ctx context.Context) (string, func()) {
 		},
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-			Resources: v1.ResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
+			Resources: v1.VolumeResourceRequirements{Requests: map[v1.ResourceName]resource.Quantity{
 				v1.ResourceStorage: resource.MustParse("64Mi"),
 			}},
 		},
