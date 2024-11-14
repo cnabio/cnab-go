@@ -182,7 +182,6 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 }
 
 func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
-	ctx := context.Background()
 
 	cli, err := d.initializeDockerCli()
 	if err != nil {
@@ -193,12 +192,12 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, nil
 	}
 	if d.config["PULL_ALWAYS"] == "1" {
-		if err := pullImage(ctx, cli, op.Image.Image); err != nil {
+		if err := pullImage(op.CTX, cli, op.Image.Image); err != nil {
 			return driver.OperationResult{}, err
 		}
 	}
 
-	ii, err := d.inspectImage(ctx, op.Image)
+	ii, err := d.inspectImage(op.CTX, op.Image)
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
@@ -212,13 +211,13 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, err
 	}
 
-	resp, err := cli.Client().ContainerCreate(ctx, &d.containerCfg, &d.containerHostCfg, nil, nil, "")
+	resp, err := cli.Client().ContainerCreate(op.CTX, &d.containerCfg, &d.containerHostCfg, nil, nil, "")
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
 
 	if d.config["CLEANUP_CONTAINERS"] == "true" {
-		defer cli.Client().ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+		defer cli.Client().ContainerRemove(op.CTX, resp.ID, container.RemoveOptions{})
 	}
 
 	containerUID := getContainerUserID(ii.Config.User)
@@ -231,12 +230,12 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 	// This copies the tar to the root of the container. The tar has been assembled using the
 	// path from the given file, starting at the /.
-	err = cli.Client().CopyToContainer(ctx, resp.ID, "/", tarContent, options)
+	err = cli.Client().CopyToContainer(op.CTX, resp.ID, "/", tarContent, options)
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("error copying to / in container: %s", err)
 	}
 
-	attach, err := cli.Client().ContainerAttach(ctx, resp.ID, container.AttachOptions{
+	attach, err := cli.Client().ContainerAttach(op.CTX, resp.ID, container.AttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -269,28 +268,34 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		}
 	}()
 
-	if err = cli.Client().ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err = cli.Client().ContainerStart(op.CTX, resp.ID, container.StartOptions{}); err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot start container: %v", err)
 	}
-	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	statusc, errc := cli.Client().ContainerWait(op.CTX, resp.ID, container.WaitConditionNotRunning)
 	select {
+	case <-op.CTX.Done():
+		err = cli.Client().ContainerStop(context.Background(), resp.ID, container.StopOptions{})
+		if err != nil {
+			return driver.OperationResult{}, err
+		}
+		return driver.OperationResult{}, op.CTX.Err()
 	case err := <-errc:
 		if err != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+			opResult, fetchErr := d.fetchOutputs(op.CTX, resp.ID, op)
 			return opResult, containerError("error in container", err, fetchErr)
 		}
 	case s := <-statusc:
 		if s.StatusCode == 0 {
-			return d.fetchOutputs(ctx, resp.ID, op)
+			return d.fetchOutputs(op.CTX, resp.ID, op)
 		}
 		if s.Error != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+			opResult, fetchErr := d.fetchOutputs(op.CTX, resp.ID, op)
 			return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), err, fetchErr)
 		}
-		opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+		opResult, fetchErr := d.fetchOutputs(op.CTX, resp.ID, op)
 		return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), err, fetchErr)
 	}
-	opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+	opResult, fetchErr := d.fetchOutputs(op.CTX, resp.ID, op)
 	if fetchErr != nil {
 		return opResult, fmt.Errorf("fetching outputs failed: %s", fetchErr)
 	}

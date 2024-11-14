@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"os"
 
 	"github.com/cnabio/cnab-go/driver"
@@ -31,6 +32,11 @@ func (cfgs OperationConfigs) ApplyConfig(op *driver.Operation) error {
 	}
 	if op.Err == nil {
 		op.Err = os.Stderr
+	}
+
+	// if no context were provided
+	if op.CTX == nil {
+		op.CTX = context.Background()
 	}
 
 	return nil
