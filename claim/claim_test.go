@@ -297,6 +297,7 @@ func TestClaims_Sort(t *testing.T) {
 	assert.Equal(t, "3", c[2].ID, "Claims did not sort 3 to the third slot")
 }
 
+//nolint:all
 func TestNewULID_ThreadSafe(t *testing.T) {
 	// Validate that the ULID function is thread-safe and generates
 	// monotonically increasing values

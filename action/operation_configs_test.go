@@ -2,7 +2,7 @@ package action
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -24,6 +24,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 
 	t.Run("all config is persisted", func(t *testing.T) {
 		a := OperationConfigs{
+			//nolint:all
 			func(op *driver.Operation) error {
 				if op.Files == nil {
 					op.Files = make(map[string]string, 1)
@@ -31,8 +32,9 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 				op.Files["a"] = "b"
 				return nil
 			},
+			//nolint:all
 			func(op *driver.Operation) error {
-				op.Out = ioutil.Discard
+				op.Out = io.Discard
 				return nil
 			},
 		}
@@ -40,7 +42,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 		err := a.ApplyConfig(op)
 		require.NoError(t, err, "ApplyConfig should not have returned an error")
 		assert.Contains(t, op.Files, "a", "Changes from the first config function were not persisted")
-		assert.Equal(t, ioutil.Discard, op.Out, "Changes from the second config function were not persisted")
+		assert.Equal(t, io.Discard, op.Out, "Changes from the second config function were not persisted")
 		assert.Equal(t, os.Stderr, op.Err, "Changes from the second config function were not persisted")
 	})
 
@@ -50,7 +52,7 @@ func TestOperationConfigs_ApplyConfig(t *testing.T) {
 				return errors.New("oops")
 			},
 			func(op *driver.Operation) error {
-				op.Out = ioutil.Discard
+				op.Out = io.Discard
 				return nil
 			},
 		}

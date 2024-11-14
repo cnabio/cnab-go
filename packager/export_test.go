@@ -1,7 +1,6 @@
 package packager
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -149,7 +148,7 @@ func TestExportDigestMismatch(t *testing.T) {
 	}()
 
 	is := &imagestoremocks.MockStore{
-		AddStub: func(im string) (string, error) {
+		AddStub: func(_ string) (string, error) {
 			// return the same digest for all images, but only one of them has a digest in the bundle manifest so just
 			// that one will fail verification
 			return "sha256:222222228fb14266b7c0461ef1ef0b2f8c05f41cd544987a259a9d92cdad2540", nil
@@ -174,7 +173,7 @@ func TestExportDigestMismatch(t *testing.T) {
 }
 
 func setupTempDir() (string, error) {
-	tempDir, err := ioutil.TempDir("", "duffle-export-test")
+	tempDir, err := os.MkdirTemp("", "duffle-export-test")
 	if err != nil {
 		return "", err
 	}
@@ -182,7 +181,7 @@ func setupTempDir() (string, error) {
 }
 
 func setupPWD() (string, string, error) {
-	tempPWD, err := ioutil.TempDir("", "duffle-export-test")
+	tempPWD, err := os.MkdirTemp("", "duffle-export-test")
 	if err != nil {
 		return "", "", err
 	}

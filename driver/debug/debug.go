@@ -29,7 +29,7 @@ func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
 }
 
 // Handles always returns true, effectively claiming to work for any image type
-func (d *Driver) Handles(dt string) bool {
+func (d *Driver) Handles(_ string) bool {
 	return true
 }
 
