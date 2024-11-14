@@ -2,6 +2,7 @@ package definition
 
 import (
 	"encoding/json"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -35,17 +36,17 @@ type Schema struct {
 	Format               string                 `json:"format,omitempty" yaml:"format,omitempty"`
 	If                   *Schema                `json:"if,omitempty" yaml:"if,omitempty"`
 	//Items can be a Schema or an Array of Schema :(
-	Items         interface{} `json:"items,omitempty" yaml:"items,omitempty"`
-	Maximum       *float64    `json:"maximum,omitempty" yaml:"maximum,omitempty"`
-	MaxLength     *int        `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
-	MinItems      *int        `json:"minItems,omitempty" yaml:"minItems,omitempty"`
-	MinLength     *int        `json:"minLength,omitempty" yaml:"minLength,omitempty"`
-	MinProperties *int        `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
-	Minimum       *float64    `json:"minimum,omitempty" yaml:"minimum,omitempty"`
-	MultipleOf    *float64    `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
-	Not           *Schema     `json:"not,omitempty" yaml:"not,omitempty"`
-	OneOf         *Schema     `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
-
+	Items             interface{}        `json:"items,omitempty" yaml:"items,omitempty"`
+	Maximum           *float64           `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+	MaxLength         *int               `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
+	MinItems          *int               `json:"minItems,omitempty" yaml:"minItems,omitempty"`
+	MinLength         *int               `json:"minLength,omitempty" yaml:"minLength,omitempty"`
+	MinProperties     *int               `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	Minimum           *float64           `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	MultipleOf        *float64           `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
+	Not               *Schema            `json:"not,omitempty" yaml:"not,omitempty"`
+	OneOf             *Schema            `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	Pattern           *regexp.Regexp     `json:"pattern,omitempty" yaml:"pattern,omitempty"`
 	PatternProperties map[string]*Schema `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 
 	Properties    map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
