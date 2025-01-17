@@ -2,7 +2,6 @@ package definition
 
 import (
 	"encoding/json"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -46,7 +45,7 @@ type Schema struct {
 	MultipleOf        *float64           `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
 	Not               *Schema            `json:"not,omitempty" yaml:"not,omitempty"`
 	OneOf             *Schema            `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
-	Pattern           *regexp.Regexp     `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	Pattern           *Regexp            `json:"pattern,omitempty" yaml:"pattern,omitempty"`
 	PatternProperties map[string]*Schema `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 
 	Properties    map[string]*Schema `json:"properties,omitempty" yaml:"properties,omitempty"`
