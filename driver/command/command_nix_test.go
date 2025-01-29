@@ -4,6 +4,7 @@
 package command
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -64,7 +65,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				t.Fatalf("Expected driver %s to exist Driver Name %s ", name, cmddriver.Name)
 			}
 			op := buildOp()
-			opResult, err := cmddriver.Run(op)
+			opResult, err := cmddriver.Run(context.Background(), op)
 			if err != nil {
 				t.Fatalf("Driver Run failed %v", err)
 			}
@@ -89,7 +90,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				t.Fatalf("Expected driver %s to exist Driver Name %s ", name, cmddriver.Name)
 			}
 			op := buildOp()
-			opResult, err := cmddriver.Run(op)
+			opResult, err := cmddriver.Run(context.Background(), op)
 			if err != nil {
 				t.Fatalf("Driver Run failed %v", err)
 			}
@@ -114,7 +115,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 				t.Fatalf("Expected driver %s to exist Driver Name %s ", name, cmddriver.Name)
 			}
 			op := buildOp()
-			_, err := cmddriver.Run(op)
+			_, err := cmddriver.Run(context.Background(), op)
 			assert.NoError(t, err)
 		}
 		CreateAndRunTestCommandDriver(t, name, false, content, testfunc)
@@ -133,7 +134,7 @@ func TestCommandDriverOutputs(t *testing.T) {
 			}
 			op := buildOp()
 			op.Bundle.Definitions["output2"].Default = "DEFAULT OUTPUT 2"
-			opResult, err := cmddriver.Run(op)
+			opResult, err := cmddriver.Run(context.Background(), op)
 			if err != nil {
 				t.Fatalf("Driver Run failed %v", err)
 			}

@@ -1,6 +1,7 @@
 package action_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -23,9 +24,6 @@ func Example_invoke() {
 
 	// Load the previous claim for the installation
 	existingClaim := createInstallClaim()
-	if err != nil {
-		panic(err)
-	}
 
 	// Create a claim for running the custom logs action based on the previous claim
 	c, err := existingClaim.NewClaim("logs", existingClaim.Bundle, parameters)
@@ -51,7 +49,7 @@ func Example_invoke() {
 	// Pass an empty set of credentials
 	var creds valuesource.Set
 
-	opResult, claimResult, err := a.Run(c, creds)
+	opResult, claimResult, err := a.Run(context.Background(), c, creds)
 	if err != nil {
 		// Something terrible has occurred and we could not even run the bundle
 		panic(err)

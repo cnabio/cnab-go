@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -53,7 +54,7 @@ func New(d driver.Driver) Action {
 // caller is responsible for persisting the claim records and outputs using the
 // SaveOperationResult function. An error is only returned when the operation could not
 // be executed, otherwise any error is returned in the OperationResult.
-func (a Action) Run(c claim.Claim, creds valuesource.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
+func (a Action) Run(ctx context.Context, c claim.Claim, creds valuesource.Set, opCfgs ...OperationConfigFunc) (driver.OperationResult, claim.Result, error) {
 	if a.Driver == nil {
 		return driver.OperationResult{}, claim.Result{}, errors.New("the action driver is not set")
 	}
@@ -84,7 +85,7 @@ func (a Action) Run(c claim.Claim, creds valuesource.Set, opCfgs ...OperationCon
 	}
 
 	var opErr *multierror.Error
-	opResult, err := a.Driver.Run(op)
+	opResult, err := a.Driver.Run(ctx, op)
 	if err != nil {
 		opErr = multierror.Append(opErr, err)
 	}
@@ -279,7 +280,10 @@ func setOutputsOnClaimResult(c claim.Claim, result *claim.Result, opResult drive
 
 	for outputName, outputValue := range opResult.Outputs {
 		outputDef, isDefined := c.Bundle.Outputs[outputName]
-		result.OutputMetadata.SetGeneratedByBundle(outputName, isDefined)
+		err := result.OutputMetadata.SetGeneratedByBundle(outputName, isDefined)
+		if err != nil {
+			outputErrors = append(outputErrors, err)
+		}
 		if isDefined {
 			err := validateOutputType(c.Bundle, outputName, outputDef, outputValue)
 			if err != nil {
@@ -288,7 +292,10 @@ func setOutputsOnClaimResult(c claim.Claim, result *claim.Result, opResult drive
 		}
 
 		if outputValue != "" {
-			result.OutputMetadata.SetContentDigest(outputName, buildOutputContentDigest(outputValue))
+			err := result.OutputMetadata.SetContentDigest(outputName, buildOutputContentDigest(outputValue))
+			if err != nil {
+				outputErrors = append(outputErrors, err)
+			}
 		}
 	}
 

@@ -298,13 +298,12 @@ func (k *Driver) setClient(conf *rest.Config) error {
 }
 
 // Run executes the operation inside of the invocation image.
-func (k *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (k *Driver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	err := k.initClient()
 	if err != nil {
 		return driver.OperationResult{}, err
 	}
 
-	ctx := context.Background()
 	const sharedVolumeName = "cnab-driver-share"
 	err = k.initJobVolumes()
 	if err != nil {
