@@ -1,10 +1,8 @@
-//go:build integration
-// +build integration
-
 package docker
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -92,7 +90,7 @@ func runDriverTest(t *testing.T, image bundle.InvocationImage, skipValidations b
 	}
 
 	docker := &Driver{}
-	opResult, err := docker.Run(op)
+	opResult, err := docker.Run(context.Background(), op)
 
 	if skipValidations {
 		return
@@ -155,7 +153,7 @@ func TestDriver_Run_CaptureOutput(t *testing.T) {
 	}
 
 	docker := &Driver{}
-	_, err := docker.Run(op)
+	_, err := docker.Run(context.Background(), op)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "installing bundle...\n", stdout.String())
@@ -190,7 +188,7 @@ func TestDriver_ValidateImageDigestFail(t *testing.T) {
 
 	docker := &Driver{}
 
-	_, err := docker.Run(op)
+	_, err := docker.Run(context.Background(), op)
 	require.Error(t, err, "expected an error")
 	// Not asserting actual image digests to support arbitrary integration test images
 	assert.Contains(t, err.Error(),
