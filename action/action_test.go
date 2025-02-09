@@ -1,6 +1,7 @@
 package action
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,7 +32,7 @@ type mockDriver struct {
 func (d *mockDriver) Handles(imageType string) bool {
 	return d.shouldHandle
 }
-func (d *mockDriver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (d *mockDriver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	d.Operation = op
 	fmt.Fprintln(op.Out, "mocked running the bundle")
 	return d.Result, d.Error
@@ -720,7 +721,7 @@ func TestAction_RunAction(t *testing.T) {
 		inst := New(d)
 		inst.SaveLogs = true
 
-		opResult, claimResult, err := inst.Run(c, mockSet, out)
+		opResult, claimResult, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 		require.NoError(t, opResult.Error)
 		assert.Equal(t, claim.ActionInstall, c.Action)
@@ -748,7 +749,7 @@ func TestAction_RunAction(t *testing.T) {
 		inst := New(d)
 		inst.SaveLogs = false
 
-		opResult, _, err := inst.Run(c, mockSet, out)
+		opResult, _, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 		require.NoError(t, opResult.Error)
 
@@ -772,7 +773,7 @@ func TestAction_RunAction(t *testing.T) {
 			op.Files["/tmp/another/path"] = "ANOTHER FILE"
 			return nil
 		}
-		_, _, err := inst.Run(c, mockSet, out, addFile)
+		_, _, err := inst.Run(context.Background(), c, mockSet, out, addFile)
 		require.NoError(t, err)
 		assert.Contains(t, d.Operation.Files, "/tmp/another/path")
 	})
@@ -792,7 +793,7 @@ func TestAction_RunAction(t *testing.T) {
 		sabotage := func(op *driver.Operation) error {
 			return errors.New("oops")
 		}
-		_, _, err := inst.Run(c, mockSet, out, sabotage)
+		_, _, err := inst.Run(context.Background(), c, mockSet, out, sabotage)
 		require.EqualError(t, err, "oops")
 	})
 
@@ -805,7 +806,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error:        nil,
 		}
 		inst := New(d)
-		_, claimResult, err := inst.Run(c, mockSet, out)
+		_, claimResult, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 		assert.Equal(t, claim.ActionInstall, c.Action)
 		assert.Equal(t, claim.StatusSucceeded, claimResult.Status)
@@ -848,7 +849,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error:        nil,
 		}
 		inst := New(d)
-		opResult, _, err := inst.Run(c, mockSet, out)
+		opResult, _, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 
 		assert.Contains(t, opResult.Outputs, "hasDefault1", "the output always applies so an output value should have been set")
@@ -873,7 +874,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error:        nil,
 		}
 		inst := New(d)
-		opResult, _, err := inst.Run(c, mockSet, out)
+		opResult, _, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 		require.Contains(t, opResult.Error.Error(), "required output noDefault is missing and has no default")
 	})
@@ -885,7 +886,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error:        errors.New("I always fail"),
 		}
 		inst := New(d)
-		_, _, err := inst.Run(c, mockSet, out)
+		_, _, err := inst.Run(context.Background(), c, mockSet, out)
 		require.Error(t, err)
 	})
 
@@ -901,7 +902,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error: errors.New("I always fail"),
 		}
 		inst := New(d)
-		opResult, claimResult, err := inst.Run(c, mockSet, out)
+		opResult, claimResult, err := inst.Run(context.Background(), c, mockSet, out)
 		require.NoError(t, err)
 		require.Contains(t, opResult.Error.Error(), "I always fail")
 		assert.Equal(t, claim.ActionInstall, c.Action)
@@ -922,7 +923,7 @@ func TestAction_RunAction(t *testing.T) {
 			Error: errors.New("I always fail"),
 		}
 		inst := New(d)
-		opResult, claimResult, err := inst.Run(c, mockSet, out)
+		opResult, claimResult, err := inst.Run(context.Background(), c, mockSet, out)
 		require.Error(t, err, "Unknown action should fail")
 		require.NoError(t, opResult.Error)
 		assert.Empty(t, claimResult)

@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -15,7 +16,7 @@ type Driver struct {
 }
 
 // Run executes the operation on the Debug driver
-func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (d *Driver) Run(_ context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	data, err := json.MarshalIndent(op, "", "  ")
 	if err != nil {
 		return driver.OperationResult{}, err

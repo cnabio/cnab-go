@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -26,7 +27,7 @@ type Driver struct {
 }
 
 // Run executes the command
-func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
+func (d *Driver) Run(_ context.Context, op *driver.Operation) (driver.OperationResult, error) {
 	return d.exec(op)
 }
 
