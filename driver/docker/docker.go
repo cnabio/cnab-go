@@ -226,7 +226,7 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("error staging files: %s", err)
 	}
-	options := types.CopyToContainerOptions{
+	options := container.CopyToContainerOptions{
 		AllowOverwriteDirWithFile: false,
 	}
 	// This copies the tar to the root of the container. The tar has been assembled using the
