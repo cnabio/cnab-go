@@ -41,6 +41,21 @@ func TestObjectValidationValid(t *testing.T) {
 	assert.Len(t, valErrors, 0, "expected no validation errors")
 	assert.NoError(t, err)
 }
+func TestPatternValidationValid(t *testing.T) {
+	s := `{
+		"type": "string",
+		"pattern" : "^[0-9]{3}-[0-9]{4}$"
+	}`
+	definition := new(Schema)
+	err := json.Unmarshal([]byte(s), definition)
+	require.NoError(t, err, "should have been able to marshall definition")
+	assert.Equal(t, "string", definition.Type, "type should have been an object")
+
+	val := "124-1234"
+	valErrors, err := definition.Validate(val)
+	assert.Len(t, valErrors, 0, "expected no validation errors")
+	assert.NoError(t, err)
+}
 
 func TestObjectValidationValid_CustomValidator_ContentEncoding_base64(t *testing.T) {
 	s := `{
