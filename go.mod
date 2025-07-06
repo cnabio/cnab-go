@@ -8,7 +8,7 @@ require (
 	github.com/cyberphone/json-canonicalization v0.0.0-20231217050601-ba74d44ecf5f
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v28.3.0+incompatible
-	github.com/docker/docker v28.3.0+incompatible
+	github.com/docker/docker v28.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/copystructure v1.2.0
