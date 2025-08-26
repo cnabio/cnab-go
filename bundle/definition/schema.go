@@ -19,6 +19,7 @@ type Schema struct {
 	AdditionalItems      interface{}            `json:"additionalItems,omitempty" yaml:"additionalItems,omitempty"`
 	AdditionalProperties interface{}            `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 	AllOf                []*Schema              `json:"allOf,omitempty" yaml:"allOf,omitempty"`
+	AnyOf                []*Schema              `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
 	Const                interface{}            `json:"const,omitempty" yaml:"const,omitempty"`
 	Contains             *Schema                `json:"contains,omitempty" yaml:"contains,omitempty"`
 	ContentEncoding      string                 `json:"contentEncoding,omitempty" yaml:"contentEncoding,omitempty"`
@@ -44,7 +45,7 @@ type Schema struct {
 	Minimum           *float64           `json:"minimum,omitempty" yaml:"minimum,omitempty"`
 	MultipleOf        *float64           `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
 	Not               *Schema            `json:"not,omitempty" yaml:"not,omitempty"`
-	OneOf             *Schema            `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	OneOf             []*Schema          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
 	Pattern           *Regexp            `json:"pattern,omitempty" yaml:"pattern,omitempty"`
 	PatternProperties map[string]*Schema `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 
