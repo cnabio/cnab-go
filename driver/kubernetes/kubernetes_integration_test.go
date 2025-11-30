@@ -166,7 +166,7 @@ func TestDriver_Run_Integration(t *testing.T) {
 				defer deletePod()
 			}
 
-			_, err = k.Run(tc.op)
+			_, err = k.Run(context.Background(), tc.op)
 
 			if tc.err != nil {
 				assert.EqualError(t, err, tc.err.Error())

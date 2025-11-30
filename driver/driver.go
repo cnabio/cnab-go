@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -88,7 +89,7 @@ func (r *OperationResult) SetDefaultOutputValues(op Operation) error {
 // Driver is capable of running a invocation image
 type Driver interface {
 	// Run executes the operation inside of the invocation image
-	Run(*Operation) (OperationResult, error)
+	Run(context.Context, *Operation) (OperationResult, error)
 	// Handles receives an ImageType* and answers whether this driver supports that type
 	Handles(string) bool
 }
