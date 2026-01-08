@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package docker
 
 import (
@@ -7,7 +10,10 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -193,4 +199,96 @@ func TestDriver_ValidateImageDigestFail(t *testing.T) {
 	// Not asserting actual image digests to support arbitrary integration test images
 	assert.Contains(t, err.Error(),
 		fmt.Sprintf("content digest mismatch: invocation image %s was defined in the bundle with the digest %s but no matching repoDigest was found upon inspecting the image", op.Image.Image, badDigest))
+}
+
+func TestDriver_Run_ContextCancellation(t *testing.T) {
+	// Use a long-running command (sleep) so we have time to cancel the context
+	image := bundle.InvocationImage{
+		BaseImage: bundle.BaseImage{
+			Image: "busybox:latest",
+		},
+	}
+
+	op := &driver.Operation{
+		Installation: "test-cancel",
+		Action:       "install",
+		Image:        image,
+		Bundle: &bundle.Bundle{
+			Definitions: definition.Definitions{},
+		},
+	}
+
+	var output bytes.Buffer
+	op.Out = &output
+	op.Environment = map[string]string{
+		"CNAB_ACTION":            op.Action,
+		"CNAB_INSTALLATION_NAME": op.Installation,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	require.NoError(t, err)
+	defer dockerCli.Close()
+
+	docker := &Driver{}
+	docker.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
+		cfg.Entrypoint = []string{"sleep", "300"} // Sleep for 5 minutes
+		return nil
+	})
+
+	// Cancel the context after a brief delay to allow the container to start
+	go func() {
+		for {
+			containers, err := dockerCli.ContainerList(context.Background(), container.ListOptions{})
+			require.NoError(t, err)
+			found := false
+			for _, c := range containers {
+				if c.ID == docker.containerID && c.State == "running" {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+			fmt.Println("Waiting for container to start...")
+			time.Sleep(time.Millisecond * 100)
+		}
+		cancel()
+	}()
+
+	opResult, err := docker.Run(ctx, op)
+
+	require.Error(t, err, "expected Run to return an error when context is cancelled")
+	assert.Equal(t, driver.OperationResult{}, opResult)
+
+	loopMax := 50
+	loopCount := 0
+	for {
+		loopCount++
+		if loopCount > loopMax {
+			t.Fatalf("Timed out waiting for container %s to stop after context cancellation", docker.containerID)
+		}
+
+		containersAfter, err := dockerCli.ContainerList(context.Background(), container.ListOptions{All: true})
+		require.NoError(t, err)
+
+		found := false
+		var state container.ContainerState
+		for _, container := range containersAfter {
+			if container.ID == docker.containerID {
+				state = container.State
+				found = true
+				break
+			}
+		}
+		if found && state != "running" {
+			break
+		}
+		time.Sleep(time.Millisecond * 100)
+		if !found {
+			t.Fatal("Unable to find the container after context cancellation, something is very wrong!")
+		}
+	}
 }

@@ -1,6 +1,8 @@
 package docker
 
 import (
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/docker/docker/api/types/container"
@@ -251,4 +253,69 @@ func TestGetContainerUserId(t *testing.T) {
 			assert.Equal(t, tc.wantUID, getContainerUserID(tc.user))
 		})
 	}
+}
+
+type MockContainerResultClient struct {
+	ContainerStopId    string
+	ContainerStopError error
+}
+
+func (m *MockContainerResultClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
+	statusCh := make(chan container.WaitResponse, 1)
+	errCh := make(chan error, 1)
+	return statusCh, errCh
+}
+func (m *MockContainerResultClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+	m.ContainerStopId = containerID
+	return m.ContainerStopError
+}
+
+func TestDriver_exec_ContextCancellation(t *testing.T) {
+	t.Run("context cancellation stops container", func(t *testing.T) {
+		d := &Driver{
+			containerID: "unit-test-container-id",
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		op := &driver.Operation{
+			Image: bundle.InvocationImage{
+				BaseImage: bundle.BaseImage{Image: "test-image"},
+			},
+		}
+
+		client := &MockContainerResultClient{}
+
+		result, err := d.getContainerResult(ctx, client, op)
+
+		assert.Error(t, err, "expected Run to return an error with cancelled context")
+		assert.Equal(t, driver.OperationResult{}, result)
+		assert.Equal(t, d.containerID, client.ContainerStopId)
+	})
+}
+
+func TestDriver_exec_ContextCancellationError(t *testing.T) {
+	t.Run("context cancellation stops container", func(t *testing.T) {
+		d := &Driver{}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		op := &driver.Operation{
+			Image: bundle.InvocationImage{
+				BaseImage: bundle.BaseImage{Image: "test-image"},
+			},
+		}
+
+		client := &MockContainerResultClient{
+			ContainerStopError: fmt.Errorf("unit-test-error"),
+		}
+
+		result, err := d.getContainerResult(ctx, client, op)
+
+		assert.Error(t, err, "expected Run to return an error with cancelled context")
+		assert.Equal(t, driver.OperationResult{}, result)
+		assert.Equal(t, err, client.ContainerStopError)
+	})
 }
