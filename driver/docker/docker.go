@@ -273,6 +273,12 @@ func (d *Driver) exec(ctx context.Context, op *driver.Operation) (driver.Operati
 	}
 	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
 	select {
+	case <-ctx.Done():
+		err = cli.Client().ContainerStop(context.Background(), resp.ID, container.StopOptions{})
+		if err != nil {
+			return driver.OperationResult{}, err
+		}
+		return driver.OperationResult{}, ctx.Err()
 	case err := <-errc:
 		if err != nil {
 			opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
