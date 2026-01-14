@@ -45,7 +45,7 @@ func TestDriver_Run(t *testing.T) {
 		},
 	}
 
-	_, err = k.Run(&op)
+	_, err = k.Run(context.Background(), &op)
 	assert.NoError(t, err)
 
 	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})
@@ -103,7 +103,7 @@ func TestDriver_RunWithSharedFiles(t *testing.T) {
 		},
 	}
 
-	opResult, err := k.Run(&op)
+	opResult, err := k.Run(context.Background(), &op)
 	require.NoError(t, err)
 
 	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})
@@ -271,7 +271,7 @@ func TestDriver_ConfigureJob(t *testing.T) {
 		Image:        bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
 	}
 
-	_, err = k.Run(&op)
+	_, err = k.Run(context.Background(), &op)
 	assert.NoError(t, err)
 
 	jobList, _ := k.jobs.List(ctx, metav1.ListOptions{})

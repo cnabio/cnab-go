@@ -1,6 +1,7 @@
 package action_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -61,7 +62,7 @@ func Example_install() {
 	// Pass an empty set of credentials
 	var creds valuesource.Set
 
-	opResult, claimResult, err := a.Run(c, creds)
+	opResult, claimResult, err := a.Run(context.Background(), c, creds)
 	if err != nil {
 		// Something terrible has occurred and we could not even run the bundle
 		panic(err)

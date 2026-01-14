@@ -46,11 +46,17 @@ type Driver struct {
 	containerErr               io.Writer
 	containerHostCfg           container.HostConfig
 	containerCfg               container.Config
+	containerID                string
+}
+
+type ContainerResultClient interface {
+	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
+	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
 }
 
 // Run executes the Docker driver
-func (d *Driver) Run(op *driver.Operation) (driver.OperationResult, error) {
-	return d.exec(op)
+func (d *Driver) Run(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
+	return d.exec(ctx, op)
 }
 
 // Handles indicates that the Docker driver supports "docker" and "oci"
@@ -181,8 +187,7 @@ func (d *Driver) initializeDockerCli() (command.Cli, error) {
 	return cli, nil
 }
 
-func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
-	ctx := context.Background()
+func (d *Driver) exec(ctx context.Context, op *driver.Operation) (driver.OperationResult, error) {
 
 	cli, err := d.initializeDockerCli()
 	if err != nil {
@@ -217,8 +222,10 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		return driver.OperationResult{}, fmt.Errorf("cannot create container: %v", err)
 	}
 
+	d.containerID = resp.ID
+
 	if d.config["CLEANUP_CONTAINERS"] == "true" {
-		defer cli.Client().ContainerRemove(ctx, resp.ID, container.RemoveOptions{})
+		defer cli.Client().ContainerRemove(ctx, d.containerID, container.RemoveOptions{})
 	}
 
 	containerUID := getContainerUserID(ii.Config.User)
@@ -231,12 +238,12 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 	}
 	// This copies the tar to the root of the container. The tar has been assembled using the
 	// path from the given file, starting at the /.
-	err = cli.Client().CopyToContainer(ctx, resp.ID, "/", tarContent, options)
+	err = cli.Client().CopyToContainer(ctx, d.containerID, "/", tarContent, options)
 	if err != nil {
 		return driver.OperationResult{}, fmt.Errorf("error copying to / in container: %s", err)
 	}
 
-	attach, err := cli.Client().ContainerAttach(ctx, resp.ID, container.AttachOptions{
+	attach, err := cli.Client().ContainerAttach(ctx, d.containerID, container.AttachOptions{
 		Stream: true,
 		Stdout: true,
 		Stderr: true,
@@ -269,32 +276,44 @@ func (d *Driver) exec(op *driver.Operation) (driver.OperationResult, error) {
 		}
 	}()
 
-	if err = cli.Client().ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if err = cli.Client().ContainerStart(ctx, d.containerID, container.StartOptions{}); err != nil {
 		return driver.OperationResult{}, fmt.Errorf("cannot start container: %v", err)
 	}
-	statusc, errc := cli.Client().ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
+	opResult, err := d.getContainerResult(ctx, cli.Client(), op)
+
+	return opResult, err
+}
+
+func (d *Driver) getContainerResult(ctx context.Context, cliClient ContainerResultClient, op *driver.Operation) (driver.OperationResult, error) {
+	statusc, errc := cliClient.ContainerWait(ctx, d.containerID, container.WaitConditionNotRunning)
 	select {
+	case <-ctx.Done():
+		err := cliClient.ContainerStop(context.Background(), d.containerID, container.StopOptions{})
+		if err != nil {
+			return driver.OperationResult{}, err
+		}
+		return driver.OperationResult{}, ctx.Err()
 	case err := <-errc:
 		if err != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+			opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
 			return opResult, containerError("error in container", err, fetchErr)
 		}
 	case s := <-statusc:
 		if s.StatusCode == 0 {
-			return d.fetchOutputs(ctx, resp.ID, op)
+			return d.fetchOutputs(ctx, d.containerID, op)
 		}
 		if s.Error != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
-			return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), err, fetchErr)
+			opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+			return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), nil, fetchErr)
 		}
-		opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
-		return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), err, fetchErr)
+		opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+		return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), nil, fetchErr)
 	}
-	opResult, fetchErr := d.fetchOutputs(ctx, resp.ID, op)
+	opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
 	if fetchErr != nil {
 		return opResult, fmt.Errorf("fetching outputs failed: %s", fetchErr)
 	}
-	return opResult, err
+	return opResult, nil
 }
 
 // getContainerUserID determines the user id that the container will execute as

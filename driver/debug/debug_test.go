@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"io/ioutil"
 	"testing"
 
@@ -36,6 +37,6 @@ func TestDebugDriver_Run(t *testing.T) {
 		Out: ioutil.Discard,
 	}
 
-	_, err := d.Run(op)
+	_, err := d.Run(context.Background(), op)
 	is.NoError(err)
 }

@@ -1,6 +1,7 @@
 package action_test
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -56,7 +57,7 @@ func Example_runningStatus() {
 	// Save the upgrade claim in the Running Status
 	saveResult(c, claim.StatusRunning)
 
-	opResult, claimResult, err := a.Run(c, creds)
+	opResult, claimResult, err := a.Run(context.Background(), c, creds)
 	if err != nil {
 		// If the bundle isn't run due to an error preparing,
 		// record a failure so we aren't left stuck in running
