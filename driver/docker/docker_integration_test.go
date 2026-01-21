@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -227,7 +227,7 @@ func TestDriver_Run_ContextCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	dockerCli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	dockerCli, err := client.New(client.FromEnv)
 	require.NoError(t, err)
 	defer dockerCli.Close()
 
@@ -240,11 +240,11 @@ func TestDriver_Run_ContextCancellation(t *testing.T) {
 	// Cancel the context after a brief delay to allow the container to start
 	go func() {
 		for {
-			containers, err := dockerCli.ContainerList(context.Background(), container.ListOptions{})
+			containers, err := dockerCli.ContainerList(context.Background(), client.ContainerListOptions{})
 			require.NoError(t, err)
 			found := false
-			for _, c := range containers {
-				if c.ID == docker.containerID && c.State == "running" {
+			for _, c := range containers.Items {
+				if c.ID == docker.containerID && c.State == container.StateRunning {
 					found = true
 					break
 				}
@@ -271,19 +271,19 @@ func TestDriver_Run_ContextCancellation(t *testing.T) {
 			t.Fatalf("Timed out waiting for container %s to stop after context cancellation", docker.containerID)
 		}
 
-		containersAfter, err := dockerCli.ContainerList(context.Background(), container.ListOptions{All: true})
+		containersAfter, err := dockerCli.ContainerList(context.Background(), client.ContainerListOptions{All: true})
 		require.NoError(t, err)
 
 		found := false
 		var state container.ContainerState
-		for _, container := range containersAfter {
-			if container.ID == docker.containerID {
-				state = container.State
+		for _, c := range containersAfter.Items {
+			if c.ID == docker.containerID {
+				state = c.State
 				found = true
 				break
 			}
 		}
-		if found && state != "running" {
+		if found && state != container.StateRunning {
 			break
 		}
 		time.Sleep(time.Millisecond * 100)

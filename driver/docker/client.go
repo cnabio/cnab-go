@@ -24,13 +24,13 @@ const (
 
 // GetDockerClient creates a Docker CLI client that uses the user's Docker configuration
 // such as environment variables and the Docker home directory to initialize the client.
-func GetDockerClient() (*command.DockerCli, error) {
+func GetDockerClient(cliOps ...command.CLIOption) (*command.DockerCli, error) {
 	cli, err := command.NewDockerCli()
 	if err != nil {
 		return nil, fmt.Errorf("could not create new docker client: %w", err)
 	}
 	opts := BuildDockerClientOptions()
-	if err = cli.Initialize(opts); err != nil {
+	if err = cli.Initialize(opts, cliOps...); err != nil {
 		return nil, fmt.Errorf("error initializing docker client: %w", err)
 	}
 	return cli, nil

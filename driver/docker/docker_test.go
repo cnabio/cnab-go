@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/strslice"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -66,7 +66,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		d := &Driver{}
 
 		d.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
-			hostCfg.CapAdd = strslice.StrSlice{"SUPER_POWERS"}
+			hostCfg.CapAdd = []string{"SUPER_POWERS"}
 			return nil
 		})
 
@@ -74,7 +74,7 @@ func TestDriver_GetConfigurationOptions(t *testing.T) {
 		is.NoError(err)
 
 		expectedHostCfg := container.HostConfig{
-			CapAdd: strslice.StrSlice{"SUPER_POWERS"},
+			CapAdd: []string{"SUPER_POWERS"},
 		}
 
 		hostCfg, err := d.GetContainerHostConfig()
@@ -260,14 +260,17 @@ type MockContainerResultClient struct {
 	ContainerStopError error
 }
 
-func (m *MockContainerResultClient) ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error) {
+func (m *MockContainerResultClient) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
 	statusCh := make(chan container.WaitResponse, 1)
 	errCh := make(chan error, 1)
-	return statusCh, errCh
+	return client.ContainerWaitResult{
+		Result: statusCh,
+		Error:  errCh,
+	}
 }
-func (m *MockContainerResultClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
+func (m *MockContainerResultClient) ContainerStop(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error) {
 	m.ContainerStopId = containerID
-	return m.ContainerStopError
+	return client.ContainerStopResult{}, m.ContainerStopError
 }
 
 func TestDriver_exec_ContextCancellation(t *testing.T) {
