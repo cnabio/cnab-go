@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/docker/docker/pkg/archive"
+	"github.com/moby/go-archive"
+	"github.com/moby/go-archive/compression"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/loader"
@@ -56,7 +57,7 @@ func (im *Importer) Unzip() (string, *bundle.Bundle, error) {
 	defer reader.Close()
 
 	tarOptions := &archive.TarOptions{
-		Compression:      archive.Gzip,
+		Compression:      compression.Gzip,
 		IncludeFiles:     []string{"."},
 		IncludeSourceDir: true,
 		NoLchown:         true,

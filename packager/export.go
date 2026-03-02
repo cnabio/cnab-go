@@ -8,7 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/docker/docker/pkg/archive"
+	"github.com/moby/go-archive"
+	"github.com/moby/go-archive/compression"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/loader"
@@ -114,7 +115,7 @@ func (ex *Exporter) Export() error {
 	defer writer.Close()
 
 	tarOptions := &archive.TarOptions{
-		Compression:      archive.Gzip,
+		Compression:      compression.Gzip,
 		IncludeFiles:     []string{"."},
 		IncludeSourceDir: true,
 	}
