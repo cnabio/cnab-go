@@ -261,7 +261,7 @@ func TestDriver_Run_ContextCancellation(t *testing.T) {
 	opResult, err := docker.Run(ctx, op)
 
 	require.Error(t, err, "expected Run to return an error when context is cancelled")
-	assert.Equal(t, driver.OperationResult{}, opResult)
+	assert.Equal(t, driver.OperationResult{Outputs: map[string]string{}}, opResult)
 
 	loopMax := 50
 	loopCount := 0
