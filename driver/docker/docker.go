@@ -46,6 +46,7 @@ type Driver struct {
 type ContainerResultClient interface {
 	ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult
 	ContainerStop(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error)
+	CopyFromContainer(ctx context.Context, containerID string, options client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
 }
 
 // Run executes the Docker driver
@@ -288,24 +289,38 @@ func (d *Driver) getContainerResult(ctx context.Context, cliClient ContainerResu
 		if err != nil {
 			return driver.OperationResult{}, err
 		}
-		return driver.OperationResult{}, ctx.Err()
+		// Wait for the container to fully exit so all output files are flushed
+		// before we copy them — mirrors what the normal exit path does via
+		// WaitConditionNotRunning.
+		exitWait := cliClient.ContainerWait(context.Background(), d.containerID, client.ContainerWaitOptions{
+			Condition: container.WaitConditionNotRunning,
+		})
+		select {
+		case <-exitWait.Result:
+		case <-exitWait.Error:
+		}
+		opResult, fetchErr := d.fetchOutputs(context.Background(), cliClient, d.containerID, op)
+		if fetchErr != nil {
+			return opResult, fmt.Errorf("fetching outputs failed: %w; %w", fetchErr, ctx.Err())
+		}
+		return opResult, ctx.Err()
 	case err := <-waitResult.Error:
 		if err != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+			opResult, fetchErr := d.fetchOutputs(ctx, cliClient, d.containerID, op)
 			return opResult, containerError("error in container", err, fetchErr)
 		}
 	case s := <-waitResult.Result:
 		if s.StatusCode == 0 {
-			return d.fetchOutputs(ctx, d.containerID, op)
+			return d.fetchOutputs(ctx, cliClient, d.containerID, op)
 		}
 		if s.Error != nil {
-			opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+			opResult, fetchErr := d.fetchOutputs(ctx, cliClient, d.containerID, op)
 			return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), nil, fetchErr)
 		}
-		opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+		opResult, fetchErr := d.fetchOutputs(ctx, cliClient, d.containerID, op)
 		return opResult, containerError(fmt.Sprintf("container exit code: %d, message", s.StatusCode), nil, fetchErr)
 	}
-	opResult, fetchErr := d.fetchOutputs(ctx, d.containerID, op)
+	opResult, fetchErr := d.fetchOutputs(ctx, cliClient, d.containerID, op)
 	if fetchErr != nil {
 		return opResult, fmt.Errorf("fetching outputs failed: %s", fetchErr)
 	}
@@ -373,7 +388,7 @@ func containerError(containerMessage string, containerErr, fetchErr error) error
 // fetchOutputs takes a context and a container ID; it copies the /cnab/app/outputs directory from that container.
 // The goal is to collect all the files in the directory (recursively) and put them in a flat map of path to contents.
 // This map will be inside the OperationResult. When fetchOutputs returns an error, it may also return partial results.
-func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.Operation) (driver.OperationResult, error) {
+func (d *Driver) fetchOutputs(ctx context.Context, cliClient ContainerResultClient, container string, op *driver.Operation) (driver.OperationResult, error) {
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
 	}
@@ -383,7 +398,7 @@ func (d *Driver) fetchOutputs(ctx context.Context, container string, op *driver.
 	if len(op.Outputs) == 0 {
 		return opResult, nil
 	}
-	copyResult, err := d.dockerCli.Client().CopyFromContainer(ctx, container, client.CopyFromContainerOptions{
+	copyResult, err := cliClient.CopyFromContainer(ctx, container, client.CopyFromContainerOptions{
 		SourcePath: "/cnab/app/outputs",
 	})
 	if err != nil {

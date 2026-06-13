@@ -1,8 +1,11 @@
 package docker
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/moby/moby/api/types/container"
@@ -256,21 +259,36 @@ func TestGetContainerUserId(t *testing.T) {
 }
 
 type MockContainerResultClient struct {
-	ContainerStopId    string
-	ContainerStopError error
+	ContainerStopId     string
+	ContainerStopError  error
+	CopyFromContainerFn func(ctx context.Context, containerID string, options client.CopyFromContainerOptions) (client.CopyFromContainerResult, error)
+	containerWaitCalls  int
 }
 
 func (m *MockContainerResultClient) ContainerWait(ctx context.Context, containerID string, options client.ContainerWaitOptions) client.ContainerWaitResult {
+	m.containerWaitCalls++
 	statusCh := make(chan container.WaitResponse, 1)
 	errCh := make(chan error, 1)
+	if m.containerWaitCalls > 1 {
+		// Subsequent calls are the post-stop exitWait; signal the container has exited.
+		statusCh <- container.WaitResponse{StatusCode: 0}
+	}
 	return client.ContainerWaitResult{
 		Result: statusCh,
 		Error:  errCh,
 	}
 }
+
 func (m *MockContainerResultClient) ContainerStop(ctx context.Context, containerID string, options client.ContainerStopOptions) (client.ContainerStopResult, error) {
 	m.ContainerStopId = containerID
 	return client.ContainerStopResult{}, m.ContainerStopError
+}
+
+func (m *MockContainerResultClient) CopyFromContainer(ctx context.Context, containerID string, options client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
+	if m.CopyFromContainerFn != nil {
+		return m.CopyFromContainerFn(ctx, containerID, options)
+	}
+	return client.CopyFromContainerResult{}, nil
 }
 
 func TestDriver_exec_ContextCancellation(t *testing.T) {
@@ -288,13 +306,59 @@ func TestDriver_exec_ContextCancellation(t *testing.T) {
 			},
 		}
 
-		client := &MockContainerResultClient{}
+		mockClient := &MockContainerResultClient{}
 
-		result, err := d.getContainerResult(ctx, client, op)
+		result, err := d.getContainerResult(ctx, mockClient, op)
 
-		assert.Error(t, err, "expected Run to return an error with cancelled context")
-		assert.Equal(t, driver.OperationResult{}, result)
-		assert.Equal(t, d.containerID, client.ContainerStopId)
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, driver.OperationResult{Outputs: map[string]string{}}, result)
+		assert.Equal(t, d.containerID, mockClient.ContainerStopId)
+	})
+}
+
+func TestDriver_exec_ContextCancellation_OutputsCaptured(t *testing.T) {
+	t.Run("outputs are captured after context cancellation", func(t *testing.T) {
+		const containerID = "unit-test-container-id"
+		d := &Driver{containerID: containerID}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		op := &driver.Operation{
+			Image: bundle.InvocationImage{
+				BaseImage: bundle.BaseImage{Image: "test-image"},
+			},
+			Outputs: map[string]string{
+				"/cnab/app/outputs/myoutput": "myoutput",
+			},
+		}
+
+		// Build a TAR that mimics what CopyFromContainer returns.
+		// CopyFromContainer strips the leading path so the header name is
+		// "outputs/myoutput".
+		var buf bytes.Buffer
+		tw := tar.NewWriter(&buf)
+		content := []byte("hello-output")
+		_ = tw.WriteHeader(&tar.Header{
+			Name: "outputs/myoutput",
+			Size: int64(len(content)),
+		})
+		_, _ = tw.Write(content)
+		tw.Close()
+		tarBytes := buf.Bytes()
+
+		mockClient := &MockContainerResultClient{
+			CopyFromContainerFn: func(_ context.Context, _ string, _ client.CopyFromContainerOptions) (client.CopyFromContainerResult, error) {
+				return client.CopyFromContainerResult{Content: io.NopCloser(bytes.NewReader(tarBytes))}, nil
+			},
+		}
+
+		result, err := d.getContainerResult(ctx, mockClient, op)
+
+		assert.ErrorIs(t, err, context.Canceled)
+		assert.Equal(t, containerID, mockClient.ContainerStopId)
+		require.NotNil(t, result.Outputs)
+		assert.Equal(t, "hello-output", result.Outputs["myoutput"])
 	})
 }
 
@@ -311,14 +375,14 @@ func TestDriver_exec_ContextCancellationError(t *testing.T) {
 			},
 		}
 
-		client := &MockContainerResultClient{
+		mockClient := &MockContainerResultClient{
 			ContainerStopError: fmt.Errorf("unit-test-error"),
 		}
 
-		result, err := d.getContainerResult(ctx, client, op)
+		result, err := d.getContainerResult(ctx, mockClient, op)
 
 		assert.Error(t, err, "expected Run to return an error with cancelled context")
 		assert.Equal(t, driver.OperationResult{}, result)
-		assert.Equal(t, err, client.ContainerStopError)
+		assert.Equal(t, err, mockClient.ContainerStopError)
 	})
 }
