@@ -339,12 +339,13 @@ func TestDriver_exec_ContextCancellation_OutputsCaptured(t *testing.T) {
 		var buf bytes.Buffer
 		tw := tar.NewWriter(&buf)
 		content := []byte("hello-output")
-		_ = tw.WriteHeader(&tar.Header{
+		require.NoError(t, tw.WriteHeader(&tar.Header{
 			Name: "outputs/myoutput",
 			Size: int64(len(content)),
-		})
-		_, _ = tw.Write(content)
-		tw.Close()
+		}))
+		_, werr := tw.Write(content)
+		require.NoError(t, werr)
+		require.NoError(t, tw.Close())
 		tarBytes := buf.Bytes()
 
 		mockClient := &MockContainerResultClient{

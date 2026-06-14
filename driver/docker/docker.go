@@ -295,13 +295,18 @@ func (d *Driver) getContainerResult(ctx context.Context, cliClient ContainerResu
 		exitWait := cliClient.ContainerWait(context.Background(), d.containerID, client.ContainerWaitOptions{
 			Condition: container.WaitConditionNotRunning,
 		})
+		var waitErr error
 		select {
 		case <-exitWait.Result:
-		case <-exitWait.Error:
+		case err := <-exitWait.Error:
+			waitErr = err
 		}
 		opResult, fetchErr := d.fetchOutputs(context.Background(), cliClient, d.containerID, op)
 		if fetchErr != nil {
 			return opResult, fmt.Errorf("fetching outputs failed: %w; %w", fetchErr, ctx.Err())
+		}
+		if waitErr != nil {
+			return opResult, fmt.Errorf("container wait failed: %w; %w", waitErr, ctx.Err())
 		}
 		return opResult, ctx.Err()
 	case err := <-waitResult.Error:
