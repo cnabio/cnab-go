@@ -292,3 +292,81 @@ func TestDriver_Run_ContextCancellation(t *testing.T) {
 		}
 	}
 }
+
+func TestDriver_Run_ContextCancellation_OutputsCaptured(t *testing.T) {
+	// Container writes an output file then sleeps; verify the output is
+	// captured even though the context is cancelled before the container exits.
+	image := bundle.InvocationImage{
+		BaseImage: bundle.BaseImage{
+			Image: "busybox:latest",
+		},
+	}
+
+	op := &driver.Operation{
+		Installation: "test-cancel-outputs",
+		Action:       "install",
+		Image:        image,
+		Outputs: map[string]string{
+			"/cnab/app/outputs/myoutput": "myoutput",
+		},
+		Bundle: &bundle.Bundle{
+			Definitions: definition.Definitions{
+				"myoutput": &definition.Schema{},
+			},
+			Outputs: map[string]bundle.Output{
+				"myoutput": {
+					Definition: "myoutput",
+				},
+			},
+		},
+	}
+
+	var output bytes.Buffer
+	op.Out = &output
+	op.Environment = map[string]string{
+		"CNAB_ACTION":            op.Action,
+		"CNAB_INSTALLATION_NAME": op.Installation,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	dockerCli, err := client.New(client.FromEnv)
+	require.NoError(t, err)
+	defer dockerCli.Close()
+
+	docker := &Driver{}
+	docker.AddConfigurationOptions(func(cfg *container.Config, hostCfg *container.HostConfig) error {
+		// Write the output file then sleep so context cancellation arrives mid-run.
+		cfg.Entrypoint = []string{"sh", "-c", "mkdir -p /cnab/app/outputs && printf 'hello-output' > /cnab/app/outputs/myoutput && sleep 300"}
+		return nil
+	})
+
+	// Cancel once the container is running and has had time to write its output.
+	go func() {
+		for {
+			containers, err := dockerCli.ContainerList(context.Background(), client.ContainerListOptions{})
+			require.NoError(t, err)
+			found := false
+			for _, c := range containers.Items {
+				if c.ID == docker.containerID && c.State == container.StateRunning {
+					found = true
+					break
+				}
+			}
+			if found {
+				break
+			}
+			fmt.Println("Waiting for container to start...")
+			time.Sleep(time.Millisecond * 100)
+		}
+		// Brief pause so the entrypoint has time to write the file before we cancel.
+		time.Sleep(time.Millisecond * 200)
+		cancel()
+	}()
+
+	opResult, err := docker.Run(ctx, op)
+
+	require.ErrorIs(t, err, context.Canceled)
+	require.NotNil(t, opResult.Outputs)
+	assert.Equal(t, "hello-output", opResult.Outputs["myoutput"])
+}
