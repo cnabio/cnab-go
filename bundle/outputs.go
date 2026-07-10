@@ -29,7 +29,7 @@ func (o Output) AppliesTo(action string) bool {
 // value is sensitive.
 func (b Bundle) IsOutputSensitive(outputName string) (bool, error) {
 	if output, ok := b.Outputs[outputName]; ok {
-		if def, ok := b.Definitions[output.Definition]; ok {
+		if def, ok := b.Definitions[output.Definition]; ok && def != nil {
 			sensitive := def.WriteOnly != nil && *def.WriteOnly
 			return sensitive, nil
 		}
@@ -48,7 +48,7 @@ func (o *Output) Validate(name string, bun Bundle) error {
 
 	// Validate default against definition schema, if exists
 	schema, ok := bun.Definitions[o.Definition]
-	if !ok {
+	if !ok || schema == nil {
 		return fmt.Errorf("unable to find definition for %s", name)
 	}
 	var valResult *multierror.Error

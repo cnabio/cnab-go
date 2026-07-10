@@ -35,7 +35,7 @@ func (p *Parameter) Validate(name string, bun Bundle) error {
 
 	// Validate default against definition schema, if exists
 	schema, ok := bun.Definitions[p.Definition]
-	if !ok {
+	if !ok || schema == nil {
 		return fmt.Errorf("unable to find definition for %s", name)
 	}
 	if schema.Default != nil {
