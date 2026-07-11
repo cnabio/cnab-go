@@ -38,3 +38,52 @@ func TestOutputValidate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestOutputValidatePath(t *testing.T) {
+	testCases := []struct {
+		name string
+		path string
+		err  string
+	}{
+		{
+			name: "empty path",
+			path: "",
+		},
+		{
+			name: "valid path",
+			path: "/cnab/app/outputs/foo",
+		},
+		{
+			name: "relative path traversal",
+			path: "../../../etc/passwd",
+			err:  `path "../../../etc/passwd" must be a clean path under "/cnab/app/outputs/"`,
+		},
+		{
+			name: "absolute path traversal",
+			path: "/cnab/app/outputs/../../../etc/shadow",
+			err:  `path "/cnab/app/outputs/../../../etc/shadow" must be a clean path under "/cnab/app/outputs/"`,
+		},
+		{
+			name: "not under outputs dir",
+			path: "/tmp/some/path",
+			err:  `path "/tmp/some/path" must be a clean path under "/cnab/app/outputs/"`,
+		},
+		{
+			name: "outputs dir itself, no suffix",
+			path: "/cnab/app/outputs",
+			err:  `path "/cnab/app/outputs" must be a clean path under "/cnab/app/outputs/"`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			o := Output{Path: tc.path}
+			err := o.ValidatePath()
+			if tc.err == "" {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.err)
+			}
+		})
+	}
+}

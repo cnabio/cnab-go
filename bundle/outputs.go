@@ -2,6 +2,8 @@ package bundle
 
 import (
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
@@ -40,10 +42,31 @@ func (b Bundle) IsOutputSensitive(outputName string) (bool, error) {
 	return false, fmt.Errorf("output %q not defined", outputName)
 }
 
+// outputsDir is the directory that CNAB output paths must live under, per
+// the CNAB spec.
+const outputsDir = "/cnab/app/outputs/"
+
+// ValidatePath checks that the Output's Path, if set, is a clean, absolute
+// path under the CNAB outputs directory. This rejects traversal segments
+// ("..") that would otherwise let a bundle read files outside the
+// designated outputs location.
+func (o Output) ValidatePath() error {
+	if o.Path != "" {
+		if path.Clean(o.Path) != o.Path || !strings.HasPrefix(o.Path, outputsDir) {
+			return fmt.Errorf("path %q must be a clean path under %q", o.Path, outputsDir)
+		}
+	}
+	return nil
+}
+
 // Validate an Output
 func (o *Output) Validate(name string, bun Bundle) error {
 	if o.Definition == "" {
 		return errors.New("output definition must be provided")
+	}
+
+	if err := o.ValidatePath(); err != nil {
+		return fmt.Errorf("output %q has invalid %s", name, err)
 	}
 
 	// Validate default against definition schema, if exists

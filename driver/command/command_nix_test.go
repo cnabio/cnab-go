@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cnabio/cnab-go/bundle"
 	"github.com/cnabio/cnab-go/bundle/definition"
@@ -144,5 +145,47 @@ func TestCommandDriverOutputs(t *testing.T) {
 			}, opResult.Outputs)
 		}
 		CreateAndRunTestCommandDriver(t, name, false, content, testfunc)
+	})
+
+	// GHSA-x74g-hj34-9579: a bundle-declared output path with traversal
+	// segments must not let the driver read files outside its own
+	// temporary output directory.
+	t.Run("output path traversal is rejected", func(t *testing.T) {
+		secret, err := os.CreateTemp("", "cnab-poc-secret")
+		require.NoError(t, err, "could not create secret file")
+		defer os.Remove(secret.Name())
+		_, err = secret.WriteString("TOP-SECRET-HOST-DATA")
+		require.NoError(t, err)
+		require.NoError(t, secret.Close())
+
+		traversalPaths := []string{
+			"/../../../../../../../.." + secret.Name(),
+			"../../../../../../../.." + secret.Name(),
+			"/cnab/app/outputs/../../../../../../../.." + secret.Name(),
+		}
+
+		// Create the conventional outputs directory structure, so the third
+		// (prefixed) traversal path actually walks through real directories
+		// on its way out, rather than failing early on a missing "cnab" dir.
+		content := `#!/bin/sh
+		mkdir -p "${CNAB_OUTPUT_DIR}/cnab/app/outputs"
+	`
+		name := "test-outputs-traversal.sh"
+		for _, traversalPath := range traversalPaths {
+			t.Run(traversalPath, func(t *testing.T) {
+				testfunc := func(cmddriver *Driver) {
+					if !cmddriver.CheckDriverExists() {
+						t.Fatalf("Expected driver %s to exist Driver Name %s ", name, cmddriver.Name)
+					}
+					op := buildOp()
+					op.Outputs = map[string]string{traversalPath: "leaked"}
+
+					opResult, err := cmddriver.Run(context.Background(), op)
+					assert.Error(t, err, "expected Run to reject a path-traversal output file")
+					assert.NotContains(t, opResult.Outputs, "leaked")
+				}
+				CreateAndRunTestCommandDriver(t, name, false, content, testfunc)
+			})
+		}
 	})
 }

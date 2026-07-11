@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path"
 	"strings"
 
 	"github.com/cnabio/cnab-go/driver"
@@ -144,18 +143,25 @@ func (d *Driver) getOperationResult(op *driver.Operation) (driver.OperationResul
 	opResult := driver.OperationResult{
 		Outputs: map[string]string{},
 	}
+	if len(op.Outputs) == 0 {
+		return opResult, nil
+	}
+
+	// Confine reads to the output directory, since outputPath comes from the
+	// untrusted bundle.json and could otherwise escape via ".." segments.
+	outputRoot, err := os.OpenRoot(d.outputDirName)
+	if err != nil {
+		return opResult, fmt.Errorf("Command driver (%s) failed opening output directory: %v", d.Name, err)
+	}
+	defer outputRoot.Close()
+
 	for outputPath, outputName := range op.Outputs {
-		fileName := path.Join(d.outputDirName, outputPath)
-		_, err := os.Stat(fileName)
+		relPath := strings.TrimPrefix(outputPath, "/")
+		contents, err := outputRoot.ReadFile(relPath)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
-			return opResult, fmt.Errorf("Command driver (%s) failed checking for output file: %s Error: %v", d.Name, outputPath, err)
-		}
-
-		contents, err := ioutil.ReadFile(fileName)
-		if err != nil {
 			return opResult, fmt.Errorf("Command driver (%s) failed reading output file: %s Error: %v", d.Name, outputPath, err)
 		}
 
