@@ -6,6 +6,7 @@ package command
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,6 +15,30 @@ import (
 	"github.com/cnabio/cnab-go/bundle/definition"
 	"github.com/cnabio/cnab-go/driver"
 )
+
+// TestCheckDriverExists_NoShellInjection guards against GHSA-6pq9-97jw-vrmr:
+// a driver Name containing shell metacharacters must never be interpreted
+// by a shell.
+//
+// The temp dir must be all-lowercase: d.cmd() lowercases the whole Name
+// (including this embedded path) before use, so a mixed-case path (e.g.
+// from t.TempDir(), which embeds the test name) would check the wrong
+// path and mask the vulnerability.
+func TestCheckDriverExists_NoShellInjection(t *testing.T) {
+	tmp, err := os.MkdirTemp("", "cnab-injection-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmp)
+	marker := filepath.Join(tmp, "injected")
+
+	d := &Driver{Name: "x; touch " + marker + "; echo y"}
+	exists := d.CheckDriverExists()
+
+	assert.False(t, exists, "expected no driver to be found for the malicious name")
+	_, statErr := os.Stat(marker)
+	assert.True(t, os.IsNotExist(statErr), "marker file must not have been created")
+}
 
 func TestCommandDriverOutputs(t *testing.T) {
 	buildOp := func() *driver.Operation {

@@ -4,7 +4,6 @@
 package command
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 )
@@ -16,7 +15,6 @@ func (d *Driver) CheckDriverExists() bool {
 		return err == nil
 	}
 
-	cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("command -v %s", d.cmd()))
-	err := cmd.Run()
+	_, err := exec.LookPath(d.cmd())
 	return err == nil
 }
