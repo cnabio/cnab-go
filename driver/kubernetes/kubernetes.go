@@ -415,16 +415,21 @@ func (k *Driver) Run(ctx context.Context, op *driver.Operation) (driver.Operatio
 	}
 
 	if len(op.Files) > 0 {
-		// Write the files to the inputs directory on the shared volume and mount them individually to the desired location in the invocation image
+		// Write the files to the inputs directory on the shared volume and mount them individually to the desired location in the invocation image.
+		// Use os.Root to confine writes to the inputs directory, since inputRelPath comes from the untrusted bundle.json and could otherwise escape via ".." segments or symlinks.
+		inputsRoot, err := os.OpenRoot(filepath.Join(k.JobVolumePath, "inputs"))
+		if err != nil {
+			return driver.OperationResult{}, errors.Wrapf(err, "error opening inputs directory on the shared job volume %s", k.JobVolumeName)
+		}
+		defer inputsRoot.Close()
+
 		for inputRelPath, contents := range op.Files {
-			inputPath := filepath.Join(k.JobVolumePath, "inputs", inputRelPath)
-			err = os.MkdirAll(filepath.Dir(inputPath), 0700)
-			if err != nil {
-				return driver.OperationResult{}, errors.Wrapf(err, "error creating directory for file %s on the shared job volume %s", inputPath, k.JobVolumeName)
+			relName := strings.TrimPrefix(inputRelPath, "/")
+			if err := inputsRoot.MkdirAll(filepath.Dir(relName), 0700); err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error creating directory for file %s on the shared job volume %s", inputRelPath, k.JobVolumeName)
 			}
-			err = ioutil.WriteFile(inputPath, []byte(contents), 0600)
-			if err != nil {
-				return driver.OperationResult{}, errors.Wrapf(err, "error writing file %s to the shared job volume %s", inputPath, k.JobVolumeName)
+			if err := inputsRoot.WriteFile(relName, []byte(contents), 0600); err != nil {
+				return driver.OperationResult{}, errors.Wrapf(err, "error writing file %s to the shared job volume %s", inputRelPath, k.JobVolumeName)
 			}
 
 			container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{

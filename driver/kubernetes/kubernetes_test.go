@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,6 +120,61 @@ func TestDriver_RunWithSharedFiles(t *testing.T) {
 	inputContents, err := ioutil.ReadFile(wantInputFile)
 	require.NoErrorf(t, err, "could not read generated input file %s on shared volume", wantInputFile)
 	assert.Equal(t, "input value", string(inputContents), "invalid input file contents")
+}
+
+func TestDriver_RunWithSharedFiles_PathTraversal(t *testing.T) {
+	traversalPaths := []string{
+		"../../../etc/passwd",
+		"/../../../etc/cron.d/x",
+		"/cnab/app/../../../etc/shadow",
+	}
+
+	for _, traversalPath := range traversalPaths {
+		t.Run(traversalPath, func(t *testing.T) {
+			ctx := context.Background()
+			// Simulate the shared volume
+			sharedDir, err := ioutil.TempDir("", "cnab-go")
+			require.NoError(t, err, "could not create test directory")
+			defer os.RemoveAll(sharedDir)
+
+			client := fake.NewSimpleClientset()
+			namespace := "default"
+			k := Driver{
+				Namespace:          namespace,
+				jobs:               client.BatchV1().Jobs(namespace),
+				secrets:            client.CoreV1().Secrets(namespace),
+				pods:               client.CoreV1().Pods(namespace),
+				JobVolumePath:      sharedDir,
+				JobVolumeName:      "cnab-driver-shared",
+				SkipCleanup:        true,
+				skipJobStatusCheck: true,
+			}
+			op := driver.Operation{
+				Action: "install",
+				Image:  bundle.InvocationImage{BaseImage: bundle.BaseImage{Image: "foo/bar"}},
+				Bundle: &bundle.Bundle{},
+				Out:    os.Stdout,
+				Files: map[string]string{
+					traversalPath: "malicious content",
+				},
+			}
+
+			_, err = k.Run(ctx, &op)
+			assert.Error(t, err, "expected Run to reject a path-traversal input file")
+
+			// Confirm nothing was written outside of sharedDir/inputs
+			inputsDir := filepath.Join(sharedDir, "inputs")
+			err = filepath.Walk(sharedDir, func(path string, info os.FileInfo, err error) error {
+				require.NoError(t, err)
+				if info.IsDir() {
+					return nil
+				}
+				assert.Truef(t, strings.HasPrefix(path, inputsDir+string(filepath.Separator)), "file was written outside the inputs directory: %s", path)
+				return nil
+			})
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestImageWithDigest(t *testing.T) {

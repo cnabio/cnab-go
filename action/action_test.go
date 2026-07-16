@@ -250,6 +250,34 @@ func TestOpFromClaim(t *testing.T) {
 	is.Nil(op.Out)
 }
 
+func TestOpFromClaim_RejectsTraversalParameterPath(t *testing.T) {
+	c := newClaim(claim.ActionInstall)
+	c.Bundle.Parameters["param_three"] = bundle.Parameter{
+		Definition:  "ParamThree",
+		Destination: &bundle.Location{Path: "/../../../../etc/cron.d/pwn"},
+	}
+	c.Parameters = map[string]interface{}{
+		"param_three": "threeval",
+	}
+	invocImage := c.Bundle.InvocationImages[0]
+
+	_, err := opFromClaim(stateful, c, invocImage, mockSet)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid destination for parameter "param_three"`)
+}
+
+func TestOpFromClaim_RejectsTraversalCredentialPath(t *testing.T) {
+	c := newClaim(claim.ActionInstall)
+	c.Bundle.Credentials["secret_one"] = bundle.Credential{
+		Location: bundle.Location{Path: "/../../../../etc/cron.d/pwn"},
+	}
+	invocImage := c.Bundle.InvocationImages[0]
+
+	_, err := opFromClaim(stateful, c, invocImage, mockSet)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid path for credential "secret_one"`)
+}
+
 func TestOpFromClaim_NoOutputsOnBundle(t *testing.T) {
 	c := newClaim(claim.ActionInstall)
 	c.Bundle.Outputs = nil
