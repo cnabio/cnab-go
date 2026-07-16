@@ -403,6 +403,11 @@ func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds
 	env["CNAB_INSTALLATION_NAME"] = c.Installation
 	env["CNAB_REVISION"] = c.Revision
 
+	outputs, err := getOutputsGeneratedByAction(c.Action, c.Bundle)
+	if err != nil {
+		return nil, err
+	}
+
 	return &driver.Operation{
 		Action:       c.Action,
 		Installation: c.Installation,
@@ -411,23 +416,27 @@ func opFromClaim(stateless bool, c claim.Claim, ii bundle.InvocationImage, creds
 		Revision:     c.Revision,
 		Environment:  env,
 		Files:        files,
-		Outputs:      getOutputsGeneratedByAction(c.Action, c.Bundle),
+		Outputs:      outputs,
 		Bundle:       &c.Bundle,
 	}, nil
 }
 
 // getOutputsGeneratedByAction returns a map of output paths to the name of the output, filtered by the specified action.
-func getOutputsGeneratedByAction(action string, b bundle.Bundle) map[string]string {
+func getOutputsGeneratedByAction(action string, b bundle.Bundle) (map[string]string, error) {
 	outputs := make(map[string]string, len(b.Outputs))
 	for outputName, outputDef := range b.Outputs {
 		if !outputDef.AppliesTo(action) {
 			continue
 		}
 
+		if err := outputDef.ValidatePath(); err != nil {
+			return nil, fmt.Errorf("invalid path for output %q: %w", outputName, err)
+		}
+
 		outputs[outputDef.Path] = outputName
 	}
 
-	return outputs
+	return outputs, nil
 }
 
 func injectParameters(c claim.Claim, env, files map[string]string) error {

@@ -129,7 +129,7 @@ func mockBundle() bundle.Bundle {
 		},
 		Outputs: map[string]bundle.Output{
 			"some-output": {
-				Path:       "/tmp/some/path",
+				Path:       "/cnab/app/outputs/some-output",
 				Definition: "ParamOne",
 			},
 		},
@@ -232,7 +232,7 @@ func TestOpFromClaim(t *testing.T) {
 	is.Contains(op.Files, "/cnab/app/image-map.json")
 	is.Contains(op.Files, "/cnab/bundle.json")
 	is.Contains(op.Files, "/cnab/claim.json")
-	is.Contains(op.Outputs, "/tmp/some/path")
+	is.Contains(op.Outputs, "/cnab/app/outputs/some-output")
 
 	var imgMap map[string]bundle.Image
 	is.NoError(json.Unmarshal([]byte(op.Files["/cnab/app/image-map.json"]), &imgMap))
@@ -405,7 +405,7 @@ func TestOpFromClaim_NotApplicableToAction(t *testing.T) {
 
 	c.Bundle.Outputs = map[string]bundle.Output{
 		"some-output": {
-			Path:    "/path/to/some-output",
+			Path:    "/cnab/app/outputs/some-output",
 			ApplyTo: []string{"install"},
 		},
 	}
@@ -414,7 +414,7 @@ func TestOpFromClaim_NotApplicableToAction(t *testing.T) {
 		op, err := opFromClaim(stateful, c, invocImage, mockSet)
 		require.NoError(t, err)
 		gotOutputs := op.Outputs
-		assert.Contains(t, gotOutputs, "/path/to/some-output", "some-output should be listed in op.Outputs")
+		assert.Contains(t, gotOutputs, "/cnab/app/outputs/some-output", "some-output should be listed in op.Outputs")
 	})
 
 	t.Run("output not added to the operation when it doesn't apply to the action", func(t *testing.T) {
@@ -422,7 +422,7 @@ func TestOpFromClaim_NotApplicableToAction(t *testing.T) {
 		op, err := opFromClaim(stateful, c, invocImage, mockSet)
 		require.NoError(t, err)
 		gotOutputs := op.Outputs
-		assert.NotContains(t, gotOutputs, "/path/to/some-output", "some-output should not be listed in op.Outputs")
+		assert.NotContains(t, gotOutputs, "/cnab/app/outputs/some-output", "some-output should not be listed in op.Outputs")
 	})
 }
 
@@ -1018,7 +1018,8 @@ func TestGetOutputsGeneratedByAction(t *testing.T) {
 		},
 	}
 
-	gotOutputs := getOutputsGeneratedByAction("install", b)
+	gotOutputs, err := getOutputsGeneratedByAction("install", b)
+	require.NoError(t, err)
 	wantOutputs := map[string]string{
 		"/cnab/app/outputs/output1": "output1",
 		"/cnab/app/outputs/output2": "output2",
@@ -1026,18 +1027,35 @@ func TestGetOutputsGeneratedByAction(t *testing.T) {
 	}
 	assert.Equal(t, wantOutputs, gotOutputs)
 
-	gotOutputs = getOutputsGeneratedByAction("custom", b)
+	gotOutputs, err = getOutputsGeneratedByAction("custom", b)
+	require.NoError(t, err)
 	wantOutputs = map[string]string{
 		"/cnab/app/outputs/output2": "output2",
 	}
 	assert.Equal(t, wantOutputs, gotOutputs)
 
-	gotOutputs = getOutputsGeneratedByAction("upgrade", b)
+	gotOutputs, err = getOutputsGeneratedByAction("upgrade", b)
+	require.NoError(t, err)
 	wantOutputs = map[string]string{
 		"/cnab/app/outputs/output2": "output2",
 		"/cnab/app/outputs/output3": "output3",
 	}
 	assert.Equal(t, wantOutputs, gotOutputs)
+}
+
+func TestGetOutputsGeneratedByAction_RejectsTraversalPath(t *testing.T) {
+	b := bundle.Bundle{
+		Outputs: map[string]bundle.Output{
+			"output1": {
+				ApplyTo: []string{"install"},
+				Path:    "/cnab/app/outputs/../../../etc/shadow",
+			},
+		},
+	}
+
+	_, err := getOutputsGeneratedByAction("install", b)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `invalid path for output "output1"`)
 }
 
 func TestExpandCredentials(t *testing.T) {
