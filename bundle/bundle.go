@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 
 	cjson "github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
@@ -171,6 +172,12 @@ type Location struct {
 
 // Validate the Location
 func (l Location) Validate() error {
+	if l.Path != "" {
+		if !path.IsAbs(l.Path) || path.Clean(l.Path) != l.Path {
+			return fmt.Errorf("Path %q must be an absolute, clean path", l.Path)
+		}
+	}
+
 	forbiddenPath := "/cnab/app/outputs"
 	if strings.HasPrefix(l.Path, forbiddenPath) {
 		return fmt.Errorf("Path %q must not be a subpath of %q", l.Path, forbiddenPath)

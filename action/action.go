@@ -461,6 +461,9 @@ func injectParameters(c claim.Claim, env, files map[string]string) error {
 			continue
 		}
 		if param.Destination.Path != "" {
+			if err := param.Destination.Validate(); err != nil {
+				return fmt.Errorf("invalid destination for parameter %q: %w", k, err)
+			}
 			files[param.Destination.Path] = value
 		}
 		if param.Destination.EnvironmentVariable != "" {
@@ -489,6 +492,10 @@ func expandCredentials(b bundle.Bundle, set valuesource.Set, stateless bool, act
 			env[val.EnvironmentVariable] = src
 		}
 		if val.Path != "" {
+			if err = val.Location.Validate(); err != nil {
+				err = fmt.Errorf("invalid path for credential %q: %w", name, err)
+				return
+			}
 			files[val.Path] = src
 		}
 	}

@@ -870,6 +870,18 @@ func TestValidateLocation(t *testing.T) {
 		name:     "error path",
 		location: Location{Path: "/cnab/app/outputs/thing"},
 		err:      `Path "/cnab/app/outputs/thing" must not be a subpath of "/cnab/app/outputs"`,
+	}, {
+		name:     "relative path traversal",
+		location: Location{Path: "../../../etc/passwd"},
+		err:      `Path "../../../etc/passwd" must be an absolute, clean path`,
+	}, {
+		name:     "absolute path traversal",
+		location: Location{Path: "/../../../etc/cron.d/x"},
+		err:      `Path "/../../../etc/cron.d/x" must be an absolute, clean path`,
+	}, {
+		name:     "non-absolute path",
+		location: Location{Path: "relative/path"},
+		err:      `Path "relative/path" must be an absolute, clean path`,
 	}}
 
 	for _, tc := range testCases {
