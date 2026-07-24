@@ -219,7 +219,7 @@ func ValuesOrDefaults(vals map[string]interface{}, b *Bundle, action string) (ma
 			continue
 		}
 		s, ok := b.Definitions[param.Definition]
-		if !ok {
+		if !ok || s == nil {
 			return res, fmt.Errorf("unable to find definition for %s", name)
 		}
 
