@@ -962,6 +962,55 @@ func TestBundle_IsOutputSensitive(t *testing.T) {
 
 }
 
+// A bundle.json can carry a null definition, e.g. "definitions": {"nullDef": null}.
+// Because Definitions is a map of *Schema, the map lookup succeeds with ok == true
+// but hands back a nil pointer, which used to panic when it was dereferenced. A nil
+// definition should be treated the same as a missing one.
+func TestBundle_NilDefinition(t *testing.T) {
+	b := &Bundle{
+		SchemaVersion: "1.2.0",
+		InvocationImages: []InvocationImage{
+			{
+				BaseImage: BaseImage{
+					Image:     "foo/bar:1.0.0",
+					ImageType: "docker",
+				},
+			},
+		},
+		Definitions: map[string]*definition.Schema{
+			"nullDef": nil,
+		},
+		Parameters: map[string]Parameter{
+			"someParam": {
+				Definition: "nullDef",
+			},
+		},
+		Outputs: map[string]Output{
+			"someOutput": {
+				Definition: "nullDef",
+			},
+		},
+	}
+
+	t.Run("Validate does not panic", func(t *testing.T) {
+		// The nil definition is treated as missing, so validation reports the
+		// missing definition rather than dereferencing a nil pointer.
+		err := b.Validate()
+		require.Error(t, err, "expected a definition-not-found error, not a panic")
+	})
+
+	t.Run("ValuesOrDefaults does not panic", func(t *testing.T) {
+		_, err := ValuesOrDefaults(map[string]interface{}{}, b, "install")
+		require.Error(t, err, "expected a definition-not-found error, not a panic")
+	})
+
+	t.Run("IsOutputSensitive does not panic", func(t *testing.T) {
+		sensitive, err := b.IsOutputSensitive("someOutput")
+		require.Error(t, err, "expected a definition-not-found error, not a panic")
+		assert.False(t, sensitive)
+	})
+}
+
 func TestBundle_GetAction(t *testing.T) {
 	testcases := []struct {
 		action    string
